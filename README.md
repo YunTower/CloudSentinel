@@ -1,20 +1,39 @@
-# 云哨 CloudSentinel
+# frontend
 
-## 简介
-CloudSentinel 是一款轻量的服务器运维探针。基于 Vue 3 + TypeScript + Vite + GO等最新的技术，提供管理控制台与公开页面，支持访客访问、实时负载展示与告警相关配置视图。
+This template should help get you started developing with Vue 3 in Vite.
 
-## 功能
-- [ ] 访客（密码）访问
-- [ ] 实时监控：CPU / RAM / 磁盘 / 网络
-- [ ] 阈值告警
-- [ ] 历史记录
-- [ ] 系统日志
-- [ ] 监控配置
+## Recommended IDE Setup
 
-## 相关仓库
-面板前端：https://github.com/YunTower/CloudSentinel    
-面板后端：https://github.com/YunTower/CloudSentinel-Backend   
-被控探针：https://github.com/YunTower/CloudSentinel-Agent
+[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
 
-## 许可证
-CloudSentinel 以 MIT 协议开源发布。
+## Type Support for `.vue` Imports in TS
+
+TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+
+## Customize configuration
+
+See [Vite Configuration Reference](https://vite.dev/config/).
+
+## Project Setup
+
+```sh
+pnpm install
+```
+
+### Compile and Hot-Reload for Development
+
+```sh
+pnpm dev
+```
+
+### Type-Check, Compile and Minify for Production
+
+```sh
+pnpm build
+```
+
+### Lint with [ESLint](https://eslint.org/)
+
+```sh
+pnpm lint
+```
