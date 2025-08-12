@@ -124,7 +124,7 @@ const saveAlertSettings = async () => {
               <div v-if="alertRules.cpu.enabled" class="ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-color">警告阈值 (%)</label>
+                    <label class="text-sm font-medium text-color">告警阈值 (%)</label>
                     <InputNumber v-model="alertRules.cpu.warning" :min="1" :max="100" suffix="%" />
                   </div>
                   <div class="flex flex-col gap-2">
@@ -148,7 +148,7 @@ const saveAlertSettings = async () => {
               <div v-if="alertRules.memory.enabled" class="ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-color">警告阈值 (%)</label>
+                    <label class="text-sm font-medium text-color">告警阈值 (%)</label>
                     <InputNumber v-model="alertRules.memory.warning" :min="1" :max="100" suffix="%" />
                   </div>
                   <div class="flex flex-col gap-2">
@@ -172,7 +172,7 @@ const saveAlertSettings = async () => {
               <div v-if="alertRules.disk.enabled" class="ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-color">警告阈值 (%)</label>
+                    <label class="text-sm font-medium text-color">告警阈值 (%)</label>
                     <InputNumber v-model="alertRules.disk.warning" :min="1" :max="100" suffix="%" />
                   </div>
                   <div class="flex flex-col gap-2">
@@ -273,7 +273,7 @@ const saveAlertSettings = async () => {
 <style scoped>
 .alerts-view {
   padding: 2rem;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 </style>
