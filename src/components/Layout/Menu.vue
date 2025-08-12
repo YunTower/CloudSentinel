@@ -1,9 +1,10 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <template>
   <div class="card">
     <Menubar :model="items">
       <template #item="{ item, props, hasSubmenu, root }">
         <router-link v-if="item.route" v-slot="{ href, navigate }" :to="item.route" custom>
-          <a v-ripple class="flex items-center" v-bind="props.action">
+          <a v-ripple class="flex items-center" :href="href" v-bind="props.action" @click="navigate">
             <span v-if="item.icon" :class="item.icon" class="mr-2"/>
             <span>{{ item.label }}</span>
             <i v-if="hasSubmenu"
@@ -11,9 +12,9 @@
           </a>
         </router-link>
         <a v-else v-ripple :href="item.url" :target="item.target" v-bind="props.action">
-          <span :class="item.icon" />
+          <span v-if="item.icon" :class="item.icon" class="mr-2"/>
           <span>{{ item.label }}</span>
-          <span v-if="hasSubmenu" class="pi pi-fw pi-angle-down" />
+          <span v-if="hasSubmenu" class="pi pi-fw pi-angle-down"/>
         </a>
       </template>
       <template #end>
@@ -27,55 +28,68 @@
   </div>
 </template>
 
-<script setup>
-import {ref} from "vue";
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 
-const items = ref([
-  {
-    label: '首页',
-    icon: 'pi pi-home',
-    route: '/'
-  },
-  {
-    label: '服务器管理',
-    icon: 'pi pi-server',
-    items: [
-      {
-        label: '服务器列表',
-        icon: 'pi pi-list',
-        route: '/manager/servers'
-      },
-      {
-        label: '监控面板',
-        icon: 'pi pi-chart-line',
-        route: '/manager/monitor'
-      }
-    ]
-  },
-  {
-    label: '系统设置',
-    icon: 'pi pi-cog',
-    items: [
-      {
-        label: '站点设置',
-        icon: 'pi pi-cog',
-        route: '/settings/site'
-      },
-      {
-        label: '权限配置',
-        icon: 'pi pi-shield',
-        route: '/settings/permissions'
-      },
-      {
-        label: '告警设置',
-        icon: 'pi pi-bell',
-        route: '/settings/alerts'
-      }
-    ]
-  },
-  {
-    label: '帮助',
-    icon: 'pi pi-question-circle'
+const router = useRouter()
+
+interface MenuItem {
+  label: string
+  icon?: string
+  route?: string
+  items?: MenuItem[]
+}
+
+// 从路由配置生成菜单数据
+const items = computed(() => {
+  const routes = router.getRoutes()
+  const menuItems: MenuItem[] = []
+
+  // 添加首页
+  const homeRoute = routes.find(route => route.path === '/')
+  if (homeRoute?.meta?.title) {
+    menuItems.push({
+      label: homeRoute.meta.title as string,
+      icon: homeRoute.meta.icon as string,
+      route: homeRoute.path
+    })
   }
-]);
+
+  // 处理处理子路由的其他顶级路由
+  routes.forEach(route => {
+    // 跳过首页、没有 meta.title 的路由、以及子路由
+    if (route.path === '/' || !route.meta?.title || route.path.includes('/', 1)) {
+      return
+    }
+
+    // 如果有子路由，构建带 items 的菜单
+    if (route.children && route.children.length > 0) {
+      const childrenItems = route.children
+        .filter(child => child.meta?.title)
+        .map(child => ({
+          label: child.meta?.title as string,
+          icon: child.meta?.icon as string,
+          route: child.path
+        }))
+
+      if (childrenItems.length > 0) {
+        menuItems.push({
+          label: route.meta.title as string,
+          icon: route.meta.icon as string,
+          items: childrenItems
+        })
+      }
+    } else {
+      // 单独的菜单项
+      menuItems.push({
+        label: route.meta.title as string,
+        icon: route.meta.icon as string,
+        route: route.path
+      })
+    }
+  })
+
+  return menuItems
+})
 </script>
