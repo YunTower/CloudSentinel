@@ -25,7 +25,7 @@ const spinnerStyle = computed(() => ({
 }))
 
 const strokeWidthValue = computed(() =>
-  typeof props.strokeWidth === 'number' ? props.strokeWidth : props.strokeWidth
+  typeof props.strokeWidth === 'number' ? String(props.strokeWidth) : props.strokeWidth
 )
 </script>
 
@@ -74,33 +74,11 @@ const strokeWidthValue = computed(() =>
   gap: 16px;
 }
 
-.loading-spinner {
-  /* 继承传入的样式 */
-}
-
 .loading-text {
   margin: 0;
   color: var(--p-text-color, #333);
   font-size: 14px;
   font-weight: 500;
   text-align: center;
-}
-
-/* 过渡动画 */
-.loading-fade-enter-active,
-.loading-fade-leave-active {
-  transition: all 0.3s ease;
-}
-
-.loading-fade-enter-from,
-.loading-fade-leave-to {
-  opacity: 0;
-  transform: scale(0.9);
-}
-
-.loading-fade-enter-to,
-.loading-fade-leave-from {
-  opacity: 1;
-  transform: scale(1);
 }
 </style>
