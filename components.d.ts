@@ -19,6 +19,7 @@ declare module 'vue' {
     LoadingSpinner: typeof import('./src/components/LoadingSpinner.vue')['default']
     Menu: typeof import('./src/components/Layout/Menu.vue')['default']
     Menubar: typeof import('primevue/menubar')['default']
+    Message: typeof import('primevue/message')['default']
     Password: typeof import('primevue/password')['default']
     ProgressSpinner: typeof import('primevue/progressspinner')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
