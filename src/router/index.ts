@@ -16,7 +16,7 @@ const router = createRouter({
       path: '/manager',
       name: 'manager',
       meta:{
-        title:'服务器管理',
+        title:'服务器',
         icon:'pi pi-server',
       },
       children: [
@@ -44,7 +44,7 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       meta:{
-        title:'系统设置',
+        title:'设置',
         icon:'pi pi-cog',
       },
       children: [
