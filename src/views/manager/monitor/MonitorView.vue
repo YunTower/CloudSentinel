@@ -477,52 +477,65 @@ onUnmounted(() => {
     </div>
 
     <div class="space-y-6">
+      <!-- 所有卡片被隐藏时的提示 -->
+      <div v-if="visibleCards.length === 0" class="text-center py-16">
+        <div class="bg-surface-50 dark:bg-surface-800 rounded-lg p-8 border border-surface-200 dark:border-surface-700">
+          <i class="pi pi-eye-slash text-6xl text-muted-color mb-4 block"></i>
+          <h3 class="text-xl font-semibold text-color mb-3">没有可显示的卡片</h3>
+          <p class="text-muted-color mb-6 max-w-md mx-auto">
+            您已隐藏了所有监控卡片。点击右上角的"自定义"按钮来显示您需要的卡片。
+          </p>
+        </div>
+      </div>
+
       <!-- 动态渲染卡片 -->
-      <template v-for="card in visibleCards" :key="card.id">
-        <!-- 概览统计卡片 -->
-        <OverviewStats
-          v-if="card.id === 'overview'"
-          :overview="systemOverview"
-          :loading="overviewLoading"
-        />
+      <template v-else>
+        <template v-for="card in visibleCards" :key="card.id">
+          <!-- 概览统计卡片 -->
+          <OverviewStats
+            v-if="card.id === 'overview'"
+            :overview="systemOverview"
+            :loading="overviewLoading"
+          />
 
-        <!-- 系统图表卡片 -->
-        <SystemCharts
-          v-else-if="card.id === 'charts'"
-          :metrics="performanceMetrics"
-          :loading="chartsLoading"
-        />
+          <!-- 系统图表卡片 -->
+          <SystemCharts
+            v-else-if="card.id === 'charts'"
+            :metrics="performanceMetrics"
+            :loading="chartsLoading"
+          />
 
-        <!-- 告警面板卡片 -->
-        <AlertsPanel
-          v-else-if="card.id === 'alerts'"
-          :alerts="alerts"
-          :loading="alertsLoading"
-          @alert-click="handleAlertClick"
-          @alert-detail="handleAlertDetail"
-          @mark-read="handleMarkAlertRead"
-          @mark-all-read="handleMarkAllAlertsRead"
-          @refresh="refreshAlerts"
-          @view-all="handleViewAllAlerts"
-          @view-server="handleViewServerFromAlert"
-        />
+          <!-- 告警面板卡片 -->
+          <AlertsPanel
+            v-else-if="card.id === 'alerts'"
+            :alerts="alerts"
+            :loading="alertsLoading"
+            @alert-click="handleAlertClick"
+            @alert-detail="handleAlertDetail"
+            @mark-read="handleMarkAlertRead"
+            @mark-all-read="handleMarkAllAlertsRead"
+            @refresh="refreshAlerts"
+            @view-all="handleViewAllAlerts"
+            @view-server="handleViewServerFromAlert"
+          />
 
-        <!-- 服务器状态网格卡片 -->
-        <ServerStatusGrid
-          v-else-if="card.id === 'servers'"
-          :servers="servers"
-          :loading="serversLoading"
-          @server-click="handleServerClick"
-          @refresh="refreshServers"
-        />
+          <!-- 服务器状态网格卡片 -->
+          <ServerStatusGrid
+            v-else-if="card.id === 'servers'"
+            :servers="servers"
+            :loading="serversLoading"
+            @server-click="handleServerClick"
+            @refresh="refreshServers"
+          />
 
-        <!-- 资源排行榜卡片 -->
-        <ResourceRanking
-          v-else-if="card.id === 'ranking'"
-          :ranking="resourceRanking"
-          :loading="rankingLoading"
-          @server-click="handleServerClickById"
-        />
+          <!-- 资源排行榜卡片 -->
+          <ResourceRanking
+            v-else-if="card.id === 'ranking'"
+            :ranking="resourceRanking"
+            :loading="rankingLoading"
+            @server-click="handleServerClickById"
+          />
+        </template>
       </template>
     </div>
 
@@ -555,9 +568,6 @@ onUnmounted(() => {
   }
 }
 
-.monitor-view > * {
-  animation: fadeInUp 0.6s ease-out;
-}
 
 .monitor-view > *:nth-child(2) {
   animation-delay: 0.1s;

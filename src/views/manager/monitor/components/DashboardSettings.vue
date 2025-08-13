@@ -147,6 +147,15 @@ const moveDown = (index: number) => {
 }
 
 const handleSave = async () => {
+  // 检查是否至少有一个卡片可见
+  const hasVisibleCards = localCards.value.some(card => card.visible)
+  if (!hasVisibleCards) {
+    // 如果没有可见卡片，显示警告但仍允许保存
+    if (!confirm('您即将隐藏所有卡片，这将显示空白页面。确定要继续吗？')) {
+      return
+    }
+  }
+
   isProcessing.value = true
   try {
     // 添加短暂延迟，提供视觉反馈
@@ -205,9 +214,16 @@ const visibleCardsCount = computed(() => {
       <div>
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold">卡片管理</h3>
-          <span class="text-sm text-muted-color">
-            显示 {{ visibleCardsCount }} / {{ localCards.length }} 个卡片
-          </span>
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-muted-color">
+              显示 {{ visibleCardsCount }} / {{ localCards.length }} 个卡片
+            </span>
+            <i
+              v-if="visibleCardsCount === 0"
+              class="pi pi-exclamation-triangle text-orange-500"
+              title="警告：没有可见卡片"
+            ></i>
+          </div>
         </div>
 
         <div class="space-y-2">
@@ -271,6 +287,17 @@ const visibleCardsCount = computed(() => {
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- 警告提示 -->
+      <div v-if="visibleCardsCount === 0" class="bg-orange-50 dark:bg-orange-950/30 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
+        <div class="flex items-center gap-2 mb-2">
+          <i class="pi pi-exclamation-triangle text-orange-600"></i>
+          <span class="font-medium text-orange-800 dark:text-orange-200">注意</span>
+        </div>
+        <p class="text-sm text-orange-700 dark:text-orange-300">
+          您即将隐藏所有卡片，保存后监控面板将显示为空白页面。建议至少保留一个卡片以便查看监控数据。
+        </p>
       </div>
     </div>
 
