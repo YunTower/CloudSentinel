@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import Chart from 'primevue/chart'
 import type { PerformanceMetrics } from './types'
+import { formatPercentage } from '@/utils/formatters'
 
 interface Props {
   metrics: PerformanceMetrics
@@ -13,86 +14,92 @@ const props = defineProps<Props>()
 // 计算当前值
 const currentCpuUsage = computed(() => {
   const lastData = props.metrics.cpu[props.metrics.cpu.length - 1]
-  return lastData ? Math.round(lastData.value) : 0
+  return lastData ? formatPercentage(lastData.value) : '0.0%'
 })
 
 const currentMemoryUsage = computed(() => {
   const lastData = props.metrics.memory[props.metrics.memory.length - 1]
-  return lastData ? Math.round(lastData.value) : 0
+  return lastData ? formatPercentage(lastData.value) : '0.0%'
 })
 
 const currentDiskUsage = computed(() => {
   const lastData = props.metrics.disk[props.metrics.disk.length - 1]
-  return lastData ? Math.round(lastData.value) : 0
+  return lastData ? formatPercentage(lastData.value) : '0.0%'
 })
 
 // Chart.js 数据格式
 const cpuChartData = computed(() => ({
-  labels: props.metrics.cpu.map(p => p.time),
-  datasets: [{
-    label: 'CPU 使用率',
-    data: props.metrics.cpu.map(p => p.value),
-    borderColor: '#3b82f6',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    fill: true,
-    tension: 0.4,
-    pointRadius: 3,
-    pointHoverRadius: 5
-  }]
+  labels: props.metrics.cpu.map((p) => p.time),
+  datasets: [
+    {
+      label: 'CPU 使用率',
+      data: props.metrics.cpu.map((p) => p.value),
+      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+    },
+  ],
 }))
 
 const memoryChartData = computed(() => ({
-  labels: props.metrics.memory.map(p => p.time),
-  datasets: [{
-    label: '内存使用率',
-    data: props.metrics.memory.map(p => p.value),
-    borderColor: '#22c55e',
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-    fill: true,
-    tension: 0.4,
-    pointRadius: 3,
-    pointHoverRadius: 5
-  }]
+  labels: props.metrics.memory.map((p) => p.time),
+  datasets: [
+    {
+      label: '内存使用率',
+      data: props.metrics.memory.map((p) => p.value),
+      borderColor: '#22c55e',
+      backgroundColor: 'rgba(34, 197, 94, 0.1)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+    },
+  ],
 }))
 
 const diskChartData = computed(() => ({
-  labels: props.metrics.disk.map(p => p.time),
-  datasets: [{
-    label: '磁盘使用率',
-    data: props.metrics.disk.map(p => p.value),
-    borderColor: '#f97316',
-    backgroundColor: 'rgba(249, 115, 22, 0.1)',
-    fill: true,
-    tension: 0.4,
-    pointRadius: 3,
-    pointHoverRadius: 5
-  }]
+  labels: props.metrics.disk.map((p) => p.time),
+  datasets: [
+    {
+      label: '磁盘使用率',
+      data: props.metrics.disk.map((p) => p.value),
+      borderColor: '#f97316',
+      backgroundColor: 'rgba(249, 115, 22, 0.1)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+    },
+  ],
 }))
 
 const networkChartData = computed(() => ({
-  labels: props.metrics.network.upload.map(p => p.time),
+  labels: props.metrics.network.upload.map((p) => p.time),
   datasets: [
     {
       label: '上传速度',
-      data: props.metrics.network.upload.map(p => (p.value / 1048576).toFixed(2)), // 转换为 MB/s
+      data: props.metrics.network.upload.map((p) => (p.value / 1048576).toFixed(2)), // 转换为 MB/s
       borderColor: '#22c55e',
       backgroundColor: 'rgba(34, 197, 94, 0.1)',
       fill: false,
       tension: 0.4,
       pointRadius: 2,
-      pointHoverRadius: 4
+      pointHoverRadius: 4,
     },
     {
       label: '下载速度',
-      data: props.metrics.network.download.map(p => (p.value / 1048576).toFixed(2)), // 转换为 MB/s
+      data: props.metrics.network.download.map((p) => (p.value / 1048576).toFixed(2)), // 转换为 MB/s
       borderColor: '#3b82f6',
       backgroundColor: 'rgba(59, 130, 246, 0.1)',
       fill: false,
       tension: 0.4,
       pointRadius: 2,
-      pointHoverRadius: 4
-    }
-  ]
+      pointHoverRadius: 4,
+    },
+  ],
 }))
 
 // Chart.js 配置选项
@@ -101,7 +108,7 @@ const commonChartOptions = {
   maintainAspectRatio: false,
   plugins: {
     legend: {
-      display: false
+      display: false,
     },
     tooltip: {
       mode: 'index',
@@ -110,20 +117,20 @@ const commonChartOptions = {
       titleColor: '#fff',
       bodyColor: '#fff',
       borderColor: 'rgba(255, 255, 255, 0.1)',
-      borderWidth: 1
-    }
+      borderWidth: 1,
+    },
   },
   scales: {
     x: {
       display: true,
       grid: {
         display: true,
-        color: 'rgba(0, 0, 0, 0.05)'
+        color: 'rgba(0, 0, 0, 0.05)',
       },
       ticks: {
         maxTicksLimit: 6,
-        color: '#6b7280'
-      }
+        color: '#6b7280',
+      },
     },
     y: {
       display: true,
@@ -131,21 +138,21 @@ const commonChartOptions = {
       max: 100,
       grid: {
         display: true,
-        color: 'rgba(0, 0, 0, 0.05)'
+        color: 'rgba(0, 0, 0, 0.05)',
       },
       ticks: {
         color: '#6b7280',
-        callback: function(value: number) {
+        callback: function (value: number) {
           return value + '%'
-        }
-      }
-    }
+        },
+      },
+    },
   },
   interaction: {
     mode: 'nearest',
     axis: 'x',
-    intersect: false
-  }
+    intersect: false,
+  },
 }
 
 const networkChartOptions = {
@@ -157,12 +164,12 @@ const networkChartOptions = {
       max: undefined, // 自动计算最大值
       ticks: {
         color: '#6b7280',
-        callback: function(value: number) {
+        callback: function (value: number) {
           return value + ' MB/s'
-        }
-      }
-    }
-  }
+        },
+      },
+    },
+  },
 }
 
 // 颜色类函数
@@ -200,8 +207,13 @@ const getDiskColorClass = (usage: number) => {
             </div>
             <div class="flex items-center gap-2">
               <div class="text-sm text-muted-color">当前:</div>
-              <div class="text-lg font-bold" :class="getCpuColorClass(currentCpuUsage)">
-                {{ currentCpuUsage }}%
+              <div
+                class="text-lg font-bold"
+                :class="
+                  getCpuColorClass(props.metrics.cpu[props.metrics.cpu.length - 1]?.value || 0)
+                "
+              >
+                {{ currentCpuUsage }}
               </div>
             </div>
           </div>
@@ -233,8 +245,15 @@ const getDiskColorClass = (usage: number) => {
             </div>
             <div class="flex items-center gap-2">
               <div class="text-sm text-muted-color">当前:</div>
-              <div class="text-lg font-bold" :class="getMemoryColorClass(currentMemoryUsage)">
-                {{ currentMemoryUsage }}%
+              <div
+                class="text-lg font-bold"
+                :class="
+                  getMemoryColorClass(
+                    props.metrics.memory[props.metrics.memory.length - 1]?.value || 0,
+                  )
+                "
+              >
+                {{ currentMemoryUsage }}
               </div>
             </div>
           </div>
@@ -266,8 +285,13 @@ const getDiskColorClass = (usage: number) => {
             </div>
             <div class="flex items-center gap-2">
               <div class="text-sm text-muted-color">当前:</div>
-              <div class="text-lg font-bold" :class="getDiskColorClass(currentDiskUsage)">
-                {{ currentDiskUsage }}%
+              <div
+                class="text-lg font-bold"
+                :class="
+                  getDiskColorClass(props.metrics.disk[props.metrics.disk.length - 1]?.value || 0)
+                "
+              >
+                {{ currentDiskUsage }}
               </div>
             </div>
           </div>
@@ -335,9 +359,29 @@ const getDiskColorClass = (usage: number) => {
 
 .chart-container {
   position: relative;
+  height: 200px;
 }
 
 .chart-container canvas {
   border-radius: 0.5rem;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .chart-container {
+    height: 150px;
+  }
+}
+
+@media (max-width: 640px) {
+  .chart-container {
+    height: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chart-container {
+    height: 100px;
+  }
 }
 </style>

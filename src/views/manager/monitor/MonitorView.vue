@@ -17,7 +17,7 @@ import type {
   MonitorServer,
   AlertInfo,
   ResourceRanking as ResourceRankingType,
-  ChartDataPoint
+  ChartDataPoint,
 } from './components/types'
 
 // 服务和路由
@@ -46,7 +46,7 @@ const systemOverview = ref<SystemOverview>({
   avgMemoryUsage: 0,
   avgDiskUsage: 0,
   totalNetworkUpload: 0,
-  totalNetworkDownload: 0
+  totalNetworkDownload: 0,
 })
 
 const performanceMetrics = ref<PerformanceMetrics>({
@@ -55,23 +55,21 @@ const performanceMetrics = ref<PerformanceMetrics>({
   disk: [],
   network: {
     upload: [],
-    download: []
-  }
+    download: [],
+  },
 })
 
-const servers = ref<MonitorServer[]>([])
+const servers = ref<Omit<MonitorServer, 'location'>[]>([])
 const alerts = ref<AlertInfo[]>([])
 const resourceRanking = ref<ResourceRankingType>({
   cpu: [],
   memory: [],
-  disk: []
+  disk: [],
 })
 
 // 自动刷新定时器
 let refreshTimer: number | null = null
 const REFRESH_INTERVAL = 30000 // 30秒
-
-
 
 // 初始化数据
 const initializeData = async () => {
@@ -81,7 +79,7 @@ const initializeData = async () => {
       loadPerformanceMetrics(),
       loadServers(),
       loadAlerts(),
-      loadResourceRanking()
+      loadResourceRanking(),
     ])
   } catch (error) {
     console.error('初始化监控数据失败:', error)
@@ -89,7 +87,7 @@ const initializeData = async () => {
       severity: 'error',
       summary: '加载失败',
       detail: '监控数据加载失败，请稍后重试',
-      life: 5000
+      life: 5000,
     })
   }
 }
@@ -99,7 +97,7 @@ const loadSystemOverview = async () => {
   overviewLoading.value = true
   try {
     // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     systemOverview.value = {
       totalServers: 8,
@@ -122,7 +120,7 @@ const loadSystemOverview = async () => {
 const loadPerformanceMetrics = async () => {
   chartsLoading.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 1200))
+    await new Promise((resolve) => setTimeout(resolve, 1200))
 
     // 生成模拟的时间序列数据
     const now = new Date()
@@ -132,18 +130,18 @@ const loadPerformanceMetrics = async () => {
       const time = new Date(now.getTime() - i * 60000) // 每分钟一个点
       points.push({
         time: time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-        value: Math.random() * 100
+        value: Math.random() * 100,
       })
     }
 
     performanceMetrics.value = {
-      cpu: points.map(p => ({ ...p, value: 30 + Math.random() * 40 })),
-      memory: points.map(p => ({ ...p, value: 40 + Math.random() * 35 })),
-      disk: points.map(p => ({ ...p, value: 60 + Math.random() * 25 })),
+      cpu: points.map((p) => ({ ...p, value: 30 + Math.random() * 40 })),
+      memory: points.map((p) => ({ ...p, value: 40 + Math.random() * 35 })),
+      disk: points.map((p) => ({ ...p, value: 60 + Math.random() * 25 })),
       network: {
-        upload: points.map(p => ({ ...p, value: Math.random() * 2097152 })), // 0-2MB/s
-        download: points.map(p => ({ ...p, value: Math.random() * 5242880 })) // 0-5MB/s
-      }
+        upload: points.map((p) => ({ ...p, value: Math.random() * 2097152 })), // 0-2MB/s
+        download: points.map((p) => ({ ...p, value: Math.random() * 5242880 })), // 0-5MB/s
+      },
     }
   } finally {
     chartsLoading.value = false
@@ -154,7 +152,7 @@ const loadPerformanceMetrics = async () => {
 const loadServers = async () => {
   serversLoading.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 800))
+    await new Promise((resolve) => setTimeout(resolve, 800))
 
     servers.value = [
       {
@@ -166,11 +164,10 @@ const loadServers = async () => {
         memory: 62,
         disk: 78,
         networkIO: { upload: 1024000, download: 2048000 },
-        location: '中国/北京',
         os: 'Ubuntu 22.04',
         architecture: 'x86_64',
         uptime: '15天2时30分',
-        lastUpdate: new Date(Date.now() - 30000).toISOString()
+        lastUpdate: new Date(Date.now() - 30000).toISOString(),
       },
       {
         id: '2',
@@ -181,11 +178,10 @@ const loadServers = async () => {
         memory: 85,
         disk: 92,
         networkIO: { upload: 512000, download: 1024000 },
-        location: '中国/北京',
         os: 'CentOS 8',
         architecture: 'x86_64',
         uptime: '10天5时15分',
-        lastUpdate: new Date(Date.now() - 45000).toISOString()
+        lastUpdate: new Date(Date.now() - 45000).toISOString(),
       },
       {
         id: '3',
@@ -196,11 +192,10 @@ const loadServers = async () => {
         memory: 0,
         disk: 0,
         networkIO: { upload: 0, download: 0 },
-        location: '中国/上海',
         os: 'Ubuntu 20.04',
         architecture: 'x86_64',
         uptime: '0天0时0分',
-        lastUpdate: new Date(Date.now() - 1800000).toISOString()
+        lastUpdate: new Date(Date.now() - 1800000).toISOString(),
       },
       {
         id: '4',
@@ -211,12 +206,11 @@ const loadServers = async () => {
         memory: 98,
         disk: 99,
         networkIO: { upload: 2048000, download: 4096000 },
-        location: '中国/深圳',
         os: 'Debian 11',
         architecture: 'x86_64',
         uptime: '5天18时30分',
-        lastUpdate: new Date(Date.now() - 120000).toISOString()
-      }
+        lastUpdate: new Date(Date.now() - 120000).toISOString(),
+      },
     ]
   } finally {
     serversLoading.value = false
@@ -227,7 +221,7 @@ const loadServers = async () => {
 const loadAlerts = async () => {
   alertsLoading.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 600))
+    await new Promise((resolve) => setTimeout(resolve, 600))
 
     alerts.value = [
       {
@@ -238,7 +232,7 @@ const loadAlerts = async () => {
         serverName: '监控服务器-01',
         serverId: '4',
         timestamp: new Date(Date.now() - 300000).toISOString(),
-        isRead: false
+        isRead: false,
       },
       {
         id: '2',
@@ -248,7 +242,7 @@ const loadAlerts = async () => {
         serverName: '数据库服务器-01',
         serverId: '2',
         timestamp: new Date(Date.now() - 600000).toISOString(),
-        isRead: false
+        isRead: false,
       },
       {
         id: '3',
@@ -258,7 +252,7 @@ const loadAlerts = async () => {
         serverName: '缓存服务器-01',
         serverId: '3',
         timestamp: new Date(Date.now() - 1800000).toISOString(),
-        isRead: true
+        isRead: true,
       },
       {
         id: '4',
@@ -268,8 +262,8 @@ const loadAlerts = async () => {
         serverName: 'Web服务器-01',
         serverId: '1',
         timestamp: new Date(Date.now() - 3600000).toISOString(),
-        isRead: true
-      }
+        isRead: true,
+      },
     ]
   } finally {
     alertsLoading.value = false
@@ -280,27 +274,45 @@ const loadAlerts = async () => {
 const loadResourceRanking = async () => {
   rankingLoading.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 700))
+    await new Promise((resolve) => setTimeout(resolve, 700))
 
     resourceRanking.value = {
       cpu: [
         { serverId: '4', serverName: '监控服务器-01', value: 95, percentage: 100, status: 'error' },
-        { serverId: '2', serverName: '数据库服务器-01', value: 78, percentage: 82, status: 'online' },
+        {
+          serverId: '2',
+          serverName: '数据库服务器-01',
+          value: 78,
+          percentage: 82,
+          status: 'online',
+        },
         { serverId: '1', serverName: 'Web服务器-01', value: 45, percentage: 47, status: 'online' },
-        { serverId: '3', serverName: '缓存服务器-01', value: 0, percentage: 0, status: 'offline' }
+        { serverId: '3', serverName: '缓存服务器-01', value: 0, percentage: 0, status: 'offline' },
       ],
       memory: [
         { serverId: '4', serverName: '监控服务器-01', value: 98, percentage: 100, status: 'error' },
-        { serverId: '2', serverName: '数据库服务器-01', value: 85, percentage: 87, status: 'online' },
+        {
+          serverId: '2',
+          serverName: '数据库服务器-01',
+          value: 85,
+          percentage: 87,
+          status: 'online',
+        },
         { serverId: '1', serverName: 'Web服务器-01', value: 62, percentage: 63, status: 'online' },
-        { serverId: '3', serverName: '缓存服务器-01', value: 0, percentage: 0, status: 'offline' }
+        { serverId: '3', serverName: '缓存服务器-01', value: 0, percentage: 0, status: 'offline' },
       ],
       disk: [
         { serverId: '4', serverName: '监控服务器-01', value: 99, percentage: 100, status: 'error' },
-        { serverId: '2', serverName: '数据库服务器-01', value: 92, percentage: 93, status: 'online' },
+        {
+          serverId: '2',
+          serverName: '数据库服务器-01',
+          value: 92,
+          percentage: 93,
+          status: 'online',
+        },
         { serverId: '1', serverName: 'Web服务器-01', value: 78, percentage: 79, status: 'online' },
-        { serverId: '3', serverName: '缓存服务器-01', value: 0, percentage: 0, status: 'offline' }
-      ]
+        { serverId: '3', serverName: '缓存服务器-01', value: 0, percentage: 0, status: 'offline' },
+      ],
     }
   } finally {
     rankingLoading.value = false
@@ -308,7 +320,7 @@ const loadResourceRanking = async () => {
 }
 
 // 事件处理函数
-const handleServerClick = (server: MonitorServer) => {
+const handleServerClick = (server: Omit<MonitorServer, 'location'>) => {
   router.push(`/manager/servers?server=${server.id}`)
 }
 
@@ -325,29 +337,27 @@ const handleAlertDetail = (alert: AlertInfo) => {
 }
 
 const handleMarkAlertRead = (alertId: string) => {
-  const alert = alerts.value.find(a => a.id === alertId)
+  const alert = alerts.value.find((a) => a.id === alertId)
   if (alert) {
     alert.isRead = true
   }
 }
 
 const handleMarkAllAlertsRead = () => {
-  alerts.value.forEach(alert => {
+  alerts.value.forEach((alert) => {
     alert.isRead = true
   })
   toast.add({
     severity: 'success',
     summary: '操作成功',
     detail: '所有告警已标记为已读',
-    life: 3000
+    life: 3000,
   })
 }
 
 const handleViewAllAlerts = () => {
   router.push('/settings/alerts')
 }
-
-
 
 const handleViewServerFromAlert = (serverId: string) => {
   router.push(`/manager/servers?server=${serverId}`)
@@ -365,14 +375,14 @@ const handleSaveSettings = async (newCards: CardConfig[]) => {
       severity: 'success',
       summary: '保存成功',
       detail: '仪表板配置已保存',
-      life: 3000
+      life: 3000,
     })
   } catch {
     toast.add({
       severity: 'error',
       summary: '保存失败',
       detail: '仪表板配置保存失败，请重试',
-      life: 5000
+      life: 5000,
     })
   }
 }
@@ -384,19 +394,17 @@ const handleResetSettings = async () => {
       severity: 'info',
       summary: '重置成功',
       detail: '仪表板已重置为默认布局',
-      life: 3000
+      life: 3000,
     })
   } catch {
     toast.add({
       severity: 'error',
       summary: '重置失败',
       detail: '仪表板重置失败，请重试',
-      life: 5000
+      life: 5000,
     })
   }
 }
-
-
 
 // 刷新函数
 const refreshServers = () => {
@@ -405,7 +413,7 @@ const refreshServers = () => {
     severity: 'info',
     summary: '刷新成功',
     detail: '服务器状态已更新',
-    life: 2000
+    life: 2000,
   })
 }
 
@@ -415,7 +423,7 @@ const refreshAlerts = () => {
     severity: 'info',
     summary: '刷新成功',
     detail: '告警信息已更新',
-    life: 2000
+    life: 2000,
   })
 }
 
@@ -425,11 +433,9 @@ const refreshAllData = async () => {
     loadPerformanceMetrics(),
     loadServers(),
     loadAlerts(),
-    loadResourceRanking()
+    loadResourceRanking(),
   ])
 }
-
-
 
 // 自动刷新
 const startAutoRefresh = () => {
@@ -479,7 +485,9 @@ onUnmounted(() => {
     <div class="space-y-6">
       <!-- 所有卡片被隐藏时的提示 -->
       <div v-if="visibleCards.length === 0" class="text-center py-16">
-        <div class="bg-surface-50 dark:bg-surface-800 rounded-lg p-8 border border-surface-200 dark:border-surface-700">
+        <div
+          class="bg-surface-50 dark:bg-surface-800 rounded-lg p-8 border border-surface-200 dark:border-surface-700"
+        >
           <i class="pi pi-eye-slash text-6xl text-muted-color mb-4 block"></i>
           <h3 class="text-xl font-semibold text-color mb-3">没有可显示的卡片</h3>
           <p class="text-muted-color mb-6 max-w-md mx-auto">
@@ -546,7 +554,6 @@ onUnmounted(() => {
       @update:cards="handleSaveSettings"
       @reset="handleResetSettings"
     />
-
   </div>
 </template>
 <style scoped>
@@ -567,11 +574,6 @@ onUnmounted(() => {
     padding: 0.75rem;
   }
 }
-
-
-
-
-
 
 @media (max-width: 1024px) {
   .monitor-view .grid {
@@ -595,8 +597,6 @@ onUnmounted(() => {
     padding: 3rem;
   }
 }
-
-
 
 @media print {
   .monitor-view {

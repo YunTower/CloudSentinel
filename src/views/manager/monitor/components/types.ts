@@ -106,7 +106,7 @@ export type StatusSeverity = 'success' | 'info' | 'warn' | 'error'
 // 状态颜色映射
 export const STATUS_COLORS = {
   online: 'success',
-  offline: 'secondary', 
+  offline: 'secondary',
   error: 'danger',
   warning: 'warn'
 } as const

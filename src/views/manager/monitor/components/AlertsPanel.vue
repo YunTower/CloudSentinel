@@ -20,7 +20,7 @@ const emit = defineEmits<{
   'alert-detail': [alert: AlertInfo]
   'mark-read': [alertId: string]
   'mark-all-read': []
-  'refresh': []
+  refresh: []
   'view-all': []
   'view-server': [serverId: string]
 }>()
@@ -31,7 +31,7 @@ const alertTypeOptions: AlertTypeOption[] = [
   { label: '全部', value: 'all' },
   { label: '错误', value: 'error' },
   { label: '警告', value: 'warning' },
-  { label: '信息', value: 'info' }
+  { label: '信息', value: 'info' },
 ]
 
 // 弹窗状态管理
@@ -45,7 +45,7 @@ const filteredAlerts = computed(() => {
 
   // 按类型筛选
   if (alertTypeFilter.value !== 'all') {
-    filtered = filtered.filter(alert => alert.type === alertTypeFilter.value)
+    filtered = filtered.filter((alert) => alert.type === alertTypeFilter.value)
   }
 
   // 按时间排序（最新的在前）
@@ -54,7 +54,7 @@ const filteredAlerts = computed(() => {
 
 // 未读告警数量
 const unreadCount = computed(() => {
-  return filteredAlerts.value.filter(alert => !alert.isRead).length
+  return filteredAlerts.value.filter((alert) => !alert.isRead).length
 })
 
 // 事件处理
@@ -90,7 +90,7 @@ const getAlertIcon = (type: string) => {
   const icons = {
     error: 'pi pi-exclamation-triangle text-red-600',
     warning: 'pi pi-exclamation-circle text-yellow-600',
-    info: 'pi pi-info-circle text-blue-600'
+    info: 'pi pi-info-circle text-blue-600',
   }
   return icons[type as keyof typeof icons] || icons.info
 }
@@ -99,33 +99,30 @@ const getAlertTitleClass = (type: string) => {
   const classes = {
     error: 'text-red-700 dark:text-red-400',
     warning: 'text-yellow-700 dark:text-yellow-400',
-    info: 'text-blue-700 dark:text-blue-400'
+    info: 'text-blue-700 dark:text-blue-400',
   }
   return classes[type as keyof typeof classes] || classes.info
 }
 
 const getAlertCardClass = (alert: AlertInfo) => {
   const baseClass = 'border-surface-200 dark:border-surface-700'
-  const readClass = alert.isRead
-    ? 'bg-surface-50 dark:bg-surface-800'
-    : 'bg-surface-0 dark:bg-surface-900'
 
   const typeClasses = {
     error: 'hover:border-red-300 dark:hover:border-red-600',
     warning: 'hover:border-yellow-300 dark:hover:border-yellow-600',
-    info: 'hover:border-blue-300 dark:hover:border-blue-600'
+    info: 'hover:border-blue-300 dark:hover:border-blue-600',
   }
 
   const typeClass = typeClasses[alert.type as keyof typeof typeClasses] || typeClasses.info
 
-  return `${baseClass} ${readClass} ${typeClass}`
+  return `${baseClass} ${typeClass}`
 }
 
 const getAlertTypeText = (type: string) => {
   const texts = {
     error: '错误',
     warning: '警告',
-    info: '信息'
+    info: '信息',
   }
   return texts[type as keyof typeof texts] || '未知'
 }
@@ -134,7 +131,7 @@ const getAlertSeverity = (type: string) => {
   const severities = {
     error: 'danger',
     warning: 'warn',
-    info: 'info'
+    info: 'info',
   }
   return severities[type as keyof typeof severities] || 'info'
 }
@@ -162,7 +159,7 @@ const formatAlertTime = (timestamp: string) => {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     })
   }
 }
@@ -175,12 +172,7 @@ const formatAlertTime = (timestamp: string) => {
           <div class="flex items-center gap-2">
             <i class="pi pi-bell text-primary"></i>
             <span>告警信息</span>
-            <Badge
-              v-if="unreadCount > 0"
-              :value="unreadCount"
-              severity="danger"
-              class="ml-2"
-            />
+            <Badge v-if="unreadCount > 0" :value="unreadCount" severity="danger" class="ml-2" />
           </div>
           <div class="flex items-center gap-2">
             <!-- 告警类型筛选 -->
@@ -228,10 +220,7 @@ const formatAlertTime = (timestamp: string) => {
               <!-- 告警头部 -->
               <div class="flex items-start justify-between mb-2">
                 <div class="flex items-center gap-2">
-                  <i
-                    :class="getAlertIcon(alert.type)"
-                    class="text-lg"
-                  ></i>
+                  <i :class="getAlertIcon(alert.type)" class="text-lg"></i>
                   <div>
                     <div class="font-medium text-sm" :class="getAlertTitleClass(alert.type)">
                       {{ alert.title }}
@@ -243,10 +232,7 @@ const formatAlertTime = (timestamp: string) => {
                 </div>
                 <div class="flex items-center gap-2">
                   <!-- 未读指示器 -->
-                  <div
-                    v-if="!alert.isRead"
-                    class="w-2 h-2 rounded-full bg-red-500"
-                  ></div>
+                  <div v-if="!alert.isRead" class="w-2 h-2 rounded-full bg-red-500"></div>
                   <!-- 告警类型标签 -->
                   <Tag
                     :value="getAlertTypeText(alert.type)"
@@ -301,7 +287,9 @@ const formatAlertTime = (timestamp: string) => {
         </div>
       </template>
       <template #footer v-if="filteredAlerts.length > 0">
-        <div class="flex items-center justify-between p-4 border-t border-surface-200 dark:border-surface-700">
+        <div
+          class="flex items-center justify-between p-4 border-t border-surface-200 dark:border-surface-700"
+        >
           <div class="text-sm text-muted-color">
             共 {{ filteredAlerts.length }} 条告警，{{ unreadCount }} 条未读
           </div>
@@ -350,7 +338,8 @@ const formatAlertTime = (timestamp: string) => {
 }
 
 @keyframes pulse-red {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {

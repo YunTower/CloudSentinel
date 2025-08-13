@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { AlertInfo } from './types'
+import { formatDateTime } from '@/utils/formatters'
 
 interface Props {
   visible: boolean
@@ -20,27 +21,16 @@ const emit = defineEmits<Emits>()
 // 弹窗可见性管理
 const dialogVisible = computed({
   get: () => props.visible,
-  set: (value) => emit('update:visible', value)
+  set: (value) => emit('update:visible', value),
 })
 
 const getAlertSeverity = (type: string) => {
   const severities = {
     error: 'danger',
     warning: 'warn',
-    info: 'info'
+    info: 'info',
   }
   return severities[type as keyof typeof severities] || 'info'
-}
-
-const formatDateTime = (timestamp: string) => {
-  const date = new Date(timestamp)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 // 操作函数
@@ -59,7 +49,7 @@ const handleViewServer = () => {
 </script>
 
 <template>
-    <Dialog
+  <Dialog
     v-model:visible="dialogVisible"
     modal
     :header="alert ? alert.title : '告警详情'"

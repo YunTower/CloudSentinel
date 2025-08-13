@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { MonitorServer } from './types'
+import { formatSpeed, formatUptime, formatLastUpdate } from '@/utils/formatters'
 
 interface Props {
-  servers: MonitorServer[]
+  servers: Omit<MonitorServer, 'location'>[]
   loading?: boolean
 }
 
@@ -15,8 +16,8 @@ interface StatusOption {
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  'server-click': [server: MonitorServer]
-  'refresh': []
+  'server-click': [server: Omit<MonitorServer, 'location'>]
+  refresh: []
 }>()
 
 // 状态筛选
@@ -26,7 +27,7 @@ const statusOptions: StatusOption[] = [
   { label: '在线', value: 'online' },
   { label: '离线', value: 'offline' },
   { label: '异常', value: 'error' },
-  { label: '警告', value: 'warning' }
+  { label: '警告', value: 'warning' },
 ]
 
 // 过滤后的服务器列表
@@ -34,7 +35,7 @@ const filteredServers = computed(() => {
   if (statusFilter.value === 'all') {
     return props.servers
   }
-  return props.servers.filter(server => server.status === statusFilter.value)
+  return props.servers.filter((server) => server.status === statusFilter.value)
 })
 
 // 工具函数
@@ -43,7 +44,7 @@ const getStatusText = (status: string) => {
     online: '在线',
     offline: '离线',
     error: '异常',
-    warning: '警告'
+    warning: '警告',
   }
   return texts[status as keyof typeof texts] || '未知'
 }
@@ -53,7 +54,7 @@ const getStatusSeverity = (status: string) => {
     online: 'success',
     offline: 'secondary',
     error: 'danger',
-    warning: 'warn'
+    warning: 'warn',
   }
   return severities[status as keyof typeof severities] || 'secondary'
 }
@@ -63,7 +64,7 @@ const getStatusIndicatorClass = (status: string) => {
     online: 'bg-green-500 animate-pulse',
     offline: 'bg-gray-500',
     error: 'bg-red-500 animate-pulse',
-    warning: 'bg-yellow-500 animate-pulse'
+    warning: 'bg-yellow-500 animate-pulse',
   }
   return classes[status as keyof typeof classes] || 'bg-gray-500'
 }
@@ -74,7 +75,7 @@ const getServerCardClass = (status: string) => {
     online: 'hover:border-green-300 dark:hover:border-green-600',
     offline: 'hover:border-gray-300 dark:hover:border-gray-600',
     error: 'hover:border-red-300 dark:hover:border-red-600',
-    warning: 'hover:border-yellow-300 dark:hover:border-yellow-600'
+    warning: 'hover:border-yellow-300 dark:hover:border-yellow-600',
   }
   return `${baseClass} ${statusClasses[status as keyof typeof statusClasses] || statusClasses.offline}`
 }
@@ -120,43 +121,6 @@ const getDiskProgressColor = (usage: number) => {
   if (usage >= 70) return '#eab308'
   return '#22c55e'
 }
-
-const formatSpeed = (bytes: number) => {
-  if (bytes === 0) return '0 B/s'
-  const k = 1024
-  const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-}
-
-const formatUptime = (uptime: string) => {
-  if (!uptime) return '0天'
-  const uptimeParts = uptime.split('天')
-  const days = uptimeParts[0]
-  return `${days}天`
-}
-
-const formatLastUpdate = (lastUpdate: string) => {
-  const now = new Date()
-  const updateTime = new Date(lastUpdate)
-  const diffMs = now.getTime() - updateTime.getTime()
-  const diffSeconds = Math.floor(diffMs / 1000)
-  const diffMinutes = Math.floor(diffSeconds / 60)
-
-  if (diffSeconds < 60) {
-    return `${diffSeconds}秒前`
-  } else if (diffMinutes < 60) {
-    return `${diffMinutes}分钟前`
-  } else {
-    const diffHours = Math.floor(diffMinutes / 60)
-    if (diffHours < 24) {
-      return `${diffHours}小时前`
-    } else {
-      const diffDays = Math.floor(diffHours / 24)
-      return `${diffDays}天前`
-    }
-  }
-}
 </script>
 <template>
   <div class="server-status-grid">
@@ -193,7 +157,9 @@ const formatLastUpdate = (lastUpdate: string) => {
       <template #content>
         <div v-if="!loading">
           <!-- 服务器网格 -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+          <div
+            class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4"
+          >
             <div
               v-for="server in filteredServers"
               :key="server.id"
@@ -238,9 +204,9 @@ const formatLastUpdate = (lastUpdate: string) => {
                   :pt="{
                     value: {
                       style: {
-                        backgroundColor: getCpuProgressColor(server.cpu)
-                      }
-                    }
+                        backgroundColor: getCpuProgressColor(server.cpu),
+                      },
+                    },
                   }"
                 />
 
@@ -256,9 +222,9 @@ const formatLastUpdate = (lastUpdate: string) => {
                   :pt="{
                     value: {
                       style: {
-                        backgroundColor: getMemoryProgressColor(server.memory)
-                      }
-                    }
+                        backgroundColor: getMemoryProgressColor(server.memory),
+                      },
+                    },
                   }"
                 />
 
@@ -274,15 +240,17 @@ const formatLastUpdate = (lastUpdate: string) => {
                   :pt="{
                     value: {
                       style: {
-                        backgroundColor: getDiskProgressColor(server.disk)
-                      }
-                    }
+                        backgroundColor: getDiskProgressColor(server.disk),
+                      },
+                    },
                   }"
                 />
               </div>
 
               <!-- 网络流量 -->
-              <div class="flex items-center justify-between mt-3 pt-3 border-t border-surface-200 dark:border-surface-700">
+              <div
+                class="flex items-center justify-between mt-3 pt-3 border-t border-surface-200 dark:border-surface-700"
+              >
                 <div class="flex items-center gap-1 text-xs">
                   <i class="pi pi-arrow-up text-green-600 text-xs"></i>
                   <span class="text-green-600">{{ formatSpeed(server.networkIO.upload) }}</span>
@@ -293,21 +261,13 @@ const formatLastUpdate = (lastUpdate: string) => {
                 </div>
               </div>
 
-              <!-- 位置和运行时间 -->
               <div class="flex items-center justify-between mt-2 text-xs text-muted-color">
-                <div class="flex items-center gap-1">
-                  <i class="pi pi-map-marker"></i>
-                  <span>{{ server.location }}</span>
+                <div class="text-xs text-muted-color mt-2">
+                  更新于 {{ formatLastUpdate(server.lastUpdate) }}
                 </div>
                 <div class="flex items-center gap-1">
-                  <i class="pi pi-clock"></i>
-                  <span>{{ formatUptime(server.uptime) }}</span>
+                  <span>已运行 {{ formatUptime(server.uptime) }}</span>
                 </div>
-              </div>
-
-              <!-- 最后更新时间 -->
-              <div class="text-xs text-muted-color mt-2">
-                更新: {{ formatLastUpdate(server.lastUpdate) }}
               </div>
             </div>
           </div>
@@ -341,7 +301,6 @@ const formatLastUpdate = (lastUpdate: string) => {
   transform: scale(1);
   transition: transform 0.2s ease-in-out;
 }
-
 
 .server-status-grid {
   scrollbar-width: thin;
