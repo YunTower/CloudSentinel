@@ -19,6 +19,17 @@
       </template>
       <template #end>
         <div class="flex items-center gap-2">
+          <Button
+            type="button"
+            @click="toggleDarkMode"
+            text
+            rounded
+            severity="secondary"
+            size="small"
+            v-tooltip.bottom="isDarkMode ? '切换到浅色模式' : '切换到深色模式'"
+          >
+            <i :class="['pi', { 'pi-moon': !isDarkMode, 'pi-sun': isDarkMode }]" />
+          </Button>
           <Avatar
             image="https://primefaces.org/cdn/primevue/images/avatar/amyelsner.png"
             shape="circle"/>
@@ -31,8 +42,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useLayout } from '@/composables/useLayout'
 
 const router = useRouter()
+const { isDarkMode, toggleDarkMode } = useLayout()
 
 interface MenuItem {
   label: string

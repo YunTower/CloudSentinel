@@ -2,11 +2,15 @@
 import {ref, onMounted, computed} from 'vue'
 import {useRouter} from 'vue-router'
 import Loading from '@/components/Loading/Loading.vue'
-import BaseLayout from "@/layout/BaseLayout.vue";
+import BaseLayout from "@/layout/BaseLayout.vue"
+import { useLayout } from '@/composables/useLayout'
 
 const router = useRouter()
 const loading = ref(true)
 const pageLoading = ref(false)
+
+// 初始化主题布局
+useLayout()
 
 const layout = computed(() => {
   return BaseLayout
