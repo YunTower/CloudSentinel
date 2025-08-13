@@ -47,7 +47,15 @@ onMounted(() => {
     />
 
     <div class="main-content" :class="{ 'loading': isLoading }">
-      <router-view v-show="!pageLoading"/>
+      <router-view v-slot="{ Component }" v-if="!pageLoading">
+        <Transition
+          name="page"
+          mode="out-in"
+          appear
+        >
+          <component :is="Component" :key="$route.fullPath" />
+        </Transition>
+      </router-view>
     </div>
   </component>
 </template>
@@ -68,5 +76,37 @@ onMounted(() => {
 .main-content.loading {
   opacity: 0.6;
   pointer-events: none;
+}
+
+/* 全局页面过渡动画 */
+.page-enter-active {
+  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.page-leave-active {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.98);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(1.02);
+}
+
+/* 减少动画在低性能设备上的影响 */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter-active,
+  .page-leave-active {
+    transition: opacity 0.2s ease;
+  }
+
+  .page-enter-from,
+  .page-leave-to {
+    transform: none;
+  }
 }
 </style>

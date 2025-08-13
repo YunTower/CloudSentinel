@@ -569,28 +569,9 @@ onUnmounted(() => {
 }
 
 
-.monitor-view > *:nth-child(2) {
-  animation-delay: 0.1s;
-}
 
-.monitor-view > *:nth-child(3) {
-  animation-delay: 0.2s;
-}
 
-.monitor-view > *:nth-child(4) {
-  animation-delay: 0.3s;
-}
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
 @media (max-width: 1024px) {
   .monitor-view .grid {
@@ -615,11 +596,7 @@ onUnmounted(() => {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .monitor-view > * {
-    animation: none;
-  }
-}
+
 
 @media print {
   .monitor-view {
