@@ -1,0 +1,75 @@
+@config "@/../tailwind.config.ts";
+@import "tailwindcss";
+@import "tailwindcss-primeui";
+
+:root {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --surface-0: #ffffff;
+  --surface-50: #fafafa;
+  --surface-100: #f4f4f5;
+  --surface-200: #e4e4e7;
+  --surface-300: #d4d4d8;
+  --surface-400: #a1a1aa;
+  --surface-500: #71717a;
+  --surface-600: #52525b;
+  --surface-700: #3f3f46;
+  --surface-800: #27272a;
+  --surface-900: #18181b;
+  --surface-950: #09090b;
+
+  --p-surface-0: var(--surface-0);
+  --p-surface-50: var(--surface-50);
+  --p-surface-100: var(--surface-100);
+  --p-surface-200: var(--surface-200);
+  --p-surface-300: var(--surface-300);
+  --p-surface-400: var(--surface-400);
+  --p-surface-500: var(--surface-500);
+  --p-surface-600: var(--surface-600);
+  --p-surface-700: var(--surface-700);
+  --p-surface-800: var(--surface-800);
+  --p-surface-900: var(--surface-900);
+  --p-surface-950: var(--surface-950);
+}
+
+.p-dark {
+  --surface-0: #09090b;
+  --surface-50: #18181b;
+  --surface-100: #27272a;
+  --surface-200: #3f3f46;
+  --surface-300: #52525b;
+  --surface-400: #71717a;
+  --surface-500: #a1a1aa;
+  --surface-600: #d4d4d8;
+  --surface-700: #e4e4e7;
+  --surface-800: #f4f4f5;
+  --surface-900: #fafafa;
+  --surface-950: #ffffff;
+
+  --p-surface-0: var(--surface-0);
+  --p-surface-50: var(--surface-50);
+  --p-surface-100: var(--surface-100);
+  --p-surface-200: var(--surface-200);
+  --p-surface-300: var(--surface-300);
+  --p-surface-400: var(--surface-400);
+  --p-surface-500: var(--surface-500);
+  --p-surface-600: var(--surface-600);
+  --p-surface-700: var(--surface-700);
+  --p-surface-800: var(--surface-800);
+  --p-surface-900: var(--surface-900);
+  --p-surface-950: var(--surface-950);
+}
+
+.p-progressbar {
+  background-color: var(--surface-200) !important;
+}
+
+body {
+  margin: 0;
+  background-color: var(--p-content-background);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+  Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+}
