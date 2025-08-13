@@ -6,6 +6,7 @@ import { createPinia } from 'pinia'
 import { definePreset } from '@primeuix/themes'
 import PrimeVue from 'primevue/config'
 import ToastService from 'primevue/toastservice'
+import ConfirmationService from 'primevue/confirmationservice';
 
 import Aura from '@primevue/themes/aura'
 import App from './App.vue'
@@ -88,6 +89,7 @@ const Noir = definePreset(Aura, {
 app.use(createPinia())
 app.use(router)
 app.use(ToastService)
+app.use(ConfirmationService)
 app.use(PrimeVue, {
   theme: {
     preset: Noir,

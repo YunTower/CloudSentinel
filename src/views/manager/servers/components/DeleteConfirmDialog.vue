@@ -1,3 +1,34 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import type { Server } from './types'
+
+interface Props {
+  visible: boolean
+  server?: Server | null
+  deleting?: boolean
+}
+
+const props = defineProps<Props>()
+
+const emit = defineEmits<{
+  'update:visible': [value: boolean]
+  'confirm': []
+  'cancel': []
+}>()
+
+const isVisible = computed({
+  get: () => props.visible,
+  set: (value) => emit('update:visible', value)
+})
+
+const handleConfirm = () => {
+  emit('confirm')
+}
+
+const handleCancel = () => {
+  emit('cancel')
+}
+</script>
 <template>
   <Dialog
     v-model:visible="isVisible"
@@ -31,35 +62,3 @@
     </template>
   </Dialog>
 </template>
-
-<script setup lang="ts">
-import { computed } from 'vue'
-import type { Server } from './types'
-
-interface Props {
-  visible: boolean
-  server?: Server | null
-  deleting?: boolean
-}
-
-const props = defineProps<Props>()
-
-const emit = defineEmits<{
-  'update:visible': [value: boolean]
-  'confirm': []
-  'cancel': []
-}>()
-
-const isVisible = computed({
-  get: () => props.visible,
-  set: (value) => emit('update:visible', value)
-})
-
-const handleConfirm = () => {
-  emit('confirm')
-}
-
-const handleCancel = () => {
-  emit('cancel')
-}
-</script>

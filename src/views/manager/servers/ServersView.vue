@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import ServerToolbar from './components/ServerToolbar.vue'
 import ServerTable from './components/ServerTable.vue'
 import ServerDialog from './components/ServerDialog.vue'
-import DeleteConfirmDialog from './components/DeleteConfirmDialog.vue'
 import type { Server, ServerForm, StatusOption } from './components/types'
 
 // 响应式数据
 const loading = ref(false)
 const saving = ref(false)
-const deleting = ref(false)
+const filterLoading = ref(false)
+const expandingServerId = ref<string>('')
+const deletingServerId = ref<string>('')
+const restartingServerId = ref<string>('')
 const searchQuery = ref('')
 const statusFilter = ref<string>('all')
 const showAddDialog = ref(false)
-const showDeleteDialog = ref(false)
 const editingServer = ref<Server | null>(null)
-const serverToDelete = ref<Server | null>(null)
 
 // 表单数据
 const serverForm = ref<ServerForm>({
@@ -196,9 +196,57 @@ const handleEditServer = (server: Server) => {
   showAddDialog.value = true
 }
 
-const handleDeleteServer = (server: Server) => {
-  serverToDelete.value = server
-  showDeleteDialog.value = true
+const handleDeleteServer = async (server: Server) => {
+  deletingServerId.value = server.id
+  try {
+    // 模拟API调用
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    const index = servers.value.findIndex((s) => s.id === server.id)
+    if (index !== -1) {
+      servers.value.splice(index, 1)
+    }
+
+    toast.add({
+      severity: 'success',
+      summary: '删除成功',
+      detail: `服务器 "${server.name}" 已删除`,
+      life: 3000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: '删除失败',
+      detail: '请稍后重试',
+      life: 3000,
+    })
+  } finally {
+    deletingServerId.value = ''
+  }
+}
+
+const handleRestartServer = async (server: Server) => {
+  restartingServerId.value = server.id
+  try {
+    // 模拟API调用
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+
+    toast.add({
+      severity: 'success',
+      summary: '重启成功',
+      detail: `服务器 "${server.name}" 重启完成`,
+      life: 3000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: '重启失败',
+      detail: '请稍后重试',
+      life: 3000,
+    })
+  } finally {
+    restartingServerId.value = ''
+  }
 }
 
 const handleSaveServer = async (form: ServerForm) => {
@@ -260,44 +308,8 @@ const handleSaveServer = async (form: ServerForm) => {
   }
 }
 
-const handleConfirmDelete = async () => {
-  if (!serverToDelete.value) return
-
-  deleting.value = true
-
-  try {
-    // 模拟API调用
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    const index = servers.value.findIndex((s) => s.id === serverToDelete.value!.id)
-    if (index !== -1) {
-      servers.value.splice(index, 1)
-    }
-
-    toast.add({
-      severity: 'success',
-      summary: '删除成功',
-      detail: '服务器已删除',
-      life: 3000,
-    })
-
-    showDeleteDialog.value = false
-    serverToDelete.value = null
-  } catch {
-    toast.add({
-      severity: 'error',
-      summary: '删除失败',
-      detail: '请稍后重试',
-      life: 3000,
-    })
-  } finally {
-    deleting.value = false
-  }
-}
-
 const handleCancelDialog = () => {
   showAddDialog.value = false
-  showDeleteDialog.value = false
   resetForm()
 }
 
@@ -314,6 +326,27 @@ const resetForm = () => {
     hostname: '',
   }
   editingServer.value = null
+}
+
+// 监听筛选状态变化
+watch(statusFilter, async (newValue, oldValue) => {
+  if (oldValue !== undefined && newValue !== oldValue) {
+    filterLoading.value = true
+    // 模拟筛选加载延迟
+    await new Promise(resolve => setTimeout(resolve, 300))
+    filterLoading.value = false
+  }
+})
+
+// 展开详情处理
+const handleExpandServer = async (serverId: string) => {
+  expandingServerId.value = serverId
+  try {
+    // 模拟加载服务器详细信息
+    await new Promise(resolve => setTimeout(resolve, 500))
+  } finally {
+    expandingServerId.value = ''
+  }
 }
 
 // 生命周期
@@ -340,6 +373,7 @@ onMounted(() => {
         :filtered-count="filteredServers.length"
         :total-count="servers.length"
         :statistics="statistics"
+        :filter-loading="filterLoading"
         @refresh="refreshData"
         @add-server="handleAddServer"
       />
@@ -347,9 +381,14 @@ onMounted(() => {
       <!-- 服务器数据表格 -->
       <ServerTable
         :servers="filteredServers"
-        :loading="loading"
+        :loading="loading || filterLoading"
+        :expanding-server-id="expandingServerId"
+        :deleting-server-id="deletingServerId"
+        :restarting-server-id="restartingServerId"
         @edit-server="handleEditServer"
         @delete-server="handleDeleteServer"
+        @restart-server="handleRestartServer"
+        @expand-server="handleExpandServer"
       />
     </div>
 
@@ -363,14 +402,7 @@ onMounted(() => {
       @cancel="handleCancelDialog"
     />
 
-    <!-- 删除确认对话框 -->
-    <DeleteConfirmDialog
-      v-model:visible="showDeleteDialog"
-      :server="serverToDelete"
-      :deleting="deleting"
-      @confirm="handleConfirmDelete"
-      @cancel="handleCancelDialog"
-    />
+
   </div>
 </template>
 

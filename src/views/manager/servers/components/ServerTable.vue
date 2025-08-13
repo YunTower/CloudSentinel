@@ -1,3 +1,145 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useConfirm } from 'primevue/useconfirm'
+import type { Server } from './types'
+
+interface Props {
+  servers: Server[]
+  loading?: boolean
+  deletingServerId?: string
+  restartingServerId?: string
+  expandingServerId?: string
+}
+
+const props = defineProps<Props>()
+
+const emit = defineEmits<{
+  'delete-server': [server: Server]
+  'edit-server': [server: Server]
+  'restart-server': [server: Server]
+  'expand-server': [serverId: string]
+}>()
+
+const confirm = useConfirm()
+const expandedRows = ref<{ [key: string]: boolean }>({})
+
+// 处理行展开事件
+const onRowExpand = (event: { data: Server }) => {
+  emit('expand-server', event.data.id)
+}
+
+// 工具函数
+const getStatusColor = (status: string) => {
+  const colors = {
+    online: 'bg-green-500',
+    offline: 'bg-gray-500',
+    error: 'bg-red-500',
+  }
+  return colors[status as keyof typeof colors] || 'bg-gray-500'
+}
+
+const getStatusText = (status: string) => {
+  const texts = {
+    all: '全部',
+    online: '在线',
+    offline: '离线',
+    error: '异常',
+  }
+  return texts[status as keyof typeof texts] || '未知'
+}
+
+const getStatusSeverity = (status: string) => {
+  const severities = {
+    online: 'success',
+    offline: 'secondary',
+    error: 'danger',
+  }
+  return severities[status as keyof typeof severities] || 'secondary'
+}
+
+const getCpuTextColorClass = (cpu: number) => {
+  if (cpu >= 90) return 'text-red-600 dark:text-red-400'
+  if (cpu >= 70) return 'text-orange-600 dark:text-orange-400'
+  if (cpu >= 50) return 'text-yellow-600 dark:text-yellow-400'
+  return 'text-green-600 dark:text-green-400'
+}
+
+const getMemoryTextColorClass = (memory: number) => {
+  if (memory >= 90) return 'text-red-600 dark:text-red-400'
+  if (memory >= 70) return 'text-orange-600 dark:text-orange-400'
+  if (memory >= 50) return 'text-yellow-600 dark:text-yellow-400'
+  return 'text-green-600 dark:text-green-400'
+}
+
+const getDiskTextColorClass = (disk: number) => {
+  if (disk >= 90) return 'text-red-600 dark:text-red-400'
+  if (disk >= 70) return 'text-orange-600 dark:text-orange-400'
+  if (disk >= 50) return 'text-yellow-600 dark:text-yellow-400'
+  return 'text-green-600 dark:text-green-400'
+}
+
+const formatSpeed = (bytes: number) => {
+  if (bytes === 0) return '0 B/s'
+  const k = 1024
+  const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+const formatUptime = (uptime: string) => {
+  if (!uptime) return '0天0时0分'
+  const uptimeParts = uptime.split('天')
+  const days = uptimeParts[0]
+  const timeParts = uptimeParts[1]?.split('时') || ['0', '0分']
+  const hours = timeParts[0]
+  const minutes = timeParts[1]?.replace('分', '') || '0'
+  return `${days}天${hours}时${minutes}分`
+}
+
+// 确认删除
+const confirmDelete = (event: Event, server: Server) => {
+  confirm.require({
+    target: event.currentTarget as HTMLElement,
+    message: `确定要删除服务器 "${server.name}" 吗？`,
+    header: '删除确认',
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: {
+      label: '取消',
+      severity: 'secondary',
+      outlined: true
+    },
+    acceptProps: {
+      label: '删除',
+      severity: 'danger'
+    },
+    accept: () => {
+      emit('delete-server', server)
+    },
+  })
+}
+
+// 确认重启
+const confirmRestart = (event: Event, server: Server) => {
+  confirm.require({
+    target: event.currentTarget as HTMLElement,
+    message: `确定要重启服务器 "${server.name}" 吗？`,
+    header: '重启确认',
+    icon: 'pi pi-refresh',
+    rejectProps: {
+      label: '取消',
+      severity: 'secondary',
+      outlined: true
+    },
+    acceptProps: {
+      label: '重启',
+      severity: 'warn'
+    },
+    accept: () => {
+      emit('restart-server', server)
+    },
+  })
+}
+</script>
 <template>
   <Card class="shadow-sm">
     <template #title>
@@ -29,6 +171,7 @@
         v-model:expandedRows="expandedRows"
         dataKey="id"
         scrollable
+        @row-expand="onRowExpand"
       >
         <!-- 展开列 -->
         <Column expander style="width: 3rem" />
@@ -132,8 +275,9 @@
                 size="small"
                 text
                 severity="danger"
-                @click.stop="$emit('delete-server', data)"
+                @click="confirmDelete($event, data)"
                 v-tooltip.top="'删除'"
+                :loading="props.deletingServerId === data.id"
                 class="hover:bg-red-50"
               />
             </div>
@@ -143,7 +287,12 @@
         <!-- 展开行内容 -->
         <template #expansion="{ data }">
           <div class="p-6 bg-surface-50 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- 展开时的Loading状态 -->
+            <div v-if="props.expandingServerId === data.id" class="flex items-center justify-center py-8">
+              <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
+            </div>
+            <!-- 正常内容 -->
+            <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <!-- 左侧：基本信息 -->
               <div class="space-y-4">
                 <h4 class="text-lg font-semibold text-color border-b border-surface-200 dark:border-surface-700 pb-2">
@@ -308,6 +457,8 @@
                 icon="pi pi-refresh"
                 text
                 severity="warn"
+                @click="confirmRestart($event, data)"
+                :loading="props.restartingServerId === data.id"
                 class="shadow-sm"
               />
               <Button
@@ -328,91 +479,7 @@
       </DataTable>
     </template>
   </Card>
+
+  <!-- 确认弹窗 -->
+  <ConfirmPopup />
 </template>
-
-<script setup lang="ts">
-import { ref } from 'vue'
-import type { Server } from './types'
-
-interface Props {
-  servers: Server[]
-  loading?: boolean
-}
-
-defineProps<Props>()
-
-defineEmits<{
-  'delete-server': [server: Server]
-  'edit-server': [server: Server]
-}>()
-
-const expandedRows = ref<{ [key: string]: boolean }>({})
-
-// 工具函数
-const getStatusColor = (status: string) => {
-  const colors = {
-    online: 'bg-green-500',
-    offline: 'bg-gray-500',
-    error: 'bg-red-500',
-  }
-  return colors[status as keyof typeof colors] || 'bg-gray-500'
-}
-
-const getStatusText = (status: string) => {
-  const texts = {
-    all: '全部',
-    online: '在线',
-    offline: '离线',
-    error: '异常',
-  }
-  return texts[status as keyof typeof texts] || '未知'
-}
-
-const getStatusSeverity = (status: string) => {
-  const severities = {
-    online: 'success',
-    offline: 'secondary',
-    error: 'danger',
-  }
-  return severities[status as keyof typeof severities] || 'secondary'
-}
-
-const getCpuTextColorClass = (cpu: number) => {
-  if (cpu >= 90) return 'text-red-600 dark:text-red-400'
-  if (cpu >= 70) return 'text-orange-600 dark:text-orange-400'
-  if (cpu >= 50) return 'text-yellow-600 dark:text-yellow-400'
-  return 'text-green-600 dark:text-green-400'
-}
-
-const getMemoryTextColorClass = (memory: number) => {
-  if (memory >= 90) return 'text-red-600 dark:text-red-400'
-  if (memory >= 70) return 'text-orange-600 dark:text-orange-400'
-  if (memory >= 50) return 'text-yellow-600 dark:text-yellow-400'
-  return 'text-green-600 dark:text-green-400'
-}
-
-const getDiskTextColorClass = (disk: number) => {
-  if (disk >= 90) return 'text-red-600 dark:text-red-400'
-  if (disk >= 70) return 'text-orange-600 dark:text-orange-400'
-  if (disk >= 50) return 'text-yellow-600 dark:text-yellow-400'
-  return 'text-green-600 dark:text-green-400'
-}
-
-const formatSpeed = (bytes: number) => {
-  if (bytes === 0) return '0 B/s'
-  const k = 1024
-  const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-const formatUptime = (uptime: string) => {
-  if (!uptime) return '0天0时0分'
-  const uptimeParts = uptime.split('天')
-  const days = uptimeParts[0]
-  const timeParts = uptimeParts[1]?.split('时') || ['0', '0分']
-  const hours = timeParts[0]
-  const minutes = timeParts[1]?.replace('分', '') || '0'
-  return `${days}天${hours}时${minutes}分`
-}
-</script>

@@ -1,3 +1,29 @@
+<script setup lang="ts">
+import type { StatusOption } from './types'
+
+interface Props {
+  searchQuery: string
+  statusFilter: string
+  statusOptions: StatusOption[]
+  filteredCount: number
+  totalCount: number
+  filterLoading?: boolean
+  statistics: {
+    online: number
+    offline: number
+    error: number
+  }
+}
+
+const props = defineProps<Props>()
+
+defineEmits<{
+  'update:searchQuery': [value: string]
+  'update:statusFilter': [value: string]
+  'refresh': []
+  'add-server': []
+}>()
+</script>
 <template>
   <div class="bg-gradient-to-r from-surface-0 to-surface-50 dark:from-surface-800 dark:to-surface-900 p-6 rounded-xl border border-surface-200 dark:border-surface-700 shadow-sm">
     <div class="flex items-center justify-between">
@@ -27,6 +53,7 @@
             optionLabel="label"
             optionValue="value"
             placeholder="状态筛选"
+            :loading="props.filterLoading"
             class="w-44 border-surface-300 dark:border-surface-600 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
           />
         </div>
@@ -122,29 +149,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import type { StatusOption } from './types'
-
-interface Props {
-  searchQuery: string
-  statusFilter: string
-  statusOptions: StatusOption[]
-  filteredCount: number
-  totalCount: number
-  statistics: {
-    online: number
-    offline: number
-    error: number
-  }
-}
-
-defineProps<Props>()
-
-defineEmits<{
-  'update:searchQuery': [value: string]
-  'update:statusFilter': [value: string]
-  'refresh': []
-  'add-server': []
-}>()
-</script>
