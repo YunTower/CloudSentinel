@@ -7,44 +7,157 @@ export interface CardConfig {
   visible: boolean
   order: number
   icon: string
+  gridCol?: number // 网格列位置 (1-4)
+  gridRow?: number // 网格行位置
+  gridSpan?: number // 跨列数，默认为1
 }
 
 // 默认卡片配置
 const DEFAULT_CARDS: CardConfig[] = [
+  // 服务器状态统计卡片 - 第一行
   {
-    id: 'overview',
-    name: '概览统计',
+    id: 'total-servers',
+    name: '总服务器',
     visible: true,
     order: 0,
-    icon: 'pi pi-chart-bar'
+    icon: 'pi pi-server',
+    gridCol: 1,
+    gridRow: 1
   },
   {
-    id: 'charts',
-    name: '系统图表',
+    id: 'online-servers',
+    name: '在线服务器',
     visible: true,
     order: 1,
-    icon: 'pi pi-chart-line'
+    icon: 'pi pi-check-circle',
+    gridCol: 2,
+    gridRow: 1
   },
+  {
+    id: 'offline-error-servers',
+    name: '离线/异常',
+    visible: true,
+    order: 2,
+    icon: 'pi pi-exclamation-triangle',
+    gridCol: 3,
+    gridRow: 1
+  },
+  {
+    id: 'average-load',
+    name: '平均负载',
+    visible: true,
+    order: 3,
+    icon: 'pi pi-chart-line',
+    gridCol: 4,
+    gridRow: 1
+  },
+
+  // 系统资源概览卡片 - 第二行
+  {
+    id: 'cpu-overview',
+    name: 'CPU使用情况',
+    visible: true,
+    order: 4,
+    icon: 'pi pi-microchip',
+    gridCol: 1,
+    gridRow: 2
+  },
+  {
+    id: 'memory-overview',
+    name: '内存使用情况',
+    visible: true,
+    order: 5,
+    icon: 'pi pi-database',
+    gridCol: 2,
+    gridRow: 2
+  },
+  {
+    id: 'disk-overview',
+    name: '磁盘使用情况',
+    visible: true,
+    order: 6,
+    icon: 'pi pi-hdd',
+    gridCol: 3,
+    gridRow: 2
+  },
+  {
+    id: 'network-overview',
+    name: '网络流量',
+    visible: true,
+    order: 7,
+    icon: 'pi pi-wifi',
+    gridCol: 4,
+    gridRow: 2
+  },
+
+  // 趋势图表卡片 - 第三行
+  {
+    id: 'cpu-trend',
+    name: 'CPU趋势',
+    visible: true,
+    order: 8,
+    icon: 'pi pi-chart-line',
+    gridCol: 1,
+    gridRow: 3
+  },
+  {
+    id: 'memory-trend',
+    name: '内存趋势',
+    visible: true,
+    order: 9,
+    icon: 'pi pi-chart-line',
+    gridCol: 2,
+    gridRow: 3
+  },
+  {
+    id: 'disk-trend',
+    name: '磁盘趋势',
+    visible: true,
+    order: 10,
+    icon: 'pi pi-chart-line',
+    gridCol: 3,
+    gridRow: 3
+  },
+  {
+    id: 'network-trend',
+    name: '网络趋势',
+    visible: true,
+    order: 11,
+    icon: 'pi pi-chart-line',
+    gridCol: 4,
+    gridRow: 3
+  },
+
+  // 其他大型组件 - 第四行及以后，跨多列
   {
     id: 'alerts',
     name: '告警面板',
     visible: true,
-    order: 2,
-    icon: 'pi pi-bell'
+    order: 12,
+    icon: 'pi pi-bell',
+    gridCol: 1,
+    gridRow: 4,
+    gridSpan: 4
   },
   {
     id: 'servers',
     name: '服务器状态',
     visible: true,
-    order: 3,
-    icon: 'pi pi-server'
+    order: 13,
+    icon: 'pi pi-server',
+    gridCol: 1,
+    gridRow: 5,
+    gridSpan: 4
   },
   {
     id: 'ranking',
     name: '资源排行',
     visible: true,
-    order: 4,
-    icon: 'pi pi-list'
+    order: 14,
+    icon: 'pi pi-list',
+    gridCol: 1,
+    gridRow: 6,
+    gridSpan: 4
   }
 ]
 

@@ -3,12 +3,24 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
-import OverviewStats from './components/OverviewStats.vue'
-import SystemCharts from './components/SystemCharts.vue'
 import ServerStatusGrid from './components/ServerStatusGrid.vue'
 import AlertsPanel from './components/AlertsPanel.vue'
 import ResourceRanking from './components/ResourceRanking.vue'
 import DashboardSettings from './components/DashboardSettings.vue'
+
+// 导入细粒度卡片组件
+import TotalServersCard from './components/cards/TotalServersCard.vue'
+import OnlineServersCard from './components/cards/OnlineServersCard.vue'
+import OfflineErrorServersCard from './components/cards/OfflineErrorServersCard.vue'
+import AverageLoadCard from './components/cards/AverageLoadCard.vue'
+import CpuOverviewCard from './components/cards/CpuOverviewCard.vue'
+import MemoryOverviewCard from './components/cards/MemoryOverviewCard.vue'
+import DiskOverviewCard from './components/cards/DiskOverviewCard.vue'
+import NetworkOverviewCard from './components/cards/NetworkOverviewCard.vue'
+import CpuTrendCard from './components/cards/CpuTrendCard.vue'
+import MemoryTrendCard from './components/cards/MemoryTrendCard.vue'
+import DiskTrendCard from './components/cards/DiskTrendCard.vue'
+import NetworkTrendCard from './components/cards/NetworkTrendCard.vue'
 import { useDashboardConfig, type CardConfig } from '@/composables/useDashboardConfig'
 
 import type {
@@ -363,6 +375,22 @@ const handleViewServerFromAlert = (serverId: string) => {
   router.push(`/manager/servers?server=${serverId}`)
 }
 
+// 网格布局辅助函数
+const getCardGridClass = (card: CardConfig) => {
+  return 'dashboard-card'
+}
+
+const getCardGridStyle = (card: CardConfig) => {
+  const gridCol = card.gridCol || 1
+  const gridSpan = card.gridSpan || 1
+  const gridRow = card.gridRow || 1
+
+  return {
+    gridColumn: `${gridCol} / span ${gridSpan}`,
+    gridRow: gridRow
+  }
+}
+
 // 仪表板设置事件处理
 const handleOpenSettings = () => {
   settingsVisible.value = true
@@ -482,38 +510,102 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="space-y-6">
-      <!-- 所有卡片被隐藏时的提示 -->
-      <div v-if="visibleCards.length === 0" class="text-center py-16">
-        <div
-          class="bg-surface-50 dark:bg-surface-800 rounded-lg p-8 border border-surface-200 dark:border-surface-700"
-        >
-          <i class="pi pi-eye-slash text-6xl text-muted-color mb-4 block"></i>
-          <h3 class="text-xl font-semibold text-color mb-3">没有可显示的卡片</h3>
-          <p class="text-muted-color mb-6 max-w-md mx-auto">
-            您已隐藏了所有监控卡片。点击右上角的"自定义"按钮来显示您需要的卡片。
-          </p>
-        </div>
+    <!-- 所有卡片被隐藏时的提示 -->
+    <div v-if="visibleCards.length === 0" class="text-center py-16">
+      <div
+        class="bg-surface-50 dark:bg-surface-800 rounded-lg p-8 border border-surface-200 dark:border-surface-700"
+      >
+        <i class="pi pi-eye-slash text-6xl text-muted-color mb-4 block"></i>
+        <h3 class="text-xl font-semibold text-color mb-3">没有可显示的卡片</h3>
+        <p class="text-muted-color mb-6 max-w-md mx-auto">
+          您已隐藏了所有监控卡片。点击右上角的"自定义"按钮来显示您需要的卡片。
+        </p>
       </div>
+    </div>
 
-      <!-- 动态渲染卡片 -->
-      <template v-else>
-        <template v-for="card in visibleCards" :key="card.id">
-          <!-- 概览统计卡片 -->
-          <OverviewStats
-            v-if="card.id === 'overview'"
+    <!-- 4列网格布局 -->
+    <div v-else class="dashboard-grid">
+      <template v-for="card in visibleCards" :key="card.id">
+        <div
+          :class="getCardGridClass(card)"
+          :style="getCardGridStyle(card)"
+        >
+          <!-- 服务器状态统计卡片 -->
+          <TotalServersCard
+            v-if="card.id === 'total-servers'"
             :overview="systemOverview"
             :loading="overviewLoading"
           />
 
-          <!-- 系统图表卡片 -->
-          <SystemCharts
-            v-else-if="card.id === 'charts'"
+          <OnlineServersCard
+            v-else-if="card.id === 'online-servers'"
+            :overview="systemOverview"
+            :loading="overviewLoading"
+          />
+
+          <OfflineErrorServersCard
+            v-else-if="card.id === 'offline-error-servers'"
+            :overview="systemOverview"
+            :loading="overviewLoading"
+          />
+
+          <AverageLoadCard
+            v-else-if="card.id === 'average-load'"
+            :overview="systemOverview"
+            :loading="overviewLoading"
+          />
+
+          <!-- 系统资源概览卡片 -->
+          <CpuOverviewCard
+            v-else-if="card.id === 'cpu-overview'"
+            :overview="systemOverview"
+            :loading="overviewLoading"
+          />
+
+          <MemoryOverviewCard
+            v-else-if="card.id === 'memory-overview'"
+            :overview="systemOverview"
+            :loading="overviewLoading"
+          />
+
+          <DiskOverviewCard
+            v-else-if="card.id === 'disk-overview'"
+            :overview="systemOverview"
+            :loading="overviewLoading"
+          />
+
+          <NetworkOverviewCard
+            v-else-if="card.id === 'network-overview'"
+            :overview="systemOverview"
+            :loading="overviewLoading"
+          />
+
+          <!-- 趋势图表卡片 -->
+          <CpuTrendCard
+            v-else-if="card.id === 'cpu-trend'"
             :metrics="performanceMetrics"
             :loading="chartsLoading"
           />
 
-          <!-- 告警面板卡片 -->
+          <MemoryTrendCard
+            v-else-if="card.id === 'memory-trend'"
+            :metrics="performanceMetrics"
+            :loading="chartsLoading"
+          />
+
+          <DiskTrendCard
+            v-else-if="card.id === 'disk-trend'"
+            :metrics="performanceMetrics"
+            :loading="chartsLoading"
+          />
+
+          <NetworkTrendCard
+            v-else-if="card.id === 'network-trend'"
+            :metrics="performanceMetrics"
+            :loading="chartsLoading"
+          />
+
+          <!-- 大型组件 -->
           <AlertsPanel
             v-else-if="card.id === 'alerts'"
             :alerts="alerts"
@@ -527,7 +619,6 @@ onUnmounted(() => {
             @view-server="handleViewServerFromAlert"
           />
 
-          <!-- 服务器状态网格卡片 -->
           <ServerStatusGrid
             v-else-if="card.id === 'servers'"
             :servers="servers"
@@ -536,14 +627,13 @@ onUnmounted(() => {
             @refresh="refreshServers"
           />
 
-          <!-- 资源排行榜卡片 -->
           <ResourceRanking
             v-else-if="card.id === 'ranking'"
             :ranking="resourceRanking"
             :loading="rankingLoading"
             @server-click="handleServerClickById"
           />
-        </template>
+        </div>
       </template>
     </div>
 
@@ -561,17 +651,46 @@ onUnmounted(() => {
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 4列网格布局 */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: min-content;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem;
+}
+
+.dashboard-card {
+  min-height: fit-content;
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 响应式网格布局 */
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
 }
 
 @media (max-width: 768px) {
   .monitor-view {
     padding: 1rem;
   }
-}
 
-@media (max-width: 640px) {
-  .monitor-view {
-    padding: 0.75rem;
+  .dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
   }
 }
 
@@ -582,7 +701,12 @@ onUnmounted(() => {
 }
 
 @media (max-width: 640px) {
-  .monitor-view .grid {
+  .monitor-view {
+    padding: 0.75rem;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
   }
 
