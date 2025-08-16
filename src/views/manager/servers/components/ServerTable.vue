@@ -28,6 +28,20 @@ const onRowExpand = (event: { data: Server }) => {
   emit('expand-server', event.data.id)
 }
 
+// 自动展开指定服务器详情
+const autoExpandServer = (serverId: string) => {
+  const server = props.servers.find(s => s.id === serverId)
+  if (server) {
+    expandedRows.value[serverId] = true
+    emit('expand-server', serverId)
+  }
+}
+
+// 暴露方法给父组件
+defineExpose({
+  autoExpandServer
+})
+
 // 工具函数
 const getStatusColor = (status: string) => {
   const colors = {
@@ -141,7 +155,7 @@ const confirmRestart = (event: Event, server: Server) => {
 }
 </script>
 <template>
-  <Card class="shadow-sm">
+  <Card>
     <template #title>
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
