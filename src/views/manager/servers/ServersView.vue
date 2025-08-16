@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import ServerToolbar from './components/ServerToolbar.vue'
 import ServerTable from './components/ServerTable.vue'
@@ -17,6 +17,9 @@ const searchQuery = ref('')
 const statusFilter = ref<string>('all')
 const showAddDialog = ref(false)
 const editingServer = ref<Server | null>(null)
+
+// 组件引用
+const serverTableRef = ref<InstanceType<typeof ServerTable> | null>(null)
 
 // 表单数据
 const serverForm = ref<ServerForm>({
@@ -338,6 +341,20 @@ watch(statusFilter, async (newValue, oldValue) => {
   }
 })
 
+// 监听URL参数变化
+watch(() => window.location.search, (newSearch) => {
+  const urlParams = new URLSearchParams(newSearch)
+  const serverId = urlParams.get('server')
+  if (serverId && serverTableRef.value) {
+    // 清除之前的展开状态
+    expandingServerId.value = ''
+    // 自动展开新的服务器
+    nextTick(() => {
+      serverTableRef.value?.autoExpandServer(serverId)
+    })
+  }
+}, { immediate: false })
+
 // 展开详情处理
 const handleExpandServer = async (serverId: string) => {
   expandingServerId.value = serverId
@@ -351,6 +368,18 @@ const handleExpandServer = async (serverId: string) => {
 
 // 生命周期
 onMounted(() => {
+  // 检查URL参数，自动展开指定服务器详情
+  const urlParams = new URLSearchParams(window.location.search)
+  const serverId = urlParams.get('server')
+  if (serverId) {
+    // 延迟执行，确保组件完全挂载
+    nextTick(() => {
+      if (serverTableRef.value) {
+        serverTableRef.value.autoExpandServer(serverId)
+      }
+    })
+  }
+
   // 可以在这里加载真实数据
 })
 </script>
@@ -380,6 +409,7 @@ onMounted(() => {
 
       <!-- 服务器数据表格 -->
       <ServerTable
+        ref="serverTableRef"
         :servers="filteredServers"
         :loading="loading || filterLoading"
         :expanding-server-id="expandingServerId"
@@ -401,8 +431,6 @@ onMounted(() => {
       @save="handleSaveServer"
       @cancel="handleCancelDialog"
     />
-
-
   </div>
 </template>
 

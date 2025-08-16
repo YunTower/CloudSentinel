@@ -7,44 +7,79 @@ export interface CardConfig {
   visible: boolean
   order: number
   icon: string
+  gridCol?: number // 网格列位置 (1-4)
+  gridRow?: number // 网格行位置
+  gridSpan?: number // 跨列数，默认为1
 }
 
 // 默认卡片配置
 const DEFAULT_CARDS: CardConfig[] = [
+  // 服务器状态统计卡片 - 第一行
   {
-    id: 'overview',
-    name: '概览统计',
+    id: 'total-servers',
+    name: '总服务器',
     visible: true,
     order: 0,
-    icon: 'pi pi-chart-bar'
+    icon: 'pi pi-server',
+    gridCol: 1,
+    gridRow: 1
   },
   {
-    id: 'charts',
-    name: '系统图表',
+    id: 'online-servers',
+    name: '在线服务器',
     visible: true,
     order: 1,
-    icon: 'pi pi-chart-line'
+    icon: 'pi pi-check-circle',
+    gridCol: 2,
+    gridRow: 1
+  },
+  {
+    id: 'offline-error-servers',
+    name: '离线/异常',
+    visible: true,
+    order: 2,
+    icon: 'pi pi-exclamation-triangle',
+    gridCol: 3,
+    gridRow: 1
+  },
+  {
+    id: 'average-load',
+    name: '平均负载',
+    visible: true,
+    order: 3,
+    icon: 'pi pi-chart-line',
+    gridCol: 4,
+    gridRow: 1
   },
   {
     id: 'alerts',
     name: '告警面板',
     visible: true,
-    order: 2,
-    icon: 'pi pi-bell'
-  },
-  {
-    id: 'servers',
-    name: '服务器状态',
-    visible: true,
-    order: 3,
-    icon: 'pi pi-server'
+    order: 4,
+    icon: 'pi pi-bell',
+    gridCol: 1,
+    gridRow: 2,
+    gridSpan: 2
   },
   {
     id: 'ranking',
     name: '资源排行',
     visible: true,
-    order: 4,
-    icon: 'pi pi-list'
+    order: 5,
+    icon: 'pi pi-list',
+    gridCol: 3,
+    gridRow: 2,
+    gridSpan: 2
+  },
+  {
+    id: 'servers',
+    name: '服务器状态',
+    visible: true,
+    order: 6,
+    icon: 'pi pi-server',
+    gridCol: 1,
+    gridRow: 3,
+    gridSpan: 4
   }
 ]
 

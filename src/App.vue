@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import {ref, onMounted, computed} from 'vue'
-import {useRouter} from 'vue-router'
-import Loading from '@/components/Loading/Loading.vue'
-import BaseLayout from "@/layout/BaseLayout.vue"
+import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useLayout } from '@/composables/useLayout'
+import BaseLayout from '@/layout/BaseLayout.vue'
+import BlankLayout from '@/layout/BlankLayout.vue'
+import Loading from '@/components/Loading/Loading.vue'
 
-const router = useRouter()
 const loading = ref(true)
+const route = useRoute()
+const router = useRouter()
 const pageLoading = ref(false)
 
-// 初始化主题布局
-useLayout()
-
 const layout = computed(() => {
+  if (route.name === 'login') {
+    return BlankLayout
+  }
   return BaseLayout
 })
 
@@ -26,6 +28,7 @@ router.beforeEach((to, from) => {
 })
 
 router.afterEach(() => {
+  useLayout()
   setTimeout(() => {
     pageLoading.value = false
   }, 100)
@@ -46,13 +49,9 @@ onMounted(() => {
       :overlay="true"
     />
 
-    <div class="main-content" :class="{ 'loading': isLoading }">
+    <div class="main-content" :class="{ loading: isLoading }">
       <router-view v-slot="{ Component }" v-if="!pageLoading">
-        <Transition
-          name="page"
-          mode="out-in"
-          appear
-        >
+        <Transition name="page" mode="out-in" appear>
           <component :is="Component" :key="$route.fullPath" />
         </Transition>
       </router-view>

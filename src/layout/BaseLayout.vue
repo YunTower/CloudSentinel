@@ -8,8 +8,6 @@
       <slot/>
     </main>
 
-    <footer class="flex-shrink-0">
-      <slot name="footer"/>
-    </footer>
+    <footer class="flex-shrink-0"></footer>
   </div>
 </template>
