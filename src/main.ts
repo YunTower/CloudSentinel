@@ -11,8 +11,12 @@ import ConfirmationService from 'primevue/confirmationservice';
 import Aura from '@primevue/themes/aura'
 import App from './App.vue'
 import router from './router'
+import { role, auth } from './directives/permission'
 
 const app = createApp(App)
+
+app.directive('role', role)
+app.directive('auth', auth)
 
 const Noir = definePreset(Aura, {
   semantic: {

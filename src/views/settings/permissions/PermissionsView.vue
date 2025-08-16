@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useToast } from 'primevue/usetoast'
+import { authManager, type GuestAccessConfig } from '@/utils/auth'
 
-interface PermissionSettings {
-  allowGuest: boolean
-  enablePassword: boolean
-  guestPassword: string
-  hideSensitiveInfo: boolean
+const toast = useToast()
+
+interface PermissionSettings extends GuestAccessConfig {
   sessionTimeout: number
   maxLoginAttempts: number
   lockoutDuration: number
+  jwtSecret: string
+  jwtExpiration: number
 }
 
 interface AdminAccount {
@@ -26,7 +28,9 @@ const permissions = ref<PermissionSettings>({
   hideSensitiveInfo: true,
   sessionTimeout: 60,
   maxLoginAttempts: 5,
-  lockoutDuration: 15
+  lockoutDuration: 15,
+  jwtSecret: 'your-secret-key',
+  jwtExpiration: 24
 })
 
 const adminAccount = ref<AdminAccount>({
@@ -45,12 +49,30 @@ const updatingPassword = ref(false)
 const savePermissions = async () => {
   saving.value = true
   try {
-    // 实际项目中这里会调用 API 保存设置
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    console.log('Permissions saved:', permissions.value)
-    // 可以添加 Toast 提示
+    // 保存到authManager
+    authManager.saveGuestAccessConfig({
+      allowGuest: permissions.value.allowGuest,
+      enablePassword: permissions.value.enablePassword,
+      guestPassword: permissions.value.guestPassword,
+      hideSensitiveInfo: permissions.value.hideSensitiveInfo
+    })
+
+    // 保存完整配置到localStorage
+    localStorage.setItem('dashboard-permissions', JSON.stringify(permissions.value))
+
+    toast.add({
+      severity: 'success',
+      summary: '保存成功',
+      detail: '权限设置已更新',
+      life: 3000
+    })
   } catch (error) {
-    console.error('Failed to save permissions:', error)
+    toast.add({
+      severity: 'error',
+      summary: '保存失败',
+      detail: '请稍后重试',
+      life: 5000
+    })
   } finally {
     saving.value = false
   }
@@ -59,6 +81,12 @@ const savePermissions = async () => {
 // 修改用户名
 const updateUsername = async () => {
   if (adminAccount.value.newUsername === adminAccount.value.username) {
+    toast.add({
+      severity: 'warn',
+      summary: '无需修改',
+      detail: '新用户名与当前用户名相同',
+      life: 3000
+    })
     return
   }
 
@@ -69,10 +97,20 @@ const updateUsername = async () => {
     adminAccount.value.username = adminAccount.value.newUsername
     adminAccount.value.newUsername = ''
     adminAccount.value.currentPassword = ''
-    console.log('Username updated')
-    // 可以添加 Toast 提示
+
+    toast.add({
+      severity: 'success',
+      summary: '修改成功',
+      detail: '用户名已更新',
+      life: 3000
+    })
   } catch (error) {
-    console.error('Failed to update username:', error)
+    toast.add({
+      severity: 'error',
+      summary: '修改失败',
+      detail: '请稍后重试',
+      life: 5000
+    })
   } finally {
     updatingUsername.value = false
   }
@@ -81,7 +119,12 @@ const updateUsername = async () => {
 // 修改密码
 const updatePassword = async () => {
   if (adminAccount.value.newPassword !== adminAccount.value.confirmPassword) {
-    // 可以添加错误提示
+    toast.add({
+      severity: 'error',
+      summary: '密码不匹配',
+      detail: '新密码与确认密码不一致',
+      life: 5000
+    })
     return
   }
 
@@ -92,14 +135,42 @@ const updatePassword = async () => {
     adminAccount.value.currentPassword = ''
     adminAccount.value.newPassword = ''
     adminAccount.value.confirmPassword = ''
-    console.log('Password updated')
-    // 可以添加 Toast 提示
+
+    toast.add({
+      severity: 'success',
+      summary: '修改成功',
+      detail: '密码已更新',
+      life: 3000
+    })
   } catch (error) {
-    console.error('Failed to update password:', error)
+    toast.add({
+      severity: 'error',
+      summary: '修改失败',
+      detail: '请稍后重试',
+      life: 5000
+    })
   } finally {
     updatingPassword.value = false
   }
 }
+
+// 加载权限设置
+const loadPermissions = () => {
+  try {
+    const saved = localStorage.getItem('dashboard-permissions')
+    if (saved) {
+      const config = JSON.parse(saved)
+      permissions.value = { ...permissions.value, ...config }
+    }
+  } catch (error) {
+    console.error('加载权限设置失败:', error)
+  }
+}
+
+// 生命周期
+onMounted(() => {
+  loadPermissions()
+})
 </script>
 <template>
   <div class="permissions-view">

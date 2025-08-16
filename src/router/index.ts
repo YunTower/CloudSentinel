@@ -1,4 +1,5 @@
-import {createRouter, createWebHistory} from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
+import { setupRouteGuards } from './guards'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -10,6 +11,7 @@ const router = createRouter({
       meta: {
         title: '首页',
         icon: 'pi pi-home',
+        roles: ['guest', 'admin']
       }
     },
     {
@@ -20,14 +22,16 @@ const router = createRouter({
         title: '登录',
         icon: 'pi pi-sign-in',
         showToMenu: false,
+        public: true
       }
     },
     {
       path: '/manager',
       name: 'manager',
-      meta:{
-        title:'服务器',
-        icon:'pi pi-server',
+      meta: {
+        title: '服务器',
+        icon: 'pi pi-server',
+        roles: ['admin']
       },
       children: [
         {
@@ -37,6 +41,7 @@ const router = createRouter({
           meta: {
             title: '服务器列表',
             icon: 'pi pi-server',
+            roles: ['admin']
           }
         },
         {
@@ -46,6 +51,7 @@ const router = createRouter({
           meta: {
             title: '监控面板',
             icon: 'pi pi-chart-line',
+            roles: ['guest', 'admin']
           }
         }
       ]
@@ -53,9 +59,10 @@ const router = createRouter({
     {
       path: '/settings',
       name: 'settings',
-      meta:{
-        title:'设置',
-        icon:'pi pi-cog',
+      meta: {
+        title: '设置',
+        icon: 'pi pi-cog',
+        roles: ['admin']
       },
       children: [
         {
@@ -65,6 +72,7 @@ const router = createRouter({
           meta: {
             title: '站点设置',
             icon: 'pi pi-cog',
+            roles: ['admin'],
           }
         },
         {
@@ -74,6 +82,7 @@ const router = createRouter({
           meta: {
             title: '权限配置',
             icon: 'pi pi-shield',
+            roles: ['admin'],
           }
         },
         {
@@ -83,11 +92,14 @@ const router = createRouter({
           meta: {
             title: '告警设置',
             icon: 'pi pi-bell',
+            roles: ['admin'],
           }
         }
       ]
     }
   ],
 })
+
+setupRouteGuards(router)
 
 export default router

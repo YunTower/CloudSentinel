@@ -2,20 +2,14 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
+import { authManager } from '@/utils/auth'
 
 // 路由和通知
 const router = useRouter()
 const toast = useToast()
 
-// 权限设置
-const permissions = ref({
-  allowGuest: true,
-  enablePassword: false,
-  guestPassword: '',
-  hideSensitiveInfo: true,
-})
 // 当前激活的标签页
-const activeTab = ref(permissions.value.allowGuest ? '0' :  '1')
+const activeTab = ref('0')
 
 // 访客登录表单
 const guestForm = ref({
@@ -34,9 +28,8 @@ const adminForm = ref({
 const guestLoading = ref(false)
 const adminLoading = ref(false)
 
-// 计算属性
-// const isGuestMode = computed(() => activeTab.value === 0)
-// const isAdminMode = computed(() => activeTab.value === 1)
+// 权限设置
+const permissions = ref(authManager.getGuestAccessConfig())
 
 // 访客登录
 const handleGuestLogin = async () => {
@@ -62,7 +55,7 @@ const handleGuestLogin = async () => {
 
   if (
     permissions.value.enablePassword &&
-    guestForm.value.password !== permissions.value.guestPassword
+    !authManager.validateGuestPassword(guestForm.value.password)
   ) {
     toast.add({
       severity: 'error',
@@ -78,20 +71,8 @@ const handleGuestLogin = async () => {
     // 模拟API调用
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    // 保存访客登录状态
-    const guestSession = {
-      type: 'guest',
-      timestamp: Date.now(),
-      permissions: {
-        hideSensitiveInfo: permissions.value.hideSensitiveInfo,
-      },
-    }
-
-    if (guestForm.value.rememberMe) {
-      localStorage.setItem('guest-session', JSON.stringify(guestSession))
-    } else {
-      sessionStorage.setItem('guest-session', JSON.stringify(guestSession))
-    }
+    // 创建游客会话
+    authManager.createGuestSession(guestForm.value.rememberMe)
 
     toast.add({
       severity: 'success',
@@ -100,8 +81,8 @@ const handleGuestLogin = async () => {
       life: 3000,
     })
 
-    // 跳转到监控页面
-    router.push('/manager/monitor')
+    // 跳转到首页
+    router.push('/')
   } catch {
     toast.add({
       severity: 'error',
@@ -134,22 +115,17 @@ const handleAdminLogin = async () => {
     // 这里应该调用真实的登录API
     // 暂时使用模拟验证
     if (adminForm.value.username === 'admin' && adminForm.value.password === 'admin123') {
-      // 保存管理员登录状态
+      // 创建管理员会话（实际项目中应该由后端返回JWT token）
       const adminSession = {
-        type: 'admin',
+        id: 'admin',
         username: adminForm.value.username,
-        timestamp: Date.now(),
-        permissions: {
-          hideSensitiveInfo: false,
-          fullAccess: true,
-        },
+        role: 'admin' as const,
+        exp: Date.now() / 1000 + 24 * 60 * 60, // 24小时过期
       }
 
-      if (adminForm.value.rememberMe) {
-        localStorage.setItem('admin-session', JSON.stringify(adminSession))
-      } else {
-        sessionStorage.setItem('admin-session', JSON.stringify(adminSession))
-      }
+      // 创建模拟JWT token
+      const mockToken = authManager['createMockJWT'](adminSession)
+      authManager.setToken(mockToken, adminForm.value.rememberMe)
 
       toast.add({
         severity: 'success',
@@ -158,8 +134,8 @@ const handleAdminLogin = async () => {
         life: 3000,
       })
 
-      // 跳转到管理页面
-      router.push('/manager/servers')
+      // 跳转到首页
+      router.push('/')
     } else {
       throw new Error('用户名或密码错误')
     }
@@ -182,14 +158,22 @@ const loadPermissions = () => {
     if (saved) {
       const config = JSON.parse(saved)
       permissions.value = { ...permissions.value, ...config }
+      // 同步到authManager
+      authManager.saveGuestAccessConfig(permissions.value)
     }
   } catch (error) {
     console.error('加载权限设置失败:', error)
   }
 }
 
+// 生命周期
 onMounted(() => {
   loadPermissions()
+
+  // 如果已经登录，跳转到首页
+  if (authManager.isAuthenticated()) {
+    router.push('/')
+  }
 })
 </script>
 
@@ -211,13 +195,11 @@ onMounted(() => {
               <TabList class="w-full">
                 <Tab value="0" class="flex-1" v-if="permissions.allowGuest">
                   <div class="flex items-center justify-center gap-2">
-                    <i class="pi pi-users"></i>
                     <span>访客访问</span>
                   </div>
                 </Tab>
                 <Tab value="1" class="flex-1">
                   <div class="flex items-center justify-center gap-2">
-                    <i class="pi pi-user-cog"></i>
                     <span>管理员登录</span>
                   </div>
                 </Tab>
@@ -245,18 +227,19 @@ onMounted(() => {
                             input: { class: 'w-full py-3 px-4 text-base' },
                           }"
                         />
-                      </div>
-
-                      <div class="flex items-center gap-3">
-                        <Checkbox
-                          id="guestRememberMe"
-                          v-model="guestForm.rememberMe"
-                          :binary="true"
-                          class="w-5 h-5"
-                        />
-                        <label for="guestRememberMe" class="text-sm text-muted-color cursor-pointer"
-                          >记住登录状态</label
-                        >
+                        <div class="flex items-center gap-3">
+                          <Checkbox
+                            id="guestRememberMe"
+                            v-model="guestForm.rememberMe"
+                            :binary="true"
+                            class="w-5 h-5"
+                          />
+                          <label
+                            for="guestRememberMe"
+                            class="text-sm text-muted-color cursor-pointer"
+                            >记住登录状态</label
+                          >
+                        </div>
                       </div>
 
                       <Button

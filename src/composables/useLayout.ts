@@ -1,4 +1,4 @@
-import { computed, ref, onMounted, type ComputedRef } from 'vue'
+import { computed, ref, type ComputedRef } from 'vue'
 
 interface AppState {
   darkMode: boolean
@@ -12,6 +12,8 @@ export interface UseLayoutReturn {
   isDarkMode: ComputedRef<boolean>
   toggleDarkMode: () => void
   setDarkMode: (value: boolean) => void
+  initializeTheme: () => void
+  setupThemeListener: () => void
 }
 
 export function useLayout(): UseLayoutReturn {
@@ -47,10 +49,7 @@ export function useLayout(): UseLayoutReturn {
     setDarkMode(isDark)
   }
 
-  // 在组件挂载时初始化主题
-  onMounted(() => {
-    initializeTheme()
-
+  function setupThemeListener(): void {
     // 监听系统主题变化
     if (window.matchMedia) {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
@@ -61,13 +60,15 @@ export function useLayout(): UseLayoutReturn {
         }
       })
     }
-  })
+  }
 
   const isDarkMode = computed(() => appState.value.darkMode)
 
   return {
     isDarkMode,
     toggleDarkMode,
-    setDarkMode
+    setDarkMode,
+    initializeTheme,
+    setupThemeListener
   }
 }

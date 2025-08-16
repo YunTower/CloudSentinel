@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useLayout } from '@/composables/useLayout'
+import { useRoute } from 'vue-router'
 import BaseLayout from '@/layout/BaseLayout.vue'
 import BlankLayout from '@/layout/BlankLayout.vue'
 import Loading from '@/components/Loading/Loading.vue'
 
 const loading = ref(true)
 const route = useRoute()
-const router = useRouter()
-const pageLoading = ref(false)
 
 const layout = computed(() => {
   if (route.name === 'login') {
@@ -18,21 +15,7 @@ const layout = computed(() => {
   return BaseLayout
 })
 
-const isLoading = computed(() => loading.value || pageLoading.value)
-
-router.beforeEach((to, from) => {
-  if (to.path !== from.path && from.path !== '/') {
-    pageLoading.value = true
-  }
-  return true
-})
-
-router.afterEach(() => {
-  useLayout()
-  setTimeout(() => {
-    pageLoading.value = false
-  }, 100)
-})
+const isLoading = computed(() => loading.value)
 
 onMounted(() => {
   loading.value = false
@@ -50,7 +33,7 @@ onMounted(() => {
     />
 
     <div class="main-content" :class="{ loading: isLoading }">
-      <router-view v-slot="{ Component }" v-if="!pageLoading">
+      <router-view v-slot="{ Component }">
         <Transition name="page" mode="out-in" appear>
           <component :is="Component" :key="$route.fullPath" />
         </Transition>
