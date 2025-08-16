@@ -85,7 +85,7 @@ const items = computed(() => {
   // 处理处理子路由的其他顶级路由
   routes.forEach((route) => {
     // 跳过首页、没有 meta.title 的路由、以及子路由
-    if (route.path === '/' || !route.meta?.title || route.path.includes('/', 1)) {
+    if (route.path === '/' || !route.meta?.title || route.path.includes('/', 1) || route.meta?.showToMenu === false) {
       return
     }
 

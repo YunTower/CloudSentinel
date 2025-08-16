@@ -13,6 +13,16 @@ const router = createRouter({
       }
     },
     {
+      path: '/login',
+      name: 'login',
+      component: () => import('@/views/login/LoginView.vue'),
+      meta: {
+        title: '登录',
+        icon: 'pi pi-sign-in',
+        showToMenu: false,
+      }
+    },
+    {
       path: '/manager',
       name: 'manager',
       meta:{
