@@ -51,112 +51,34 @@ const DEFAULT_CARDS: CardConfig[] = [
     gridCol: 4,
     gridRow: 1
   },
-
-  // 系统资源概览卡片 - 第二行
-  {
-    id: 'cpu-overview',
-    name: 'CPU使用情况',
-    visible: true,
-    order: 4,
-    icon: 'pi pi-microchip',
-    gridCol: 1,
-    gridRow: 2
-  },
-  {
-    id: 'memory-overview',
-    name: '内存使用情况',
-    visible: true,
-    order: 5,
-    icon: 'pi pi-database',
-    gridCol: 2,
-    gridRow: 2
-  },
-  {
-    id: 'disk-overview',
-    name: '磁盘使用情况',
-    visible: true,
-    order: 6,
-    icon: 'pi pi-hdd',
-    gridCol: 3,
-    gridRow: 2
-  },
-  {
-    id: 'network-overview',
-    name: '网络流量',
-    visible: true,
-    order: 7,
-    icon: 'pi pi-wifi',
-    gridCol: 4,
-    gridRow: 2
-  },
-
-  // 趋势图表卡片 - 第三行
-  {
-    id: 'cpu-trend',
-    name: 'CPU趋势',
-    visible: true,
-    order: 8,
-    icon: 'pi pi-chart-line',
-    gridCol: 1,
-    gridRow: 3
-  },
-  {
-    id: 'memory-trend',
-    name: '内存趋势',
-    visible: true,
-    order: 9,
-    icon: 'pi pi-chart-line',
-    gridCol: 2,
-    gridRow: 3
-  },
-  {
-    id: 'disk-trend',
-    name: '磁盘趋势',
-    visible: true,
-    order: 10,
-    icon: 'pi pi-chart-line',
-    gridCol: 3,
-    gridRow: 3
-  },
-  {
-    id: 'network-trend',
-    name: '网络趋势',
-    visible: true,
-    order: 11,
-    icon: 'pi pi-chart-line',
-    gridCol: 4,
-    gridRow: 3
-  },
-
-  // 其他大型组件 - 第四行及以后，跨多列
   {
     id: 'alerts',
     name: '告警面板',
     visible: true,
-    order: 12,
+    order: 4,
     icon: 'pi pi-bell',
     gridCol: 1,
-    gridRow: 4,
-    gridSpan: 4
-  },
-  {
-    id: 'servers',
-    name: '服务器状态',
-    visible: true,
-    order: 13,
-    icon: 'pi pi-server',
-    gridCol: 1,
-    gridRow: 5,
-    gridSpan: 4
+    gridRow: 2,
+    gridSpan: 2
   },
   {
     id: 'ranking',
     name: '资源排行',
     visible: true,
-    order: 14,
+    order: 5,
     icon: 'pi pi-list',
+    gridCol: 3,
+    gridRow: 2,
+    gridSpan: 2
+  },
+  {
+    id: 'servers',
+    name: '服务器状态',
+    visible: true,
+    order: 6,
+    icon: 'pi pi-server',
     gridCol: 1,
-    gridRow: 6,
+    gridRow: 3,
     gridSpan: 4
   }
 ]

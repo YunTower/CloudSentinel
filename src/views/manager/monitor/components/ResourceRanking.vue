@@ -133,11 +133,11 @@ const getDiskProgressColor = (usage: number) => {
               <div class="text-sm font-medium text-muted-color mb-3 flex items-center gap-2">
                 <i class="pi pi-microchip text-blue-600"></i>
                 <span>CPU 使用率排行</span>
-                <span class="text-xs">(前10名)</span>
+                <span class="text-xs">(前5名)</span>
               </div>
               <div v-if="ranking.cpu.length > 0" class="space-y-2">
                 <div
-                  v-for="(item, index) in ranking.cpu.slice(0, 10)"
+                  v-for="(item, index) in ranking.cpu.slice(0, 5)"
                   :key="item.serverId"
                   class="ranking-item flex items-center justify-between p-3 rounded-lg border border-surface-200 dark:border-surface-700 cursor-pointer"
                   @click="emit('server-click', item.serverId)"
@@ -201,11 +201,11 @@ const getDiskProgressColor = (usage: number) => {
               <div class="text-sm font-medium text-muted-color mb-3 flex items-center gap-2">
                 <i class="pi pi-database text-green-600"></i>
                 <span>内存使用率排行</span>
-                <span class="text-xs">(前10名)</span>
+                <span class="text-xs">(前5名)</span>
               </div>
               <div v-if="ranking.memory.length > 0" class="space-y-2">
                 <div
-                  v-for="(item, index) in ranking.memory.slice(0, 10)"
+                  v-for="(item, index) in ranking.memory.slice(0, 5)"
                   :key="item.serverId"
                   class="ranking-item flex items-center justify-between p-3 rounded-lg border border-surface-200 dark:border-surface-700 cursor-pointer"
                   @click="emit('server-click', item.serverId)"
@@ -266,11 +266,11 @@ const getDiskProgressColor = (usage: number) => {
               <div class="text-sm font-medium text-muted-color mb-3 flex items-center gap-2">
                 <i class="pi pi-hdd text-orange-600"></i>
                 <span>磁盘使用率排行</span>
-                <span class="text-xs">(前10名)</span>
+                <span class="text-xs">(前5名)</span>
               </div>
               <div v-if="ranking.disk.length > 0" class="space-y-2">
                 <div
-                  v-for="(item, index) in ranking.disk.slice(0, 10)"
+                  v-for="(item, index) in ranking.disk.slice(0, 5)"
                   :key="item.serverId"
                   class="ranking-item flex items-center justify-between p-3 rounded-lg border border-surface-200 dark:border-surface-700 cursor-pointer"
                   @click="emit('server-click', item.serverId)"

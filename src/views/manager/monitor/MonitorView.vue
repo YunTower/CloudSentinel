@@ -13,14 +13,6 @@ import TotalServersCard from './components/cards/TotalServersCard.vue'
 import OnlineServersCard from './components/cards/OnlineServersCard.vue'
 import OfflineErrorServersCard from './components/cards/OfflineErrorServersCard.vue'
 import AverageLoadCard from './components/cards/AverageLoadCard.vue'
-import CpuOverviewCard from './components/cards/CpuOverviewCard.vue'
-import MemoryOverviewCard from './components/cards/MemoryOverviewCard.vue'
-import DiskOverviewCard from './components/cards/DiskOverviewCard.vue'
-import NetworkOverviewCard from './components/cards/NetworkOverviewCard.vue'
-import CpuTrendCard from './components/cards/CpuTrendCard.vue'
-import MemoryTrendCard from './components/cards/MemoryTrendCard.vue'
-import DiskTrendCard from './components/cards/DiskTrendCard.vue'
-import NetworkTrendCard from './components/cards/NetworkTrendCard.vue'
 import { useDashboardConfig, type CardConfig } from '@/composables/useDashboardConfig'
 
 import type {
@@ -376,7 +368,7 @@ const handleViewServerFromAlert = (serverId: string) => {
 }
 
 // 网格布局辅助函数
-const getCardGridClass = (card: CardConfig) => {
+const getCardGridClass = () => {
   return 'dashboard-card'
 }
 
@@ -527,10 +519,9 @@ onUnmounted(() => {
     <div v-else class="dashboard-grid">
       <template v-for="card in visibleCards" :key="card.id">
         <div
-          :class="getCardGridClass(card)"
+          :class="getCardGridClass()"
           :style="getCardGridStyle(card)"
         >
-          <!-- 服务器状态统计卡片 -->
           <TotalServersCard
             v-if="card.id === 'total-servers'"
             :overview="systemOverview"
@@ -555,57 +546,6 @@ onUnmounted(() => {
             :loading="overviewLoading"
           />
 
-          <!-- 系统资源概览卡片 -->
-          <CpuOverviewCard
-            v-else-if="card.id === 'cpu-overview'"
-            :overview="systemOverview"
-            :loading="overviewLoading"
-          />
-
-          <MemoryOverviewCard
-            v-else-if="card.id === 'memory-overview'"
-            :overview="systemOverview"
-            :loading="overviewLoading"
-          />
-
-          <DiskOverviewCard
-            v-else-if="card.id === 'disk-overview'"
-            :overview="systemOverview"
-            :loading="overviewLoading"
-          />
-
-          <NetworkOverviewCard
-            v-else-if="card.id === 'network-overview'"
-            :overview="systemOverview"
-            :loading="overviewLoading"
-          />
-
-          <!-- 趋势图表卡片 -->
-          <CpuTrendCard
-            v-else-if="card.id === 'cpu-trend'"
-            :metrics="performanceMetrics"
-            :loading="chartsLoading"
-          />
-
-          <MemoryTrendCard
-            v-else-if="card.id === 'memory-trend'"
-            :metrics="performanceMetrics"
-            :loading="chartsLoading"
-          />
-
-          <DiskTrendCard
-            v-else-if="card.id === 'disk-trend'"
-            :metrics="performanceMetrics"
-            :loading="chartsLoading"
-          />
-
-          <NetworkTrendCard
-            v-else-if="card.id === 'network-trend'"
-            :metrics="performanceMetrics"
-            :loading="chartsLoading"
-          />
-
-          <!-- 大型组件 -->
           <AlertsPanel
             v-else-if="card.id === 'alerts'"
             :alerts="alerts"
