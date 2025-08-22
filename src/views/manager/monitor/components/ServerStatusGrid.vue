@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { MonitorServer } from './types'
 import { formatSpeed, formatUptime, formatLastUpdate } from '@/utils/formatters'
+import type { MonitorServer } from '@/types/manager/monitor'
 
 interface Props {
   servers: Omit<MonitorServer, 'location'>[]

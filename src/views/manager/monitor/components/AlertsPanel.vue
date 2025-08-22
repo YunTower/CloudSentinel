@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import AlertDetailDialog from './AlertDetailDialog.vue'
-import type { AlertInfo } from './types'
+import type { AlertInfo } from '@/types/manager/monitor'
 
 interface Props {
   alerts: AlertInfo[]

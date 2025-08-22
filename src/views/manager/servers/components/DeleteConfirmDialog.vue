@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Server } from './types'
+import type { Server } from '@/types/manager/servers'
 
 interface Props {
   visible: boolean

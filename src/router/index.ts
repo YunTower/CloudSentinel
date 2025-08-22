@@ -66,9 +66,9 @@ const router = createRouter({
       },
       children: [
         {
-          path: '/settings/site',
-          name: 'site',
-          component: () => import('@/views/settings/panel/SiteView.vue'),
+          path: '/settings/panel',
+          name: 'panel',
+          component: () => import('@/views/settings/panel/PanelView.vue'),
           meta: {
             title: '面板设置',
             icon: 'pi pi-cog',

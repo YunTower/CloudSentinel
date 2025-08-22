@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import type { Server, ServerForm } from './types'
+import type { Server, ServerForm } from '@/types/manager/servers'
 
 interface Props {
   visible: boolean

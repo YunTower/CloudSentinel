@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { StatusOption } from './types'
+import type { StatusOption } from '@/types/manager/servers'
 
 interface Props {
   searchQuery: string

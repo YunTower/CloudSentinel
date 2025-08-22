@@ -1,26 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import { authManager, type GuestAccessConfig } from '@/utils/auth'
+import { authManager } from '@/utils/auth'
+import type { PermissionSettings, AdminAccount } from '@/types/settings/permissions'
 
 const toast = useToast()
-
-interface PermissionSettings extends GuestAccessConfig {
-  sessionTimeout: number
-  maxLoginAttempts: number
-  lockoutDuration: number
-  jwtSecret: string
-  jwtExpiration: number
-}
-
-interface AdminAccount {
-  username: string
-  newUsername: string
-  currentPassword: string
-  newPassword: string
-  confirmPassword: string
-}
-
 const permissions = ref<PermissionSettings>({
   allowGuest: true,
   enablePassword: false,
@@ -30,7 +14,7 @@ const permissions = ref<PermissionSettings>({
   maxLoginAttempts: 5,
   lockoutDuration: 15,
   jwtSecret: 'your-secret-key',
-  jwtExpiration: 24
+  jwtExpiration: 24,
 })
 
 const adminAccount = ref<AdminAccount>({
@@ -38,7 +22,7 @@ const adminAccount = ref<AdminAccount>({
   newUsername: '',
   currentPassword: '',
   newPassword: '',
-  confirmPassword: ''
+  confirmPassword: '',
 })
 
 const saving = ref(false)
@@ -54,7 +38,7 @@ const savePermissions = async () => {
       allowGuest: permissions.value.allowGuest,
       enablePassword: permissions.value.enablePassword,
       guestPassword: permissions.value.guestPassword,
-      hideSensitiveInfo: permissions.value.hideSensitiveInfo
+      hideSensitiveInfo: permissions.value.hideSensitiveInfo,
     })
 
     // 保存完整配置到localStorage
@@ -64,14 +48,14 @@ const savePermissions = async () => {
       severity: 'success',
       summary: '保存成功',
       detail: '权限设置已更新',
-      life: 3000
+      life: 3000,
     })
   } catch (error) {
     toast.add({
       severity: 'error',
       summary: '保存失败',
       detail: '请稍后重试',
-      life: 5000
+      life: 5000,
     })
   } finally {
     saving.value = false
@@ -85,7 +69,7 @@ const updateUsername = async () => {
       severity: 'warn',
       summary: '无需修改',
       detail: '新用户名与当前用户名相同',
-      life: 3000
+      life: 3000,
     })
     return
   }
@@ -93,7 +77,7 @@ const updateUsername = async () => {
   updatingUsername.value = true
   try {
     // 实际项目中这里会调用 API 修改用户名
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     adminAccount.value.username = adminAccount.value.newUsername
     adminAccount.value.newUsername = ''
     adminAccount.value.currentPassword = ''
@@ -102,14 +86,14 @@ const updateUsername = async () => {
       severity: 'success',
       summary: '修改成功',
       detail: '用户名已更新',
-      life: 3000
+      life: 3000,
     })
   } catch (error) {
     toast.add({
       severity: 'error',
       summary: '修改失败',
       detail: '请稍后重试',
-      life: 5000
+      life: 5000,
     })
   } finally {
     updatingUsername.value = false
@@ -123,7 +107,7 @@ const updatePassword = async () => {
       severity: 'error',
       summary: '密码不匹配',
       detail: '新密码与确认密码不一致',
-      life: 5000
+      life: 5000,
     })
     return
   }
@@ -131,7 +115,7 @@ const updatePassword = async () => {
   updatingPassword.value = true
   try {
     // 实际项目中这里会调用 API 修改密码
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     adminAccount.value.currentPassword = ''
     adminAccount.value.newPassword = ''
     adminAccount.value.confirmPassword = ''
@@ -140,14 +124,14 @@ const updatePassword = async () => {
       severity: 'success',
       summary: '修改成功',
       detail: '密码已更新',
-      life: 3000
+      life: 3000,
     })
   } catch (error) {
     toast.add({
       severity: 'error',
       summary: '修改失败',
       detail: '请稍后重试',
-      life: 5000
+      life: 5000,
     })
   } finally {
     updatingPassword.value = false
@@ -211,7 +195,10 @@ onMounted(() => {
                 <ToggleSwitch v-model="permissions.enablePassword" />
               </div>
 
-              <div v-if="permissions.enablePassword" class="ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700">
+              <div
+                v-if="permissions.enablePassword"
+                class="ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700"
+              >
                 <div class="flex flex-col gap-2">
                   <label for="guestPassword" class="text-sm font-medium text-color">访问密码</label>
                   <Password
@@ -230,7 +217,9 @@ onMounted(() => {
             <div class="flex items-center justify-between">
               <div>
                 <label class="text-sm font-medium text-color">隐藏服务器敏感信息</label>
-                <p class="text-xs text-muted-color mt-1">对游客隐藏服务器详细配置、IP地址等敏感信息</p>
+                <p class="text-xs text-muted-color mt-1">
+                  对游客隐藏服务器详细配置、IP地址等敏感信息
+                </p>
               </div>
               <ToggleSwitch v-model="permissions.hideSensitiveInfo" />
             </div>
@@ -329,7 +318,11 @@ onMounted(() => {
                 icon="pi pi-key"
                 @click="updatePassword"
                 :loading="updatingPassword"
-                :disabled="!adminAccount.newPassword || !adminAccount.confirmPassword || !adminAccount.currentPassword"
+                :disabled="
+                  !adminAccount.newPassword ||
+                  !adminAccount.confirmPassword ||
+                  !adminAccount.currentPassword
+                "
                 class="flex-1"
               />
             </div>
@@ -349,7 +342,9 @@ onMounted(() => {
           <div class="space-y-4">
             <!-- 会话超时 -->
             <div class="flex flex-col gap-2">
-              <label for="sessionTimeout" class="text-sm font-medium text-color">会话超时时间（分钟）</label>
+              <label for="sessionTimeout" class="text-sm font-medium text-color"
+                >会话超时时间（分钟）</label
+              >
               <InputNumber
                 id="sessionTimeout"
                 v-model="permissions.sessionTimeout"
@@ -362,7 +357,9 @@ onMounted(() => {
 
             <!-- 最大登录尝试次数 -->
             <div class="flex flex-col gap-2">
-              <label for="maxLoginAttempts" class="text-sm font-medium text-color">最大登录尝试次数</label>
+              <label for="maxLoginAttempts" class="text-sm font-medium text-color"
+                >最大登录尝试次数</label
+              >
               <InputNumber
                 id="maxLoginAttempts"
                 v-model="permissions.maxLoginAttempts"
@@ -375,7 +372,9 @@ onMounted(() => {
 
             <!-- 锁定时间 -->
             <div class="flex flex-col gap-2">
-              <label for="lockoutDuration" class="text-sm font-medium text-color">锁定时间（分钟）</label>
+              <label for="lockoutDuration" class="text-sm font-medium text-color"
+                >锁定时间（分钟）</label
+              >
               <InputNumber
                 id="lockoutDuration"
                 v-model="permissions.lockoutDuration"
@@ -393,7 +392,7 @@ onMounted(() => {
     <!-- 保存按钮 -->
     <div class="flex justify-end mt-6">
       <Button
-        label="保存权限设置"
+        label="保存设置"
         icon="pi pi-save"
         @click="savePermissions"
         :loading="saving"

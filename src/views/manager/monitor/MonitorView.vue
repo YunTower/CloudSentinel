@@ -22,7 +22,7 @@ import type {
   AlertInfo,
   ResourceRanking as ResourceRankingType,
   ChartDataPoint,
-} from './components/types'
+} from '@/types/manager/monitor'
 
 // 服务和路由
 const toast = useToast()
@@ -379,7 +379,7 @@ const getCardGridStyle = (card: CardConfig) => {
 
   return {
     gridColumn: `${gridCol} / span ${gridSpan}`,
-    gridRow: gridRow
+    gridRow: gridRow,
   }
 }
 
@@ -518,10 +518,7 @@ onUnmounted(() => {
     <!-- 4列网格布局 -->
     <div v-else class="dashboard-grid">
       <template v-for="card in visibleCards" :key="card.id">
-        <div
-          :class="getCardGridClass()"
-          :style="getCardGridStyle(card)"
-        >
+        <div :class="getCardGridClass()" :style="getCardGridStyle(card)">
           <TotalServersCard
             v-if="card.id === 'total-servers'"
             :overview="systemOverview"

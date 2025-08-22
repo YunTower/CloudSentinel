@@ -1,142 +1,9 @@
-<template>
-  <Card class="h-full bg-surface-card rounded-lg hover:shadow-lg shadow-sm">
-    <template #header>
-      <div class="flex items-center justify-between p-4">
-        <div class="flex items-center gap-3">
-          <div :class="statusClass" class="w-3 h-3 rounded-full shadow-sm animate-pulse-slow"></div>
-          <span class="text-sm font-medium text-color-emphasis">{{ statusText }}</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <i class="pi pi-map-marker text-sm text-muted-color"></i>
-          <span class="text-xs font-medium text-muted-color">{{ location }}</span>
-        </div>
-      </div>
-    </template>
-
-    <template #title>
-      <div class="text-lg font-semibold truncate mb-4 text-color-emphasis" :title="serverName">
-        {{ serverName }}
-      </div>
-    </template>
-
-    <template #content>
-      <div class="space-y-5">
-        <!-- CPU 和内存监控 -->
-        <div class="grid grid-cols-2 gap-4">
-          <div class="text-center p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
-            <div class="text-2xl font-bold mb-1" :class="getCpuTextColorClass(cpuUsage)">
-              {{ cpuUsage }}%
-            </div>
-            <div class="text-xs font-medium text-muted-color">CPU 使用率</div>
-          </div>
-
-          <div class="text-center p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
-            <div class="text-2xl font-bold mb-1" :class="getMemoryTextColorClass(memoryUsage)">
-              {{ memoryUsage }}%
-            </div>
-            <div class="text-xs font-medium text-muted-color">内存使用率</div>
-          </div>
-        </div>
-
-        <!-- 系统信息（一行显示） -->
-        <div class="p-2 rounded-lg bg-surface-50 dark:bg-surface-800">
-          <div class="grid grid-cols-3 gap-2 text-xs">
-            <div class="text-center">
-              <div class="text-muted-color">系统</div>
-              <div class="font-semibold text-color truncate" :title="os">{{ formatOS(os) }}</div>
-            </div>
-            <div class="text-center">
-              <div class="text-muted-color">架构</div>
-              <div class="font-semibold text-color">{{ architecture }}</div>
-            </div>
-            <div class="text-center">
-              <div class="text-muted-color">核心</div>
-              <div class="font-semibold text-color">{{ cores }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 网络 I/O（优化显示） -->
-        <div class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
-          <div class="flex items-center gap-2 mb-3">
-            <i class="pi pi-wifi text-sm text-muted-color"></i>
-            <span class="text-sm font-medium text-color">网络流量</span>
-            <div class="flex-1 flex justify-end">
-              <div class="w-2 h-2 rounded-full bg-primary animate-pulse"
-                   v-if="networkIO.upload > 0 || networkIO.download > 0"></div>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div class="bg-surface-0 dark:bg-surface-900 rounded-lg p-2 text-center">
-              <div class="flex items-center justify-center gap-1 mb-1">
-                <i class="pi pi-arrow-up text-xs text-green-600 dark:text-green-400"></i>
-                <span class="text-xs text-muted-color">上传</span>
-              </div>
-              <div class="text-base font-bold" :class="getNetworkColorClass(networkIO.upload)">
-                {{ formatSpeed(networkIO.upload) }}
-              </div>
-            </div>
-            <div class="bg-surface-0 dark:bg-surface-900 rounded-lg p-2 text-center">
-              <div class="flex items-center justify-center gap-1 mb-1">
-                <i class="pi pi-arrow-down text-xs text-blue-600 dark:text-blue-400"></i>
-                <span class="text-xs text-muted-color">下载</span>
-              </div>
-              <div class="text-base font-bold" :class="getNetworkColorClass(networkIO.download)">
-                {{ formatSpeed(networkIO.download) }}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 综合磁盘使用 -->
-        <div class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
-          <div class="flex justify-between items-center mb-2">
-            <div class="flex items-center gap-2">
-              <i class="pi pi-database text-sm text-muted-color"></i>
-              <span class="text-sm font-medium text-color">存储</span>
-              <span class="text-xs text-muted-color">({{ totalStorage }})</span>
-            </div>
-            <span class="text-sm font-bold" :class="getDiskTextColorClass(diskUsage)">
-              {{ diskUsage }}%
-            </span>
-          </div>
-          <ProgressBar
-            :value="diskUsage"
-            class="h-2"
-            :pt="{
-              value: {
-                class: getDiskBgColorClass(diskUsage) + ' transition-all duration-500'
-              }
-            }"
-          />
-        </div>
-      </div>
-    </template>
-  </Card>
-</template>
-
 <script setup lang="ts">
-import {computed} from 'vue'
+import { computed } from 'vue'
 import ProgressBar from 'primevue/progressbar'
+import type { ServerItem } from '@/types/server'
 
-interface ServerCardProps {
-  serverName: string
-  status: 'online' | 'offline' | 'maintenance'
-  cpuUsage: number
-  memoryUsage: number
-  diskUsage: number     // 综合磁盘使用率
-  totalStorage: string  // 总存储容量，如 "10TB"
-  cores: number
-  location: string
-  os: string
-  architecture: string
-  networkIO: {
-    upload: number    // KB/s
-    download: number  // KB/s
-  }
-}
-
-const props = defineProps<ServerCardProps>()
+const props = defineProps<ServerItem>()
 
 const statusClass = computed(() => {
   switch (props.status) {
@@ -213,16 +80,132 @@ const formatOS = (os: string) => {
 // 根据网络流量获取颜色类
 const getNetworkColorClass = (speedKBps: number) => {
   if (speedKBps === 0) return 'text-muted-color'
-  if (speedKBps >= 1024 * 1024) return 'text-red-500 dark:text-red-400'      // >= 1GB/s 红色
+  if (speedKBps >= 1024 * 1024) return 'text-red-500 dark:text-red-400' // >= 1GB/s 红色
   if (speedKBps >= 1024 * 100) return 'text-orange-500 dark:text-orange-400' // >= 100MB/s 橙色
-  if (speedKBps >= 1024 * 10) return 'text-blue-600 dark:text-blue-400'      // >= 10MB/s 蓝色
-  if (speedKBps >= 1024) return 'text-green-600 dark:text-green-400'         // >= 1MB/s 绿色
-  return 'text-primary'                                                       // < 1MB/s 主题色
+  if (speedKBps >= 1024 * 10) return 'text-blue-600 dark:text-blue-400' // >= 10MB/s 蓝色
+  if (speedKBps >= 1024) return 'text-green-600 dark:text-green-400' // >= 1MB/s 绿色
+  return 'text-primary' // < 1MB/s 主题色
 }
 </script>
+<template>
+  <Card class="h-full bg-surface-card rounded-lg hover:shadow-lg shadow-sm">
+    <template #header>
+      <div class="flex items-center justify-between p-4">
+        <div class="flex items-center gap-3">
+          <div :class="statusClass" class="w-3 h-3 rounded-full shadow-sm animate-pulse-slow"></div>
+          <span class="text-sm font-medium text-color-emphasis">{{ statusText }}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <i class="pi pi-map-marker text-sm text-muted-color"></i>
+          <span class="text-xs font-medium text-muted-color">{{ location }}</span>
+        </div>
+      </div>
+    </template>
 
+    <template #title>
+      <div class="text-lg font-semibold truncate mb-4 text-color-emphasis">
+        {{ name }}
+      </div>
+    </template>
+
+    <template #content>
+      <div class="space-y-5">
+        <!-- CPU 和内存监控 -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="text-center p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
+            <div class="text-2xl font-bold mb-1" :class="getCpuTextColorClass(cpuUsage)">
+              {{ cpuUsage }}%
+            </div>
+            <div class="text-xs font-medium text-muted-color">CPU 使用率</div>
+          </div>
+
+          <div class="text-center p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
+            <div class="text-2xl font-bold mb-1" :class="getMemoryTextColorClass(memoryUsage)">
+              {{ memoryUsage }}%
+            </div>
+            <div class="text-xs font-medium text-muted-color">内存使用率</div>
+          </div>
+        </div>
+
+        <!-- 系统信息（一行显示） -->
+        <div class="p-2 rounded-lg bg-surface-50 dark:bg-surface-800">
+          <div class="grid grid-cols-3 gap-2 text-xs">
+            <div class="text-center">
+              <div class="text-muted-color">系统</div>
+              <div class="font-semibold text-color truncate" :title="os">{{ formatOS(os) }}</div>
+            </div>
+            <div class="text-center">
+              <div class="text-muted-color">架构</div>
+              <div class="font-semibold text-color">{{ architecture }}</div>
+            </div>
+            <div class="text-center">
+              <div class="text-muted-color">核心</div>
+              <div class="font-semibold text-color">{{ cores }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 网络 I/O（优化显示） -->
+        <div class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
+          <div class="flex items-center gap-2 mb-3">
+            <i class="pi pi-wifi text-sm text-muted-color"></i>
+            <span class="text-sm font-medium text-color">网络流量</span>
+            <div class="flex-1 flex justify-end">
+              <div
+                class="w-2 h-2 rounded-full bg-primary animate-pulse"
+                v-if="networkIO.upload > 0 || networkIO.download > 0"
+              ></div>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-surface-0 dark:bg-surface-900 rounded-lg p-2 text-center">
+              <div class="flex items-center justify-center gap-1 mb-1">
+                <i class="pi pi-arrow-up text-xs text-green-600 dark:text-green-400"></i>
+                <span class="text-xs text-muted-color">上传</span>
+              </div>
+              <div class="text-base font-bold" :class="getNetworkColorClass(networkIO.upload)">
+                {{ formatSpeed(networkIO.upload) }}
+              </div>
+            </div>
+            <div class="bg-surface-0 dark:bg-surface-900 rounded-lg p-2 text-center">
+              <div class="flex items-center justify-center gap-1 mb-1">
+                <i class="pi pi-arrow-down text-xs text-blue-600 dark:text-blue-400"></i>
+                <span class="text-xs text-muted-color">下载</span>
+              </div>
+              <div class="text-base font-bold" :class="getNetworkColorClass(networkIO.download)">
+                {{ formatSpeed(networkIO.download) }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 综合磁盘使用 -->
+        <div class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
+          <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center gap-2">
+              <i class="pi pi-database text-sm text-muted-color"></i>
+              <span class="text-sm font-medium text-color">存储</span>
+              <span class="text-xs text-muted-color">({{ totalStorage }})</span>
+            </div>
+            <span class="text-sm font-bold" :class="getDiskTextColorClass(diskUsage)">
+              {{ diskUsage }}%
+            </span>
+          </div>
+          <ProgressBar
+            :value="diskUsage"
+            class="h-2"
+            :pt="{
+              value: {
+                class: getDiskBgColorClass(diskUsage) + ' transition-all duration-500',
+              },
+            }"
+          />
+        </div>
+      </div>
+    </template>
+  </Card>
+</template>
 <style scoped>
-/* 自定义深度样式，确保 Card 组件正确布局 */
 :deep(.p-card) {
   height: 100%;
   border: none;
@@ -257,7 +240,8 @@ const getNetworkColorClass = (speedKBps: number) => {
 
 /* 自定义动画类 */
 @keyframes pulse-slow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {

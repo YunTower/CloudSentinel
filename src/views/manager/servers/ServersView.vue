@@ -4,7 +4,7 @@ import { useToast } from 'primevue/usetoast'
 import ServerToolbar from './components/ServerToolbar.vue'
 import ServerTable from './components/ServerTable.vue'
 import ServerDialog from './components/ServerDialog.vue'
-import type { Server, ServerForm, StatusOption } from './components/types'
+import type { Server, ServerForm, StatusOption } from '@/types/manager/servers'
 
 // 响应式数据
 const loading = ref(false)
