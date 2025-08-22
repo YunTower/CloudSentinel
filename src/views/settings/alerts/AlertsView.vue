@@ -261,7 +261,7 @@ const saveAlertSettings = async () => {
     <!-- 保存按钮 -->
     <div class="flex justify-end mt-6">
       <Button
-        label="保存告警设置"
+        label="保存设置"
         icon="pi pi-save"
         @click="saveAlertSettings"
         :loading="saving"
