@@ -68,9 +68,9 @@ const router = createRouter({
         {
           path: '/settings/site',
           name: 'site',
-          component: () => import('@/views/settings/site/SiteView.vue'),
+          component: () => import('@/views/settings/panel/SiteView.vue'),
           meta: {
-            title: '站点设置',
+            title: '面板设置',
             icon: 'pi pi-cog',
             roles: ['admin'],
           }
