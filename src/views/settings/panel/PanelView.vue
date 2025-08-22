@@ -2,10 +2,8 @@
 import {ref} from 'vue'
 import {type FileUploadUploadEvent} from 'primevue/fileupload'
 
-interface SiteSettings {
+interface PanelSettings {
   title: string
-  favicon: string
-  logo: string
 }
 
 interface VersionInfo {
@@ -23,10 +21,8 @@ interface UpdateSource {
   description: string
 }
 
-const siteSettings = ref<SiteSettings>({
+const panelSettings = ref<PanelSettings>({
   title: 'CloudSentinel',
-  favicon: '',
-  logo: ''
 })
 
 const saving = ref(false)
@@ -65,24 +61,6 @@ const versionInfo = ref<VersionInfo>({
     '支持更多监控指标展示'
   ]
 })
-
-// 上传图标
-const onFaviconUpload = (event: FileUploadUploadEvent) => {
-  // 实际项目中这里会处理文件上传
-  console.log('Favicon uploaded:', event)
-  // if (Array.isArray(event.files) && event.files.length > 0) {
-  //   siteSettings.value.favicon = URL.createObjectURL(event.files[0])
-  // }
-}
-
-// 上传 Logo
-const onLogoUpload = (event: FileUploadUploadEvent) => {
-  // 实际项目中这里会处理文件上传
-  console.log('Logo uploaded:', event)
-  // if (Array.isArray(event.files) && event.files.length > 0) {
-  //   siteSettings.value.logo = URL.createObjectURL(event.files[0])
-  // }
-}
 
 // 检查更新
 const checkForUpdate = async () => {
@@ -145,22 +123,21 @@ const performUpdate = async () => {
 }
 
 // 保存设置
-const saveSiteSettings = async () => {
+const savePanelSettings = async () => {
   saving.value = true
   try {
     // 实际项目中这里会调用 API 保存设置
     await new Promise(resolve => setTimeout(resolve, 1000))
-    console.log('Site settings saved:', siteSettings.value)
     // 可以添加 Toast 提示
   } catch (error) {
-    console.error('Failed to save site settings:', error)
+    console.error('Failed to save panel settings:', error)
   } finally {
     saving.value = false
   }
 }
 </script>
 <template>
-  <div class="site-view">
+  <div class="panel-view">
     <div class="mb-6">
       <h1 class="text-3xl font-bold text-color mb-2">面板设置</h1>
       <p class="text-muted-color">配置面板的基本信息和外观设置</p>
@@ -179,10 +156,10 @@ const saveSiteSettings = async () => {
           <div class="space-y-4">
             <!-- 面板标题 -->
             <div class="flex flex-col gap-2">
-              <label for="siteTitle" class="text-sm font-medium text-color">面板标题</label>
+              <label for="panelTitle" class="text-sm font-medium text-color">面板标题</label>
               <InputText
-                id="siteTitle"
-                v-model="siteSettings.title"
+                id="panelTitle"
+                v-model="panelSettings.title"
                 placeholder="请输入面板p标题"
                 class="w-full"
               />
@@ -365,7 +342,7 @@ const saveSiteSettings = async () => {
       <Button
         label="保存设置"
         icon="pi pi-save"
-        @click="saveSiteSettings"
+        @click="savePanelSettings"
         :loading="saving"
         class="px-6"
       />
@@ -373,7 +350,7 @@ const saveSiteSettings = async () => {
   </div>
 </template>
 <style scoped>
-.site-view {
+.panel-view {
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
