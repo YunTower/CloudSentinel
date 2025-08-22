@@ -69,8 +69,9 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLayout } from '@/composables/useLayout'
-import { authManager, type UserSession } from '@/utils/auth'
+import { authManager } from '@/utils/auth'
 import { useToast } from 'primevue/usetoast'
+import type { UserSession } from '@/types/auth'
 
 interface MenuItem {
   label: string
@@ -88,7 +89,6 @@ const toast = useToast()
 const currentUser = ref<UserSession | null>(null)
 const isAuthenticated = ref(false)
 
-
 // 从路由配置生成菜单数据
 const allMenuItems = computed(() => {
   const routes = router.getRoutes()
@@ -97,18 +97,23 @@ const allMenuItems = computed(() => {
   // 添加首页
   const homeRoute = routes.find((route) => route.path === '/')
   if (homeRoute?.meta?.title) {
-          menuItems.push({
-        label: homeRoute.meta.title as string,
-        icon: homeRoute.meta.icon as string,
-        route: homeRoute.path,
-        roles: homeRoute.meta.roles as string[]
-      })
+    menuItems.push({
+      label: homeRoute.meta.title as string,
+      icon: homeRoute.meta.icon as string,
+      route: homeRoute.path,
+      roles: homeRoute.meta.roles as string[],
+    })
   }
 
   // 处理其他顶级路由
   routes.forEach((route) => {
     // 跳过首页、没有 meta.title 的路由、以及子路由
-    if (route.path === '/' || !route.meta?.title || route.path.includes('/', 1) || route.meta?.showToMenu === false) {
+    if (
+      route.path === '/' ||
+      !route.meta?.title ||
+      route.path.includes('/', 1) ||
+      route.meta?.showToMenu === false
+    ) {
       return
     }
 
@@ -120,7 +125,7 @@ const allMenuItems = computed(() => {
           label: child.meta?.title as string,
           icon: child.meta?.icon as string,
           route: child.path,
-          roles: child.meta?.roles as string[]
+          roles: child.meta?.roles as string[],
         }))
 
       if (childrenItems.length > 0) {
@@ -133,12 +138,12 @@ const allMenuItems = computed(() => {
       }
     } else {
       // 单独的菜单项
-              menuItems.push({
-          label: route.meta.title as string,
-          icon: route.meta.icon as string,
-          route: route.path,
-          roles: route.meta?.roles as string[]
-        })
+      menuItems.push({
+        label: route.meta.title as string,
+        icon: route.meta.icon as string,
+        route: route.path,
+        roles: route.meta?.roles as string[],
+      })
     }
   })
 
@@ -149,14 +154,16 @@ const allMenuItems = computed(() => {
 const filteredMenuItems = computed(() => {
   if (!isAuthenticated.value) {
     // 未登录用户只显示登录菜单
-    return [{
-      label: '登录',
-      icon: 'pi pi-sign-in',
-      route: '/login'
-    }]
+    return [
+      {
+        label: '登录',
+        icon: 'pi pi-sign-in',
+        route: '/login',
+      },
+    ]
   }
 
-  return allMenuItems.value.filter(item => {
+  return allMenuItems.value.filter((item) => {
     // 检查角色权限
     if (item.roles && currentUser.value) {
       if (!item.roles.includes(currentUser.value.role)) {
@@ -164,11 +171,9 @@ const filteredMenuItems = computed(() => {
       }
     }
 
-
-
     // 递归检查子菜单
     if (item.items) {
-      item.items = item.items.filter(subItem => {
+      item.items = item.items.filter((subItem) => {
         if (subItem.roles && currentUser.value) {
           if (!subItem.roles.includes(currentUser.value.role)) {
             return false
@@ -198,7 +203,7 @@ const handleLogout = () => {
     severity: 'success',
     summary: '退出成功',
     detail: '已安全退出登录',
-    life: 3000
+    life: 3000,
   })
 
   router.push('/login')

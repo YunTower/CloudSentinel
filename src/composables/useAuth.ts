@@ -1,5 +1,6 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { authManager, type UserSession, type UserRole } from '@/utils/auth'
+import { authManager } from '@/utils/auth'
+import type { UserSession, UserRole } from '@/types/auth'
 
 // 权限系统组合式函数
 export function useAuth() {
@@ -42,7 +43,7 @@ export function useAuth() {
   }
 
   // 定期检查认证状态
-  let authCheckInterval: NodeJS.Timeout | null = null
+  let authCheckInterval: number | null = null
 
   const startAuthCheck = () => {
     authCheckInterval = setInterval(checkAuth, 5000) // 每5秒检查一次
@@ -81,6 +82,6 @@ export function useAuth() {
     hasAnyRole,
     logout,
     checkAuth,
-    updateUserState
+    updateUserState,
   }
 }

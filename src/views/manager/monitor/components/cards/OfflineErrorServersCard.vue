@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { SystemOverview } from '../types'
+import type { SystemOverview } from '@/types/manager/monitor'
 
 interface Props {
   overview: SystemOverview
