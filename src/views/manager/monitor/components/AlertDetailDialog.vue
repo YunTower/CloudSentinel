@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { AlertInfo } from './types'
 import { formatDateTime } from '@/utils/formatters'
+import type { AlertInfo } from '@/types/manager/monitor'
 
 interface Props {
   visible: boolean

@@ -1,5 +1,3 @@
-// 监控面板相关类型定义
-
 // 服务器信息接口
 export interface MonitorServer {
   id: string

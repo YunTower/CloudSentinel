@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { ResourceRanking } from './types'
+import type { ResourceRanking } from '@/types/manager/monitor'
 
 interface Props {
   ranking: ResourceRanking

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
-import type { Server } from './types'
+import type { Server } from '@/types/manager/servers'
 
 interface Props {
   servers: Server[]
@@ -30,7 +30,7 @@ const onRowExpand = (event: { data: Server }) => {
 
 // 自动展开指定服务器详情
 const autoExpandServer = (serverId: string) => {
-  const server = props.servers.find(s => s.id === serverId)
+  const server = props.servers.find((s) => s.id === serverId)
   if (server) {
     expandedRows.value[serverId] = true
     emit('expand-server', serverId)
@@ -39,7 +39,7 @@ const autoExpandServer = (serverId: string) => {
 
 // 暴露方法给父组件
 defineExpose({
-  autoExpandServer
+  autoExpandServer,
 })
 
 // 工具函数
@@ -120,11 +120,11 @@ const confirmDelete = (event: Event, server: Server) => {
     rejectProps: {
       label: '取消',
       severity: 'secondary',
-      outlined: true
+      outlined: true,
     },
     acceptProps: {
       label: '删除',
-      severity: 'danger'
+      severity: 'danger',
     },
     accept: () => {
       emit('delete-server', server)
@@ -142,11 +142,11 @@ const confirmRestart = (event: Event, server: Server) => {
     rejectProps: {
       label: '取消',
       severity: 'secondary',
-      outlined: true
+      outlined: true,
     },
     acceptProps: {
       label: '重启',
-      severity: 'warn'
+      severity: 'warn',
     },
     accept: () => {
       emit('restart-server', server)
@@ -300,52 +300,80 @@ const confirmRestart = (event: Event, server: Server) => {
 
         <!-- 展开行内容 -->
         <template #expansion="{ data }">
-          <div class="p-6 bg-surface-50 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700">
+          <div
+            class="p-6 bg-surface-50 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700"
+          >
             <!-- 展开时的Loading状态 -->
-            <div v-if="props.expandingServerId === data.id" class="flex items-center justify-center py-8">
+            <div
+              v-if="props.expandingServerId === data.id"
+              class="flex items-center justify-center py-8"
+            >
               <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
             </div>
             <!-- 正常内容 -->
             <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <!-- 左侧：基本信息 -->
               <div class="space-y-4">
-                <h4 class="text-lg font-semibold text-color border-b border-surface-200 dark:border-surface-700 pb-2">
+                <h4
+                  class="text-lg font-semibold text-color border-b border-surface-200 dark:border-surface-700 pb-2"
+                >
                   <i class="pi pi-info-circle text-primary mr-2"></i>基本信息
                 </h4>
                 <div class="space-y-3">
-                  <div class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700">
+                  <div
+                    class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
+                  >
                     <span class="text-muted-color">服务器名称</span>
                     <span class="font-medium">{{ data.name }}</span>
                   </div>
-                  <div class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700">
+                  <div
+                    class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
+                  >
                     <span class="text-muted-color">IP地址</span>
                     <span class="font-mono text-sm">{{ data.ip }}</span>
                   </div>
-                  <div class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700">
+                  <div
+                    class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
+                  >
                     <span class="text-muted-color">状态</span>
-                    <Tag :value="getStatusText(data.status)" :severity="getStatusSeverity(data.status)" />
+                    <Tag
+                      :value="getStatusText(data.status)"
+                      :severity="getStatusSeverity(data.status)"
+                    />
                   </div>
-                  <div class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700">
+                  <div
+                    class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
+                  >
                     <span class="text-muted-color">位置</span>
                     <span>{{ data.location }}</span>
                   </div>
-                  <div class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700">
+                  <div
+                    class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
+                  >
                     <span class="text-muted-color">操作系统</span>
                     <span>{{ data.os }}</span>
                   </div>
-                  <div class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700">
+                  <div
+                    class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
+                  >
                     <span class="text-muted-color">系统架构</span>
                     <span>{{ data.architecture || 'x86_64' }}</span>
                   </div>
-                  <div class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700">
+                  <div
+                    class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
+                  >
                     <span class="text-muted-color">运行时间</span>
                     <span>{{ formatUptime(data.uptime) }}</span>
                   </div>
-                  <div class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700">
+                  <div
+                    class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
+                  >
                     <span class="text-muted-color">内核版本</span>
                     <span>{{ data.kernel || '5.15.0' }}</span>
                   </div>
-                  <div class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700">
+                  <div
+                    class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
+                  >
                     <span class="text-muted-color">主机名</span>
                     <span>{{ data.hostname || 'unknown' }}</span>
                   </div>
@@ -354,12 +382,16 @@ const confirmRestart = (event: Event, server: Server) => {
 
               <!-- 右侧：系统资源 -->
               <div class="space-y-4">
-                <h4 class="text-lg font-semibold text-color border-b border-surface-200 dark:border-surface-700 pb-2">
+                <h4
+                  class="text-lg font-semibold text-color border-b border-surface-200 dark:border-surface-700 pb-2"
+                >
                   <i class="pi pi-chart-line text-primary mr-2"></i>系统资源
                 </h4>
                 <div class="space-y-4">
                   <!-- CPU 详细 -->
-                  <div class="bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700">
+                  <div
+                    class="bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700"
+                  >
                     <div class="flex items-center justify-between mb-3">
                       <div class="flex items-center gap-2">
                         <i class="pi pi-microchip text-primary"></i>
@@ -376,21 +408,33 @@ const confirmRestart = (event: Event, server: Server) => {
                       :pt="{
                         value: {
                           style: {
-                            backgroundColor: data.cpu >= 90 ? '#ef4444' : data.cpu >= 70 ? '#f97316' : data.cpu >= 50 ? '#eab308' : '#22c55e'
-                          }
-                        }
+                            backgroundColor:
+                              data.cpu >= 90
+                                ? '#ef4444'
+                                : data.cpu >= 70
+                                  ? '#f97316'
+                                  : data.cpu >= 50
+                                    ? '#eab308'
+                                    : '#22c55e',
+                          },
+                        },
                       }"
                     />
                   </div>
 
                   <!-- 内存详细 -->
-                  <div class="bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700">
+                  <div
+                    class="bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700"
+                  >
                     <div class="flex items-center justify-between mb-3">
                       <div class="flex items-center gap-2">
                         <i class="pi pi-memory text-primary"></i>
                         <span class="font-medium">内存使用率</span>
                       </div>
-                      <span class="text-2xl font-bold" :class="getMemoryTextColorClass(data.memory)">
+                      <span
+                        class="text-2xl font-bold"
+                        :class="getMemoryTextColorClass(data.memory)"
+                      >
                         {{ data.memory }}%
                       </span>
                     </div>
@@ -401,15 +445,24 @@ const confirmRestart = (event: Event, server: Server) => {
                       :pt="{
                         value: {
                           style: {
-                            backgroundColor: data.memory >= 90 ? '#ef4444' : data.memory >= 70 ? '#f97316' : data.memory >= 50 ? '#eab308' : '#22c55e'
-                          }
-                        }
+                            backgroundColor:
+                              data.memory >= 90
+                                ? '#ef4444'
+                                : data.memory >= 70
+                                  ? '#f97316'
+                                  : data.memory >= 50
+                                    ? '#eab308'
+                                    : '#22c55e',
+                          },
+                        },
                       }"
                     />
                   </div>
 
                   <!-- 磁盘详细 -->
-                  <div class="bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700">
+                  <div
+                    class="bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700"
+                  >
                     <div class="flex items-center justify-between mb-3">
                       <div class="flex items-center gap-2">
                         <i class="pi pi-hdd text-primary"></i>
@@ -426,15 +479,24 @@ const confirmRestart = (event: Event, server: Server) => {
                       :pt="{
                         value: {
                           style: {
-                            backgroundColor: data.disk >= 90 ? '#ef4444' : data.disk >= 70 ? '#f97316' : data.disk >= 50 ? '#eab308' : '#22c55e'
-                          }
-                        }
+                            backgroundColor:
+                              data.disk >= 90
+                                ? '#ef4444'
+                                : data.disk >= 70
+                                  ? '#f97316'
+                                  : data.disk >= 50
+                                    ? '#eab308'
+                                    : '#22c55e',
+                          },
+                        },
                       }"
                     />
                   </div>
 
                   <!-- 网络信息 -->
-                  <div class="bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700">
+                  <div
+                    class="bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700"
+                  >
                     <div class="flex items-center gap-2 mb-3">
                       <i class="pi pi-wifi text-primary"></i>
                       <span class="font-medium">网络 I/O</span>
@@ -465,7 +527,9 @@ const confirmRestart = (event: Event, server: Server) => {
             </div>
 
             <!-- 操作按钮 -->
-            <div class="mt-6 pt-6 border-t border-surface-200 dark:border-surface-700 flex justify-end gap-3">
+            <div
+              class="mt-6 pt-6 border-t border-surface-200 dark:border-surface-700 flex justify-end gap-3"
+            >
               <Button
                 label="重启服务"
                 icon="pi pi-refresh"
@@ -475,12 +539,7 @@ const confirmRestart = (event: Event, server: Server) => {
                 :loading="props.restartingServerId === data.id"
                 class="shadow-sm"
               />
-              <Button
-                label="查看日志"
-                icon="pi pi-file-text"
-                text
-                class="shadow-sm"
-              />
+              <Button label="查看日志" icon="pi pi-file-text" text class="shadow-sm" />
               <Button
                 label="编辑服务器"
                 icon="pi pi-pencil"

@@ -1,54 +1,23 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-
-interface AlertRule {
-  enabled: boolean
-  warning: number
-  critical: number
-}
-
-interface AlertRules {
-  cpu: AlertRule
-  memory: AlertRule
-  disk: AlertRule
-}
-
-interface EmailNotification {
-  enabled: boolean
-  smtp: string
-  port: number
-  security: string
-  from: string
-  to: string
-}
-
-interface WechatNotification {
-  enabled: boolean
-  webhook: string
-  mentioned: string
-}
-
-interface Notifications {
-  email: EmailNotification
-  wechat: WechatNotification
-}
+import type { AlertRules, Notifications } from '@/types/settings/alerts'
 
 const alertRules = ref<AlertRules>({
   cpu: {
     enabled: true,
     warning: 80,
-    critical: 90
+    critical: 90,
   },
   memory: {
     enabled: true,
     warning: 85,
-    critical: 95
+    critical: 95,
   },
   disk: {
     enabled: true,
     warning: 85,
-    critical: 95
-  }
+    critical: 95,
+  },
 })
 
 const notifications = ref<Notifications>({
@@ -58,19 +27,19 @@ const notifications = ref<Notifications>({
     port: 587,
     security: 'STARTTLS',
     from: '',
-    to: ''
+    to: '',
   },
   wechat: {
     enabled: false,
     webhook: '',
-    mentioned: '@all'
-  }
+    mentioned: '@all',
+  },
 })
 
 const securityOptions = [
   { label: 'None', value: 'NONE' },
   { label: 'STARTTLS', value: 'STARTTLS' },
-  { label: 'SSL/TLS', value: 'SSL' }
+  { label: 'SSL/TLS', value: 'SSL' },
 ]
 
 const saving = ref(false)
@@ -80,10 +49,10 @@ const saveAlertSettings = async () => {
   saving.value = true
   try {
     // 实际项目中这里会调用 API 保存设置
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
     console.log('Alert settings saved:', {
       alertRules: alertRules.value,
-      notifications: notifications.value
+      notifications: notifications.value,
     })
     // 可以添加 Toast 提示
   } catch (error) {
@@ -121,7 +90,10 @@ const saveAlertSettings = async () => {
                 <ToggleSwitch v-model="alertRules.cpu.enabled" />
               </div>
 
-              <div v-if="alertRules.cpu.enabled" class="ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700">
+              <div
+                v-if="alertRules.cpu.enabled"
+                class="ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700"
+              >
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-color">告警阈值 (%)</label>
@@ -145,15 +117,28 @@ const saveAlertSettings = async () => {
                 <ToggleSwitch v-model="alertRules.memory.enabled" />
               </div>
 
-              <div v-if="alertRules.memory.enabled" class="ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700">
+              <div
+                v-if="alertRules.memory.enabled"
+                class="ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700"
+              >
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-color">告警阈值 (%)</label>
-                    <InputNumber v-model="alertRules.memory.warning" :min="1" :max="100" suffix="%" />
+                    <InputNumber
+                      v-model="alertRules.memory.warning"
+                      :min="1"
+                      :max="100"
+                      suffix="%"
+                    />
                   </div>
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-color">严重阈值 (%)</label>
-                    <InputNumber v-model="alertRules.memory.critical" :min="1" :max="100" suffix="%" />
+                    <InputNumber
+                      v-model="alertRules.memory.critical"
+                      :min="1"
+                      :max="100"
+                      suffix="%"
+                    />
                   </div>
                 </div>
               </div>
@@ -169,7 +154,10 @@ const saveAlertSettings = async () => {
                 <ToggleSwitch v-model="alertRules.disk.enabled" />
               </div>
 
-              <div v-if="alertRules.disk.enabled" class="ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700">
+              <div
+                v-if="alertRules.disk.enabled"
+                class="ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700"
+              >
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-color">告警阈值 (%)</label>
@@ -177,7 +165,12 @@ const saveAlertSettings = async () => {
                   </div>
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-color">严重阈值 (%)</label>
-                    <InputNumber v-model="alertRules.disk.critical" :min="1" :max="100" suffix="%" />
+                    <InputNumber
+                      v-model="alertRules.disk.critical"
+                      :min="1"
+                      :max="100"
+                      suffix="%"
+                    />
                   </div>
                 </div>
               </div>
@@ -206,7 +199,10 @@ const saveAlertSettings = async () => {
                 <ToggleSwitch v-model="notifications.email.enabled" />
               </div>
 
-              <div v-if="notifications.email.enabled" class="space-y-3 ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700">
+              <div
+                v-if="notifications.email.enabled"
+                class="space-y-3 ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700"
+              >
                 <div class="flex flex-col gap-2">
                   <label class="text-sm font-medium text-color">SMTP 服务器</label>
                   <InputText v-model="notifications.email.smtp" placeholder="smtp.example.com" />
@@ -218,7 +214,12 @@ const saveAlertSettings = async () => {
                   </div>
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-color">加密方式</label>
-                    <Select v-model="notifications.email.security" :options="securityOptions" optionLabel="label" optionValue="value" />
+                    <Select
+                      v-model="notifications.email.security"
+                      :options="securityOptions"
+                      optionLabel="label"
+                      optionValue="value"
+                    />
                   </div>
                 </div>
                 <div class="flex flex-col gap-2">
@@ -242,14 +243,23 @@ const saveAlertSettings = async () => {
                 <ToggleSwitch v-model="notifications.wechat.enabled" />
               </div>
 
-              <div v-if="notifications.wechat.enabled" class="space-y-3 ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700">
+              <div
+                v-if="notifications.wechat.enabled"
+                class="space-y-3 ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700"
+              >
                 <div class="flex flex-col gap-2">
                   <label class="text-sm font-medium text-color">Webhook URL</label>
-                  <InputText v-model="notifications.wechat.webhook" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..." />
+                  <InputText
+                    v-model="notifications.wechat.webhook"
+                    placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..."
+                  />
                 </div>
                 <div class="flex flex-col gap-2">
                   <label class="text-sm font-medium text-color">提及用户</label>
-                  <InputText v-model="notifications.wechat.mentioned" placeholder="@all 或 用户ID" />
+                  <InputText
+                    v-model="notifications.wechat.mentioned"
+                    placeholder="@all 或 用户ID"
+                  />
                 </div>
               </div>
             </div>
