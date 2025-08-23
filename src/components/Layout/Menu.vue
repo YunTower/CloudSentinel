@@ -1,70 +1,3 @@
-<!-- eslint-disable vue/multi-word-component-names -->
-<template>
-  <div class="card">
-    <Menubar :model="filteredMenuItems">
-      <template #item="{ item, props, hasSubmenu, root }">
-        <router-link v-if="item.route" v-slot="{ href, navigate }" :to="item.route" custom>
-          <a
-            v-ripple
-            class="flex items-center"
-            :href="href"
-            v-bind="props.action"
-            @click="navigate"
-          >
-            <span v-if="item.icon" :class="item.icon" class="mr-2" />
-            <span>{{ item.label }}</span>
-            <i
-              v-if="hasSubmenu"
-              :class="[
-                'pi pi-angle-down ml-auto',
-                { 'pi-angle-down': root, 'pi-angle-right': !root },
-              ]"
-            ></i>
-          </a>
-        </router-link>
-        <a v-else v-ripple :href="item.url" :target="item.target" v-bind="props.action">
-          <span v-if="item.icon" :class="item.icon" class="mr-2" />
-          <span>{{ item.label }}</span>
-          <span v-if="hasSubmenu" class="pi pi-fw pi-angle-down" />
-        </a>
-      </template>
-      <template #end>
-        <div class="flex items-center gap-2">
-          <Button
-            class="h-[35px] w-[35px]"
-            type="button"
-            @click="toggleDarkMode"
-            text
-            rounded
-            severity="secondary"
-            size="small"
-            v-tooltip.bottom="isDarkMode ? '切换到浅色模式' : '切换到深色模式'"
-          >
-            <i :class="['pi', { 'pi-moon': !isDarkMode, 'pi-sun': isDarkMode }]" />
-          </Button>
-
-          <!-- 用户信息 -->
-          <div class="flex items-center gap-2">
-            <Button
-              v-if="isAuthenticated"
-              class="h-[35px] w-[35px]"
-              type="button"
-              @click="handleLogout"
-              text
-              rounded
-              severity="secondary"
-              size="small"
-              v-tooltip.bottom="'退出登录'"
-            >
-              <i class="pi pi-sign-out" />
-            </Button>
-          </div>
-        </div>
-      </template>
-    </Menubar>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -227,3 +160,68 @@ onMounted(() => {
   setInterval(checkAuthState, 5000)
 })
 </script>
+<template>
+  <div class="card">
+    <Menubar :model="filteredMenuItems">
+      <template #item="{ item, props, hasSubmenu, root }">
+        <router-link v-if="item.route" v-slot="{ href, navigate }" :to="item.route" custom>
+          <a
+            v-ripple
+            class="flex items-center"
+            :href="href"
+            v-bind="props.action"
+            @click="navigate"
+          >
+            <span v-if="item.icon" :class="item.icon" class="mr-2" />
+            <span>{{ item.label }}</span>
+            <i
+              v-if="hasSubmenu"
+              :class="[
+                'pi pi-angle-down ml-auto',
+                { 'pi-angle-down': root, 'pi-angle-right': !root },
+              ]"
+            ></i>
+          </a>
+        </router-link>
+        <a v-else v-ripple :href="item.url" :target="item.target" v-bind="props.action">
+          <span v-if="item.icon" :class="item.icon" class="mr-2" />
+          <span>{{ item.label }}</span>
+          <span v-if="hasSubmenu" class="pi pi-fw pi-angle-down" />
+        </a>
+      </template>
+      <template #end>
+        <div class="flex items-center gap-2">
+          <Button
+            class="h-[35px] w-[35px]"
+            type="button"
+            @click="toggleDarkMode"
+            text
+            rounded
+            severity="secondary"
+            size="small"
+            v-tooltip.bottom="isDarkMode ? '切换到浅色模式' : '切换到深色模式'"
+          >
+            <i :class="['pi', { 'pi-moon': !isDarkMode, 'pi-sun': isDarkMode }]" />
+          </Button>
+
+          <!-- 用户信息 -->
+          <div class="flex items-center gap-2">
+            <Button
+              v-if="isAuthenticated"
+              class="h-[35px] w-[35px]"
+              type="button"
+              @click="handleLogout"
+              text
+              rounded
+              severity="secondary"
+              size="small"
+              v-tooltip.bottom="'退出登录'"
+            >
+              <i class="pi pi-sign-out" />
+            </Button>
+          </div>
+        </div>
+      </template>
+    </Menubar>
+  </div>
+</template>
