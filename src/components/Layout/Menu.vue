@@ -161,7 +161,7 @@ onMounted(() => {
 })
 </script>
 <template>
-  <div class="card">
+  <div class="fixed-menu">
     <Menubar :model="filteredMenuItems">
       <template #item="{ item, props, hasSubmenu, root }">
         <router-link v-if="item.route" v-slot="{ href, navigate }" :to="item.route" custom>
@@ -225,3 +225,15 @@ onMounted(() => {
     </Menubar>
   </div>
 </template>
+
+<style scoped>
+.fixed-menu {
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--surface-border);
+  transition: all 0.3s ease;
+}
+
+:global(.dark) .fixed-menu {
+  border-bottom-color: var(--surface-border);
+}
+</style>
