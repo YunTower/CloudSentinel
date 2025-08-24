@@ -16,3 +16,25 @@ export interface GuestAccessConfig {
   guestPassword: string
   hideSensitiveInfo: boolean
 }
+
+// API响应类型
+export interface PublicSettingsResponse {
+  data: {
+    allow_guest_login: boolean
+    guest_password_enabled: boolean
+    panel_title: string
+  }
+  message: string
+  status: boolean
+}
+
+// 登录响应类型
+export interface LoginResponse {
+  data: {
+    token: string
+    type: 'admin' | 'guest'
+    username: string
+  }
+  message: string
+  status: boolean
+}
