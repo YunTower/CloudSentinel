@@ -6,12 +6,13 @@ import { createPinia } from 'pinia'
 import { definePreset } from '@primeuix/themes'
 import PrimeVue from 'primevue/config'
 import ToastService from 'primevue/toastservice'
-import ConfirmationService from 'primevue/confirmationservice';
+import ConfirmationService from 'primevue/confirmationservice'
 
 import Aura from '@primevue/themes/aura'
 import App from './App.vue'
 import router from './router'
 import { role, auth } from './directives/permission'
+import { authManager } from '@/utils/auth'
 
 const app = createApp(App)
 
@@ -104,4 +105,12 @@ app.use(PrimeVue, {
   ripple: true,
 })
 
-app.mount('#app')
+authManager
+  .initAuthState()
+  .then(() => {
+    app.mount('#app')
+  })
+  .catch((error) => {
+    console.error('Failed to initialize auth state:', error)
+    app.mount('#app')
+  })

@@ -70,6 +70,6 @@ body {
   Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
 }
 
-input[type='password'] {
+input[type='password'], input[type='text'] {
   width: 100% !important;
 }

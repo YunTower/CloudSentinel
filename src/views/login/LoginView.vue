@@ -11,168 +11,165 @@ const toast = useToast()
 // 当前激活的标签页
 const activeTab = ref('0')
 
-// 访客登录表单
-const guestForm = ref({
-  password: '',
-  rememberMe: false,
-})
-
-// 管理员登录表单
-const adminForm = ref({
+// 统一登录表单
+const loginForm = ref({
+  type: 'guest' as 'guest' | 'admin',
   username: '',
   password: '',
   rememberMe: false,
 })
 
 // 加载状态
-const guestLoading = ref(false)
-const adminLoading = ref(false)
+const isLoading = ref(false)
 
 // 权限设置
 const permissions = ref(authManager.getGuestAccessConfig())
 
-// 访客登录
-const handleGuestLogin = async () => {
-  if (!permissions.value.allowGuest) {
-    toast.add({
-      severity: 'error',
-      summary: '访问被拒绝',
-      detail: '访客访问功能已被禁用',
-      life: 5000,
-    })
-    return
+// 面板标题
+const panelTitle = ref('CloudSentinel 云哨')
+
+// 统一登录方法
+const handleLogin = async () => {
+  const { type, username, password, rememberMe } = loginForm.value
+
+  // 访客登录验证
+  if (type === 'guest') {
+    if (!permissions.value.allowGuest) {
+      toast.add({
+        severity: 'error',
+        summary: '访问被拒绝',
+        detail: '访客访问功能已被禁用',
+        life: 5000,
+      })
+      return
+    }
+
+    if (permissions.value.enablePassword && !password) {
+      toast.add({
+        severity: 'error',
+        summary: '密码必填',
+        detail: '请输入访客访问密码',
+        life: 3000,
+      })
+      return
+    }
+
+    if (permissions.value.enablePassword && !authManager.validateGuestPassword(password)) {
+      toast.add({
+        severity: 'error',
+        summary: '密码错误',
+        detail: '访客访问密码不正确',
+        life: 3000,
+      })
+      return
+    }
   }
 
-  if (permissions.value.enablePassword && !guestForm.value.password) {
-    toast.add({
-      severity: 'error',
-      summary: '密码必填',
-      detail: '请输入访客访问密码',
-      life: 3000,
-    })
-    return
+  // 管理员登录验证
+  if (type === 'admin') {
+    if (!username || !password) {
+      toast.add({
+        severity: 'error',
+        summary: '信息不完整',
+        detail: '请输入用户名和密码',
+        life: 3000,
+      })
+      return
+    }
   }
 
-  if (
-    permissions.value.enablePassword &&
-    !authManager.validateGuestPassword(guestForm.value.password)
-  ) {
-    toast.add({
-      severity: 'error',
-      summary: '密码错误',
-      detail: '访客访问密码不正确',
-      life: 3000,
-    })
-    return
-  }
-
-  guestLoading.value = true
+  isLoading.value = true
   try {
-    // 模拟API调用
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // 创建游客会话
-    authManager.createGuestSession(guestForm.value.rememberMe)
-
-    toast.add({
-      severity: 'success',
-      summary: '登录成功',
-      detail: '欢迎访客用户',
-      life: 3000,
-    })
-
-    // 跳转到首页
-    router.push('/')
-  } catch {
-    toast.add({
-      severity: 'error',
-      summary: '登录失败',
-      detail: '请稍后重试',
-      life: 5000,
-    })
-  } finally {
-    guestLoading.value = false
-  }
-}
-
-// 管理员登录
-const handleAdminLogin = async () => {
-  if (!adminForm.value.username || !adminForm.value.password) {
-    toast.add({
-      severity: 'error',
-      summary: '信息不完整',
-      detail: '请输入用户名和密码',
-      life: 3000,
-    })
-    return
-  }
-
-  adminLoading.value = true
-  try {
-    // 模拟API调用
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // 这里应该调用真实的登录API
-    // 暂时使用模拟验证
-    if (adminForm.value.username === 'admin' && adminForm.value.password === 'admin123') {
-      // 创建管理员会话（实际项目中应该由后端返回JWT token）
-      const adminSession = {
-        id: 'admin',
-        username: adminForm.value.username,
-        role: 'admin' as const,
-        exp: Date.now() / 1000 + 24 * 60 * 60, // 24小时过期
-      }
-
-      // 创建模拟JWT token
-      const mockToken = authManager['createMockJWT'](adminSession)
-      authManager.setToken(mockToken, adminForm.value.rememberMe)
+    if (type === 'guest') {
+      // 游客登录
+      await authManager.guestLogin(password, rememberMe)
 
       toast.add({
         severity: 'success',
         summary: '登录成功',
-        detail: `欢迎回来，${adminForm.value.username}`,
+        detail: '欢迎访客用户',
         life: 3000,
       })
-
-      // 跳转到首页
-      router.push('/')
     } else {
-      throw new Error('用户名或密码错误')
+      // 管理员登录
+      const userSession = await authManager.login(username, password, rememberMe)
+
+      toast.add({
+        severity: 'success',
+        summary: '登录成功',
+        detail: `欢迎回来，${userSession.username}`,
+        life: 3000,
+      })
     }
+
+    // 跳转到首页
+    await router.push('/')
   } catch (error: unknown) {
     toast.add({
       severity: 'error',
       summary: '登录失败',
-      detail: error instanceof Error ? error.message : '用户名或密码错误',
+      detail: error instanceof Error ? error.message : '请稍后重试',
       life: 5000,
     })
   } finally {
-    adminLoading.value = false
+    isLoading.value = false
   }
 }
 
-// 加载权限设置
-const loadPermissions = () => {
+// 切换登录类型时重置表单
+const handleTabChange = (tabValue: string | number) => {
+  const newTab = tabValue.toString()
+
+  // 如果尝试选择访客访问tab但权限不足，强制选择管理员登录
+  if (newTab === '0' && !permissions.value.allowGuest) {
+    activeTab.value = '1'
+    loginForm.value.type = 'admin'
+  } else {
+    activeTab.value = newTab
+    loginForm.value.type = newTab === '0' ? 'guest' : 'admin'
+  }
+
+  // 重置表单数据
+  loginForm.value.username = ''
+  loginForm.value.password = ''
+  loginForm.value.rememberMe = false
+}
+
+// 加载公开设置
+const loadPublicSettings = async () => {
   try {
-    const saved = localStorage.getItem('dashboard-permissions')
-    if (saved) {
-      const config = JSON.parse(saved)
-      permissions.value = { ...permissions.value, ...config }
-      // 同步到authManager
-      authManager.saveGuestAccessConfig(permissions.value)
+    // 从API加载权限设置
+    const config = await authManager.loadPublicSettings()
+    permissions.value = config
+
+    // 从API加载面板标题
+    const title = await authManager.getPanelTitle()
+    panelTitle.value = title
+
+    // 如果未开启游客登录，默认选中管理员登录tab
+    if (!permissions.value.allowGuest) {
+      activeTab.value = '1'
+      loginForm.value.type = 'admin'
     }
   } catch (error) {
-    console.error('加载权限设置失败:', error)
+    console.error('加载公开设置失败:', error)
+    // 如果API失败，使用默认配置
+    permissions.value = authManager.getGuestAccessConfig()
+
+    // 同样检查默认配置下的游客登录权限
+    if (!permissions.value.allowGuest) {
+      activeTab.value = '1'
+      loginForm.value.type = 'admin'
+    }
   }
 }
 
-// 生命周期
-onMounted(() => {
-  loadPermissions()
+onMounted(async () => {
+  await loadPublicSettings()
 
-  // 如果已经登录，跳转到首页
-  if (authManager.isAuthenticated()) {
-    router.push('/')
+  // 如果已经登录且不在首页，跳转到首页
+  if (authManager.isAuthenticated() && router.currentRoute.value.path !== '/') {
+    router.replace('/')
   }
 })
 </script>
@@ -185,13 +182,13 @@ onMounted(() => {
     >
       <div class="w-full max-w-md">
         <div class="text-center mb-8">
-          <h1 class="text-4xl font-bold text-color mb-3">CloudSentinel</h1>
+          <h1 class="text-4xl font-bold text-color mb-3">{{ panelTitle }}</h1>
           <p class="text-lg text-muted-color">登录云哨务器监控探针系统</p>
         </div>
 
         <Card class="shadow-2xl border-0">
           <template #content>
-            <Tabs :value="activeTab" @update:value="activeTab = $event as string" class="w-full">
+            <Tabs :value="activeTab" @update:value="handleTabChange" class="w-full">
               <TabList class="w-full">
                 <Tab value="0" class="flex-1" v-if="permissions.allowGuest">
                   <div class="flex items-center justify-center gap-2">
@@ -217,7 +214,7 @@ onMounted(() => {
                         >
                         <Password
                           id="guestPassword"
-                          v-model="guestForm.password"
+                          v-model="loginForm.password"
                           placeholder="请输入访客访问密码"
                           toggleMask
                           :feedback="false"
@@ -230,7 +227,7 @@ onMounted(() => {
                         <div class="flex items-center gap-3">
                           <Checkbox
                             id="guestRememberMe"
-                            v-model="guestForm.rememberMe"
+                            v-model="loginForm.rememberMe"
                             :binary="true"
                             class="w-5 h-5"
                           />
@@ -245,9 +242,9 @@ onMounted(() => {
                       <Button
                         label="访客访问"
                         icon="pi pi-sign-in"
-                        @click="handleGuestLogin"
-                        :loading="guestLoading"
-                        :disabled="permissions.enablePassword && !guestForm.password"
+                        @click="handleLogin"
+                        :loading="isLoading"
+                        :disabled="permissions.enablePassword && !loginForm.password"
                         class="w-full py-4 text-base font-medium"
                       />
                     </div>
@@ -263,7 +260,7 @@ onMounted(() => {
                       >
                       <InputText
                         id="adminUsername"
-                        v-model="adminForm.username"
+                        v-model="loginForm.username"
                         placeholder="请输入用户名"
                         class="w-full py-3 px-4 text-base"
                       />
@@ -275,7 +272,7 @@ onMounted(() => {
                       >
                       <Password
                         id="adminPassword"
-                        v-model="adminForm.password"
+                        v-model="loginForm.password"
                         placeholder="请输入密码"
                         toggleMask
                         :feedback="false"
@@ -290,7 +287,7 @@ onMounted(() => {
                     <div class="flex items-center gap-3">
                       <Checkbox
                         id="adminRememberMe"
-                        v-model="adminForm.rememberMe"
+                        v-model="loginForm.rememberMe"
                         :binary="true"
                         class="w-5 h-5"
                       />
@@ -302,9 +299,9 @@ onMounted(() => {
                     <Button
                       label="管理员登录"
                       icon="pi pi-sign-in"
-                      @click="handleAdminLogin"
-                      :loading="adminLoading"
-                      :disabled="!adminForm.username || !adminForm.password"
+                      @click="handleLogin"
+                      :loading="isLoading"
+                      :disabled="!loginForm.username || !loginForm.password"
                       class="w-full py-4 text-base font-medium"
                     />
                   </div>
