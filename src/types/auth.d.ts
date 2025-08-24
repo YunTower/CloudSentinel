@@ -38,3 +38,15 @@ export interface LoginResponse {
   message: string
   status: boolean
 }
+
+// 检查登录状态响应类型
+export interface CheckLoginResponse {
+  data: {
+    guard: string
+    is_valid: boolean
+    user_id: string
+    user_type: 'admin' | 'guest'
+  }
+  message: string
+  status: boolean
+}

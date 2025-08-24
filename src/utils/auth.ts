@@ -5,6 +5,7 @@ import type {
   GuestAccessConfig,
   PublicSettingsResponse,
   LoginResponse,
+  CheckLoginResponse,
 } from '@/types/auth'
 import panelApi from '@/apis/settings/panel'
 import authApi from '@/apis/auth'
@@ -16,6 +17,7 @@ class AuthManager {
   private readonly GUEST_CONFIG_KEY = 'guest_access_config'
   private isLoggedIn = false // 临时认证状态标志
   private currentUserSession: UserSession | null = null // 临时用户会话存储
+  private isInitialized = false // 初始化状态标志
 
   // 获取访问token
   getToken(): string | null {
@@ -103,6 +105,11 @@ class AuthManager {
 
   // 检查用户是否已登录
   isAuthenticated(): boolean {
+    // 如果还没有初始化完成，返回false避免状态不一致
+    if (!this.isInitialized) {
+      return false
+    }
+
     // 检查是否有有效的用户信息，确保状态一致性
     const user = this.getCurrentUser()
     if (user) {
@@ -284,25 +291,79 @@ class AuthManager {
     this.clearTokens()
     this.isLoggedIn = false // 清除认证状态
     this.currentUserSession = null // 清除临时用户会话
+    this.isInitialized = false // 重置初始化状态
   }
 
   // 初始化认证状态
-  initAuthState(): void {
+  async initAuthState(): Promise<void> {
     // 检查是否有token，如果有则尝试恢复认证状态
     const token = this.getToken()
     if (token) {
-      // 尝试从token解析用户信息
-      const user = this.getCurrentUser()
-      if (user) {
-        this.isLoggedIn = true
-        this.currentUserSession = user
-      } else {
-        // 如果token无法解析，清除无效token
-        this.clearTokens()
-        this.isLoggedIn = false
-        this.currentUserSession = null
-      }
+      // 调用check API验证登录状态
+      await this.checkLoginStatus()
     }
+
+    // 标记初始化完成
+    this.isInitialized = true
+  }
+
+  // 检查登录状态
+  private async checkLoginStatus(): Promise<void> {
+    try {
+      const response = await authApi.checkLogin()
+      const data = response as CheckLoginResponse
+
+      if (data.status && data.data?.is_valid) {
+        // 登录状态有效，恢复用户信息
+        const userSession: UserSession = {
+          id: data.data.user_id,
+          username: data.data.user_type === 'admin' ? 'admin' : '游客',
+          role: data.data.user_type as UserRole,
+          exp: Date.now() / 1000 + 24 * 60 * 60, // 24小时过期
+        }
+
+        this.setCurrentUser(userSession)
+      } else {
+        // 登录状态无效，清除认证状态
+        this.logout()
+      }
+    } catch (error) {
+      console.error('Failed to check login status:', error)
+      // API调用失败，清除认证状态
+      this.logout()
+    }
+  }
+
+  // 刷新token
+  async refreshToken(): Promise<string | null> {
+    try {
+      const currentToken = this.getToken()
+      if (!currentToken) {
+        throw new Error('No token available')
+      }
+
+      // 直接使用当前token调用刷新API
+      const response = await authApi.refreshToken()
+      const data = response as LoginResponse
+
+      if (data.status && data.data?.token) {
+        // 更新token
+        this.setToken(data.data.token, this.isTokenStoredInLocalStorage())
+        return data.data.token
+      }
+
+      throw new Error(data.message || 'Token refresh failed')
+    } catch (error) {
+      console.error('Token refresh failed:', error)
+      // 刷新失败，清除所有token
+      this.clearTokens()
+      throw error
+    }
+  }
+
+  // 检查token是否存储在localStorage中
+  private isTokenStoredInLocalStorage(): boolean {
+    return localStorage.getItem(this.TOKEN_KEY) !== null
   }
 }
 

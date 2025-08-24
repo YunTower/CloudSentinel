@@ -105,5 +105,12 @@ app.use(PrimeVue, {
   ripple: true,
 })
 
-authManager.initAuthState()
-app.mount('#app')
+authManager
+  .initAuthState()
+  .then(() => {
+    app.mount('#app')
+  })
+  .catch((error) => {
+    console.error('Failed to initialize auth state:', error)
+    app.mount('#app')
+  })
