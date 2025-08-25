@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useToast } from 'primevue/usetoast'
 import type { PanelSettings, UpdateSource, VersionInfo } from '@/types/settings/panel'
+import panelApi from '@/apis/settings/panel'
+const toast = useToast()
 
 const panelSettings = ref<PanelSettings>({
   title: 'CloudSentinel',
@@ -103,19 +106,35 @@ const performUpdate = async () => {
   }
 }
 
+// 加载设置
+const loadPanelSettings = async () => {
+  try {
+    const res = await panelApi.getPanelSettings()
+    const title = res?.data?.panel_title
+    if (typeof title === 'string' && title.length > 0) {
+      panelSettings.value.title = title
+    }
+  } catch (error) {
+    console.error('Failed to load panel settings:', error)
+  }
+}
+
 // 保存设置
 const savePanelSettings = async () => {
   saving.value = true
   try {
-    // 实际项目中这里会调用 API 保存设置
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    // 可以添加 Toast 提示
+    await panelApi.savePanelSettings({ title: panelSettings.value.title })
+    toast.add({ severity: 'success', summary: '保存成功', detail: '面板设置已更新', life: 3000 })
   } catch (error) {
     console.error('Failed to save panel settings:', error)
   } finally {
     saving.value = false
   }
 }
+
+onMounted(() => {
+  loadPanelSettings()
+})
 </script>
 <template>
   <div class="panel-view">

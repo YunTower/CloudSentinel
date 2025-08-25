@@ -176,7 +176,6 @@ onMounted(async () => {
 
 <template>
   <div class="login-view">
-    <Toast />
     <div
       class="min-h-screen flex items-center justify-center bg-gradient-to-br from-surface-50 to-surface-100 dark:from-surface-900 dark:to-surface-800 p-4"
     >

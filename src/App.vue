@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import BaseLayout from '@/layout/BaseLayout.vue'
 import BlankLayout from '@/layout/BlankLayout.vue'
 import Loading from '@/components/Loading/Loading.vue'
+import Toast from 'primevue/toast'
 
 const loading = ref(true)
 const route = useRoute()
@@ -24,6 +25,7 @@ onMounted(() => {
 
 <template>
   <component :is="layout" class="app-container">
+    <Toast position="top-right" />
     <Loading
       :loading="isLoading"
       :size="50"

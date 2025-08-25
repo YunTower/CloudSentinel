@@ -350,8 +350,6 @@ onMounted(() => {
 
 <template>
   <div class="servers-view">
-    <Toast />
-
     <div class="mb-6">
       <h1 class="text-3xl font-bold text-color mb-2">服务器管理</h1>
       <p class="text-muted-color">管理和监控所有服务器节点</p>
