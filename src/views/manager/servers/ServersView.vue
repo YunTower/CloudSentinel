@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import ServerToolbar from './components/ServerToolbar.vue'
 import ServerTable from './components/ServerTable.vue'
 import ServerDialog from './components/ServerDialog.vue'
-import type { Server, ServerForm, StatusOption } from '@/types/manager/servers'
+import type { Server, ServerForm } from '@/types/manager/servers'
 
 // 响应式数据
 const loading = ref(false)
@@ -34,15 +33,6 @@ const serverForm = ref<ServerForm>({
   hostname: '',
 })
 
-// 状态选项
-const statusOptions: StatusOption[] = [
-  { label: '全部', value: 'all' },
-  { label: '在线', value: 'online' },
-  { label: '离线', value: 'offline' },
-  { label: '异常', value: 'error' },
-]
-
-// Toast 通知
 const toast = useToast()
 
 // 模拟服务器数据
@@ -165,34 +155,6 @@ const filteredServers = computed(() => {
 
   return filtered
 })
-
-// 统计数据
-const statistics = computed(() => ({
-  online: servers.value.filter(server => server.status === 'online').length,
-  offline: servers.value.filter(server => server.status === 'offline').length,
-  error: servers.value.filter(server => server.status === 'error').length,
-}))
-
-// 事件处理函数
-const refreshData = () => {
-  loading.value = true
-  // 模拟刷新数据
-  setTimeout(() => {
-    loading.value = false
-    toast.add({
-      severity: 'success',
-      summary: '刷新成功',
-      detail: '服务器数据已更新',
-      life: 2000,
-    })
-  }, 1000)
-}
-
-const handleAddServer = () => {
-  editingServer.value = null
-  resetForm()
-  showAddDialog.value = true
-}
 
 const handleEditServer = (server: Server) => {
   editingServer.value = server
@@ -336,31 +298,35 @@ watch(statusFilter, async (newValue, oldValue) => {
   if (oldValue !== undefined && newValue !== oldValue) {
     filterLoading.value = true
     // 模拟筛选加载延迟
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await new Promise((resolve) => setTimeout(resolve, 300))
     filterLoading.value = false
   }
 })
 
 // 监听URL参数变化
-watch(() => window.location.search, (newSearch) => {
-  const urlParams = new URLSearchParams(newSearch)
-  const serverId = urlParams.get('server')
-  if (serverId && serverTableRef.value) {
-    // 清除之前的展开状态
-    expandingServerId.value = ''
-    // 自动展开新的服务器
-    nextTick(() => {
-      serverTableRef.value?.autoExpandServer(serverId)
-    })
-  }
-}, { immediate: false })
+watch(
+  () => window.location.search,
+  (newSearch) => {
+    const urlParams = new URLSearchParams(newSearch)
+    const serverId = urlParams.get('server')
+    if (serverId && serverTableRef.value) {
+      // 清除之前的展开状态
+      expandingServerId.value = ''
+      // 自动展开新的服务器
+      nextTick(() => {
+        serverTableRef.value?.autoExpandServer(serverId)
+      })
+    }
+  },
+  { immediate: false },
+)
 
 // 展开详情处理
 const handleExpandServer = async (serverId: string) => {
   expandingServerId.value = serverId
   try {
     // 模拟加载服务器详细信息
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise((resolve) => setTimeout(resolve, 500))
   } finally {
     expandingServerId.value = ''
   }
@@ -379,8 +345,6 @@ onMounted(() => {
       }
     })
   }
-
-  // 可以在这里加载真实数据
 })
 </script>
 
@@ -394,19 +358,6 @@ onMounted(() => {
     </div>
 
     <div class="space-y-6">
-      <!-- 操作栏 -->
-      <ServerToolbar
-        v-model:search-query="searchQuery"
-        v-model:status-filter="statusFilter"
-        :status-options="statusOptions"
-        :filtered-count="filteredServers.length"
-        :total-count="servers.length"
-        :statistics="statistics"
-        :filter-loading="filterLoading"
-        @refresh="refreshData"
-        @add-server="handleAddServer"
-      />
-
       <!-- 服务器数据表格 -->
       <ServerTable
         ref="serverTableRef"
@@ -437,7 +388,6 @@ onMounted(() => {
 <style scoped>
 .servers-view {
   padding: 2rem;
-  max-width: 1400px;
   margin: 0 auto;
 }
 </style>

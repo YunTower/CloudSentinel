@@ -3,11 +3,9 @@
     <header class="fixed-header">
       <Menu />
     </header>
-
-    <main class="flex-1 main-content">
+    <main class="pt-[65px] flex-1 flex justify-center">
       <slot />
     </main>
-
     <footer class="flex-shrink-0"></footer>
   </div>
 </template>
@@ -21,7 +19,9 @@
   z-index: 1000;
 }
 
-.main-content {
-  padding-top: 65px;
+.container {
+  margin-top: 65px;
 }
 </style>
+<script setup lang="ts">
+</script>

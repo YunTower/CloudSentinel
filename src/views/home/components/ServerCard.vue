@@ -88,46 +88,46 @@ const getNetworkColorClass = (speedKBps: number) => {
 }
 </script>
 <template>
-  <Card class="h-full bg-surface-card rounded-lg hover:shadow-lg shadow-sm">
+  <Card class="h-full">
     <template #header>
-      <div class="flex items-center justify-between p-4">
-        <div class="flex items-center gap-3">
-          <div :class="statusClass" class="w-3 h-3 rounded-full shadow-sm animate-pulse-slow"></div>
-          <span class="text-sm font-medium text-color-emphasis">{{ statusText }}</span>
+      <div class="p-4 space-y-1">
+        <div class="text-lg font-semibold truncate text-color-emphasis">
+          {{ name }}
         </div>
-        <div class="flex items-center gap-2">
-          <i class="pi pi-map-marker text-sm text-muted-color"></i>
-          <span class="text-xs font-medium text-muted-color">{{ location }}</span>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div :class="statusClass" class="w-2 h-2 rounded-full shadow-sm animate-pulse-slow"></div>
+            <span class="text-xs font-medium text-color-emphasis">{{ statusText }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <i class="pi pi-map-marker !text-[12px] text-muted-color"></i>
+            <span class="text-xs font-medium text-muted-color">{{ location }}</span>
+          </div>
         </div>
       </div>
-    </template>
 
-    <template #title>
-      <div class="text-lg font-semibold truncate mb-4 text-color-emphasis">
-        {{ name }}
-      </div>
     </template>
 
     <template #content>
-      <div class="space-y-5">
+      <div class="space-y-2">
         <!-- CPU 和内存监控 -->
         <div class="grid grid-cols-2 gap-4">
           <div class="text-center p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
             <div class="text-2xl font-bold mb-1" :class="getCpuTextColorClass(cpuUsage)">
               {{ cpuUsage }}%
             </div>
-            <div class="text-xs font-medium text-muted-color">CPU 使用率</div>
+            <div class="text-xs font-medium text-muted-color">CPU </div>
           </div>
 
           <div class="text-center p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
             <div class="text-2xl font-bold mb-1" :class="getMemoryTextColorClass(memoryUsage)">
               {{ memoryUsage }}%
             </div>
-            <div class="text-xs font-medium text-muted-color">内存使用率</div>
+            <div class="text-xs font-medium text-muted-color">内存</div>
           </div>
         </div>
 
-        <!-- 系统信息（一行显示） -->
+        <!-- 系统信息 -->
         <div class="p-2 rounded-lg bg-surface-50 dark:bg-surface-800">
           <div class="grid grid-cols-3 gap-2 text-xs">
             <div class="text-center">
@@ -145,11 +145,11 @@ const getNetworkColorClass = (speedKBps: number) => {
           </div>
         </div>
 
-        <!-- 网络 I/O（优化显示） -->
+        <!-- 网络 I/O -->
         <div class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
           <div class="flex items-center gap-2 mb-3">
             <i class="pi pi-wifi text-sm text-muted-color"></i>
-            <span class="text-sm font-medium text-color">网络流量</span>
+            <span class="text-sm font-medium text-color">网络</span>
             <div class="flex-1 flex justify-end">
               <div
                 class="w-2 h-2 rounded-full bg-primary animate-pulse"
@@ -208,22 +208,14 @@ const getNetworkColorClass = (speedKBps: number) => {
 <style scoped>
 :deep(.p-card) {
   height: 100%;
-  border: none;
-  box-shadow: none;
   background: transparent;
-}
-
-:deep(.p-card-header) {
-  padding: 0;
-  border: none;
 }
 
 :deep(.p-card-body) {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
-  padding-top: 0;
+  padding: 0 1rem 1rem;
 }
 
 :deep(.p-card-title) {

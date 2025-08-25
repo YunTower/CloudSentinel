@@ -329,7 +329,6 @@ const savePanelSettings = async () => {
 <style scoped>
 .panel-view {
   padding: 2rem;
-  max-width: 1400px;
   margin: 0 auto;
 }
 </style>

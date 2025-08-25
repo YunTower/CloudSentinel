@@ -225,15 +225,10 @@ onMounted(() => {
     </Menubar>
   </div>
 </template>
-
 <style scoped>
-.fixed-menu {
-  background: var(--surface-card);
-  border-bottom: 1px solid var(--surface-border);
-  transition: all 0.3s ease;
-}
-
-:global(.dark) .fixed-menu {
-  border-bottom-color: var(--surface-border);
+:deep(.p-menubar) {
+  border: none;
+  border-bottom: 1px solid var(--p-menubar-border-color);
+  border-radius: unset;
 }
 </style>
