@@ -483,8 +483,6 @@ onUnmounted(() => {
 </script>
 <template>
   <div class="monitor-view">
-    <Toast />
-
     <div class="mb-6 flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold text-color mb-2">监控面板</h1>
