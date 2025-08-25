@@ -1,7 +1,7 @@
 import { createAlova } from 'alova'
 import adapterFetch from 'alova/fetch'
 import { createServerTokenAuthentication } from 'alova/client'
-import { authManager } from './auth'
+import { useAuthStore } from '@/stores/auth'
 
 const { onResponseRefreshToken } = createServerTokenAuthentication({
   refreshTokenOnError: {
@@ -9,10 +9,12 @@ const { onResponseRefreshToken } = createServerTokenAuthentication({
     isExpired: (res) => res.status === 401,
     handler: async () => {
       try {
-        await authManager.refreshToken()
+        const authStore = useAuthStore()
+        await authStore.refreshToken()
       } catch (error) {
         console.error('Token refresh failed:', error)
-        authManager.logout()
+        const authStore = useAuthStore()
+        authStore.logout()
         window.location.href = '/login'
       }
     },
@@ -24,7 +26,8 @@ export const requester = createAlova({
   baseURL: '/api',
   cacheFor: null,
   beforeRequest: (method) => {
-    const token = authManager.getToken()
+    const authStore = useAuthStore()
+    const token = authStore.getToken()
     if (token) {
       method.config.headers = {
         ...method.config.headers,

@@ -1,60 +1,55 @@
 import type { Router } from 'vue-router'
-import { authManager } from '@/utils/auth'
+import { useAuthStore } from '@/stores/auth'
 
 export function setupRouteGuards(router: Router) {
   router.beforeEach((to, from, next) => {
+    const authStore = useAuthStore()
+
     // 如果目标路由是登录页面
     if (to.name === 'login') {
       // 如果用户已经登录，重定向到首页
-      if (authManager.isAuthenticated()) {
-        next({ name: 'home' })
+      if (authStore.isAuthenticated) {
+        // 已认证则跳转到上次意图路径或首页
+        try {
+          const intended = sessionStorage.getItem('intended_path')
+          if (intended && intended !== to.fullPath) {
+            sessionStorage.removeItem('intended_path')
+            next({ name: 'home', query: { redirect_uri: intended } })
+            return
+          }
+        } catch {}
+        next({ name: 'home', query: from.fullPath ? { redirect_uri: from.fullPath } : undefined })
         return
       }
       next()
       return
     }
 
-    // 检查用户认证状态
-    const isAuthenticated = authManager.isAuthenticated()
-
-    // 用户未认证的情况
-    if (!isAuthenticated) {
-      // 检查是否是公开路由
-      if (to.meta?.public) {
-        next()
-        return
-      }
-
-      // 重定向到登录页面
-      next({ name: 'login' })
+    // 检查是否需要认证
+    if (to.meta?.requiresAuth && !authStore.isAuthenticated) {
+      try {
+        // 记录用户意图访问的受保护路径
+        sessionStorage.setItem('intended_path', to.fullPath)
+        authStore.setRedirect(to.fullPath)
+      } catch {}
+      next({ name: 'login', query: { redirect_uri: to.fullPath } })
       return
     }
 
-    // 用户已认证，检查角色权限
-    const user = authManager.getCurrentUser()
-
-    if (!user) {
-      // 用户信息无效，清除认证状态并重定向到登录页面
-      authManager.logout()
-      next({ name: 'login' })
-      return
-    }
-
-    // 检查路由角色要求
-    const requiredRoles = to.meta?.roles as string[] | undefined
-    if (requiredRoles && !requiredRoles.includes(user.role)) {
-      // 权限不足，重定向到首页
-      next({ name: 'home' })
-      return
-    }
-
-    // 所有检查通过，允许导航
     next()
   })
 
+  // 在路由切换后检查是否需要处理重定向
   router.afterEach((to) => {
-    if (to.meta?.title) {
-      document.title = `${to.meta.title} - 云哨 CloudSentinel`
+    const authStore = useAuthStore()
+
+    // 如果当前在首页且有redirect_uri参数，且用户已认证，则跳转回去
+    if (to.name === 'home' && to.query.redirect_uri && authStore.isAuthenticated) {
+      const redirectUri = to.query.redirect_uri as string
+      if (redirectUri && redirectUri !== to.fullPath) {
+        // 使用replace避免在历史记录中留下多余的条目
+        router.replace(redirectUri)
+      }
     }
   })
 }

@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLayout } from '@/composables/useLayout'
-import { authManager } from '@/utils/auth'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'primevue/usetoast'
-import type { UserSession } from '@/types/auth'
 
 interface MenuItem {
   label: string
@@ -14,13 +13,19 @@ interface MenuItem {
   roles?: string[]
 }
 
-const router = useRouter()
-const { isDarkMode, toggleDarkMode, initializeTheme, setupThemeListener } = useLayout()
 const toast = useToast()
+const router = useRouter()
+const authStore = useAuthStore()
+const { isDarkMode, toggleDarkMode, initializeTheme, setupThemeListener } = useLayout()
 
-// 用户状态
-const currentUser = ref<UserSession | null>(null)
-const isAuthenticated = ref(false)
+// 用户状态 - 确保响应性
+const currentUser = computed(() => {
+  return authStore.user
+})
+
+const isAuthenticated = computed(() => {
+  return authStore.isAuthenticated
+})
 
 // 从路由配置生成菜单数据
 const allMenuItems = computed(() => {
@@ -34,7 +39,7 @@ const allMenuItems = computed(() => {
       label: homeRoute.meta.title as string,
       icon: homeRoute.meta.icon as string,
       route: homeRoute.path,
-      roles: homeRoute.meta.roles as string[],
+      roles: homeRoute.meta?.roles as string[],
     })
   }
 
@@ -128,9 +133,7 @@ const filteredMenuItems = computed(() => {
 
 // 处理退出登录
 const handleLogout = () => {
-  authManager.logout()
-  isAuthenticated.value = false
-  currentUser.value = null
+  authStore.logout()
 
   toast.add({
     severity: 'success',
@@ -142,22 +145,9 @@ const handleLogout = () => {
   router.push('/login')
 }
 
-// 更新用户状态
-const updateUserState = () => {
-  isAuthenticated.value = authManager.isAuthenticated()
-  currentUser.value = authManager.getCurrentUser()
-}
-
-// 监听认证状态变化
-const checkAuthState = () => {
-  updateUserState()
-}
-
 onMounted(() => {
-  updateUserState()
   initializeTheme()
   setupThemeListener()
-  setInterval(checkAuthState, 5000)
 })
 </script>
 <template>

@@ -1,9 +1,10 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { authManager } from '@/utils/auth'
+import { useAuthStore } from '@/stores/auth'
 import type { UserSession, UserRole } from '@/types/auth'
 
 // 权限系统组合式函数
 export function useAuth() {
+  const authStore = useAuthStore()
   const currentUser = ref<UserSession | null>(null)
   const isAuthenticated = ref(false)
   const isLoading = ref(true)
@@ -26,14 +27,14 @@ export function useAuth() {
 
   // 更新用户状态
   const updateUserState = () => {
-    isAuthenticated.value = authManager.isAuthenticated()
-    currentUser.value = authManager.getCurrentUser()
+    isAuthenticated.value = authStore.isAuthenticated
+    currentUser.value = authStore.user
     isLoading.value = false
   }
 
   // 登出
   const logout = () => {
-    authManager.logout()
+    authStore.logout()
     updateUserState()
   }
 

@@ -1,72 +1,26 @@
-import type { Directive, DirectiveBinding } from 'vue'
-import { authManager } from '@/utils/auth'
+import type { App, DirectiveBinding } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
-export const role: Directive = {
+// 角色权限指令
+export const role = {
   mounted(el: HTMLElement, binding: DirectiveBinding) {
+    const authStore = useAuthStore()
     const { value } = binding
 
-    if (!value) {
-      return
-    }
-
-    const user = authManager.getCurrentUser()
-    if (!user) {
-      el.style.display = 'none'
-      return
-    }
-
-    const hasRole = Array.isArray(value)
-      ? value.includes(user.role)
-      : value === user.role
-
-    if (!hasRole) {
+    if (value && !authStore.hasRole?.(value)) {
       el.style.display = 'none'
     }
   },
-  updated(el: HTMLElement, binding: DirectiveBinding) {
-    const { value } = binding
-
-    if (!value) {
-      el.style.display = ''
-      return
-    }
-
-    const user = authManager.getCurrentUser()
-    if (!user) {
-      el.style.display = 'none'
-      return
-    }
-
-    const hasRole = Array.isArray(value)
-      ? value.includes(user.role)
-      : value === user.role
-
-    el.style.display = hasRole ? '' : 'none'
-  }
 }
 
-export const auth: Directive = {
+// 认证权限指令
+export const auth = {
   mounted(el: HTMLElement, binding: DirectiveBinding) {
+    const authStore = useAuthStore()
     const { value } = binding
-    const isAuthenticated = authManager.isAuthenticated()
 
-    if (value === true && !isAuthenticated) {
-      el.style.display = 'none'
-    } else if (value === false && isAuthenticated) {
+    if (value && !authStore.isAuthenticated) {
       el.style.display = 'none'
     }
   },
-
-  updated(el: HTMLElement, binding: DirectiveBinding) {
-    const { value } = binding
-    const isAuthenticated = authManager.isAuthenticated()
-
-    if (value === true && !isAuthenticated) {
-      el.style.display = 'none'
-    } else if (value === false && isAuthenticated) {
-      el.style.display = 'none'
-    } else {
-      el.style.display = ''
-    }
-  }
 }

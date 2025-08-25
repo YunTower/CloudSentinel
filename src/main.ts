@@ -12,7 +12,7 @@ import Aura from '@primevue/themes/aura'
 import App from './App.vue'
 import router from './router'
 import { role, auth } from './directives/permission'
-import { authManager } from '@/utils/auth'
+import { useAuthStore } from '@/stores/auth'
 
 const app = createApp(App)
 
@@ -91,7 +91,8 @@ const Noir = definePreset(Aura, {
   },
 })
 
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
 app.use(router)
 app.use(ToastService)
 app.use(ConfirmationService)
@@ -105,11 +106,10 @@ app.use(PrimeVue, {
   ripple: true,
 })
 
-authManager
-  .initAuthState()
-  .then(() => {
-    app.mount('#app')
-  })
+const authStore = useAuthStore()
+authStore
+  .bootstrap()
+  .then(() => app.mount('#app'))
   .catch((error) => {
     console.error('Failed to initialize auth state:', error)
     app.mount('#app')
