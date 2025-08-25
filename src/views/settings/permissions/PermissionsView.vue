@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import { authManager } from '@/utils/auth'
 import type { PermissionSettings, AdminAccount } from '@/types/settings/permissions'
+import settingsApi from '@/apis/settings/permissions'
 
 const toast = useToast()
 const permissions = ref<PermissionSettings>({
@@ -33,30 +33,21 @@ const updatingPassword = ref(false)
 const savePermissions = async () => {
   saving.value = true
   try {
-    // 保存到authManager
-    authManager.saveGuestAccessConfig({
+    await settingsApi.savePermissionsSettings({
       allowGuest: permissions.value.allowGuest,
       enablePassword: permissions.value.enablePassword,
       guestPassword: permissions.value.guestPassword,
       hideSensitiveInfo: permissions.value.hideSensitiveInfo,
+      sessionTimeout: permissions.value.sessionTimeout,
+      maxLoginAttempts: permissions.value.maxLoginAttempts,
+      lockoutDuration: permissions.value.lockoutDuration,
+      jwtSecret: permissions.value.jwtSecret,
+      jwtExpiration: permissions.value.jwtExpiration,
     })
 
-    // 保存完整配置到localStorage
-    localStorage.setItem('dashboard-permissions', JSON.stringify(permissions.value))
-
-    toast.add({
-      severity: 'success',
-      summary: '保存成功',
-      detail: '权限设置已更新',
-      life: 3000,
-    })
+    toast.add({ severity: 'success', summary: '保存成功', detail: '权限设置已更新', life: 3000 })
   } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: '保存失败',
-      detail: '请稍后重试',
-      life: 5000,
-    })
+    toast.add({ severity: 'error', summary: '保存失败', detail: '请稍后重试', life: 5000 })
   } finally {
     saving.value = false
   }
@@ -139,12 +130,20 @@ const updatePassword = async () => {
 }
 
 // 加载权限设置
-const loadPermissions = () => {
+const loadPermissions = async () => {
   try {
-    const saved = localStorage.getItem('dashboard-permissions')
-    if (saved) {
-      const config = JSON.parse(saved)
-      permissions.value = { ...permissions.value, ...config }
+    const res = await settingsApi.getPermissionsSettings()
+    const data = res?.data
+    if (data) {
+      permissions.value.allowGuest = !!data.allowGuest
+      permissions.value.enablePassword = !!data.enablePassword
+      permissions.value.guestPassword = ''
+      permissions.value.hideSensitiveInfo = !!data.hideSensitiveInfo
+      permissions.value.sessionTimeout = Number(data.sessionTimeout) || permissions.value.sessionTimeout
+      permissions.value.maxLoginAttempts = Number(data.maxLoginAttempts) || permissions.value.maxLoginAttempts
+      permissions.value.lockoutDuration = Number(data.lockoutDuration) || permissions.value.lockoutDuration
+      permissions.value.jwtSecret = String(data.jwtSecret || '')
+      permissions.value.jwtExpiration = Number(data.jwtExpiration) || permissions.value.jwtExpiration
     }
   } catch (error) {
     console.error('加载权限设置失败:', error)

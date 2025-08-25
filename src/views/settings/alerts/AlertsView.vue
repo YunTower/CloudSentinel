@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import type { AlertRules, Notifications } from '@/types/settings/alerts'
+import alertsApi from '@/apis/settings/alerts'
+import { useToast } from 'primevue/usetoast'
 
 const alertRules = ref<AlertRules>({
   cpu: {
@@ -43,24 +45,66 @@ const securityOptions = [
 ]
 
 const saving = ref(false)
+const toast = useToast()
+
+// 加载告警设置
+const loadAlertSettings = async () => {
+  try {
+    const res = await alertsApi.getAlertsSettings()
+    const data = res?.data
+    if (data?.rules) {
+      alertRules.value.cpu.enabled = !!data.rules.cpu?.enabled
+      alertRules.value.cpu.warning = Number(data.rules.cpu?.warning) || alertRules.value.cpu.warning
+      alertRules.value.cpu.critical = Number(data.rules.cpu?.critical) || alertRules.value.cpu.critical
+
+      alertRules.value.memory.enabled = !!data.rules.memory?.enabled
+      alertRules.value.memory.warning = Number(data.rules.memory?.warning) || alertRules.value.memory.warning
+      alertRules.value.memory.critical = Number(data.rules.memory?.critical) || alertRules.value.memory.critical
+
+      alertRules.value.disk.enabled = !!data.rules.disk?.enabled
+      alertRules.value.disk.warning = Number(data.rules.disk?.warning) || alertRules.value.disk.warning
+      alertRules.value.disk.critical = Number(data.rules.disk?.critical) || alertRules.value.disk.critical
+    }
+    if (data?.notifications) {
+      notifications.value.email.enabled = !!data.notifications.email?.enabled
+      notifications.value.email.smtp = String(data.notifications.email?.smtp || '')
+      notifications.value.email.port = Number(data.notifications.email?.port) || notifications.value.email.port
+      notifications.value.email.security = String(data.notifications.email?.security || 'STARTTLS')
+      notifications.value.email.from = String(data.notifications.email?.from || '')
+      notifications.value.email.to = String(data.notifications.email?.to || '')
+
+      notifications.value.wechat.enabled = !!data.notifications.wechat?.enabled
+      notifications.value.wechat.webhook = String(data.notifications.wechat?.webhook || '')
+      notifications.value.wechat.mentioned = String(data.notifications.wechat?.mentioned || '@all')
+    }
+  } catch (error) {
+    console.error('Failed to load alert settings:', error)
+  }
+}
 
 // 保存告警设置
 const saveAlertSettings = async () => {
   saving.value = true
   try {
-    // 实际项目中这里会调用 API 保存设置
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    console.log('Alert settings saved:', {
-      alertRules: alertRules.value,
+    await alertsApi.saveAlertsSettings({
+      rules: {
+        cpu: alertRules.value.cpu,
+        memory: alertRules.value.memory,
+        disk: alertRules.value.disk,
+      },
       notifications: notifications.value,
     })
-    // 可以添加 Toast 提示
+    toast.add({ severity: 'success', summary: '保存成功', detail: '告警设置已更新', life: 3000 })
   } catch (error) {
     console.error('Failed to save alert settings:', error)
   } finally {
     saving.value = false
   }
 }
+
+onMounted(() => {
+  loadAlertSettings()
+})
 </script>
 <template>
   <div class="alerts-view">
