@@ -32,7 +32,7 @@ onMounted(() => {
       :overlay="true"
     />
 
-    <div class="main-content" :class="{ loading: isLoading }">
+    <div class="container" :class="{ loading: isLoading }">
       <router-view v-slot="{ Component }">
         <Transition name="page" mode="out-in" appear>
           <component :is="Component" :key="$route.fullPath" />

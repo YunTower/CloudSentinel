@@ -586,10 +586,7 @@ onUnmounted(() => {
 <style scoped>
 .monitor-view {
   padding: 2rem;
-  max-width: 1400px;
   margin: 0 auto;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 /* 4列网格布局 */
