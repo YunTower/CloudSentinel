@@ -1,7 +1,8 @@
 import { requester } from '@/utils/requester.ts'
+import type { GetPanelSettingsResponse, SavePanelSettingsBody } from '@/types/settings/api'
 
 export default {
-  savePanelSettings: (settings: { title: string }) => requester.Post('/settings/panel', settings),
-  getPanelSettings: () => requester.Get('/settings/panel'),
+  savePanelSettings: (settings: SavePanelSettingsBody) => requester.Patch('/settings/panel', settings),
+  getPanelSettings: () => requester.Get<GetPanelSettingsResponse>('/settings/panel'),
   getPublicSettings: () => requester.Get('/settings/public'),
 }
