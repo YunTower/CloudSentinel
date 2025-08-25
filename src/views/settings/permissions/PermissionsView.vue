@@ -31,6 +31,10 @@ const updatingPassword = ref(false)
 
 // 保存权限设置
 const savePermissions = async () => {
+  if (permissions.value.enablePassword && !permissions.value.guestPassword) {
+    toast.add({ severity: 'error', summary: '保存失败', detail: '请设置访客访问密码', life: 4000 })
+    return
+  }
   saving.value = true
   try {
     await settingsApi.savePermissionsSettings({
@@ -46,7 +50,7 @@ const savePermissions = async () => {
     })
 
     toast.add({ severity: 'success', summary: '保存成功', detail: '权限设置已更新', life: 3000 })
-  } catch (error) {
+  } catch {
     toast.add({ severity: 'error', summary: '保存失败', detail: '请稍后重试', life: 5000 })
   } finally {
     saving.value = false
@@ -79,7 +83,7 @@ const updateUsername = async () => {
       detail: '用户名已更新',
       life: 3000,
     })
-  } catch (error) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: '修改失败',
@@ -117,7 +121,7 @@ const updatePassword = async () => {
       detail: '密码已更新',
       life: 3000,
     })
-  } catch (error) {
+  } catch {
     toast.add({
       severity: 'error',
       summary: '修改失败',
