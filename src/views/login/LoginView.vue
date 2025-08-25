@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
-import { authManager } from '@/utils/auth'
+import { useAuthStore } from '@/stores/auth'
+import Toast from 'primevue/toast'
 
-// 路由和通知
-const router = useRouter()
 const toast = useToast()
+const router = useRouter()
+const authStore = useAuthStore()
+const activeTab = ref('0') // 当前激活的标签页
+const isLoading = ref(false) // 加载状态
+const panelTitle = ref('CloudSentinel 云哨')
+const permissions = ref(authStore.getGuestAccessConfig()) // 权限设置
 
-// 当前激活的标签页
-const activeTab = ref('0')
-
-// 统一登录表单
 const loginForm = ref({
   type: 'guest' as 'guest' | 'admin',
   username: '',
@@ -19,16 +20,6 @@ const loginForm = ref({
   rememberMe: false,
 })
 
-// 加载状态
-const isLoading = ref(false)
-
-// 权限设置
-const permissions = ref(authManager.getGuestAccessConfig())
-
-// 面板标题
-const panelTitle = ref('CloudSentinel 云哨')
-
-// 统一登录方法
 const handleLogin = async () => {
   const { type, username, password, rememberMe } = loginForm.value
 
@@ -54,7 +45,7 @@ const handleLogin = async () => {
       return
     }
 
-    if (permissions.value.enablePassword && !authManager.validateGuestPassword(password)) {
+    if (permissions.value.enablePassword && !authStore.validateGuestPassword(password)) {
       toast.add({
         severity: 'error',
         summary: '密码错误',
@@ -82,7 +73,7 @@ const handleLogin = async () => {
   try {
     if (type === 'guest') {
       // 游客登录
-      await authManager.guestLogin(password, rememberMe)
+      await authStore.guestLogin(password, rememberMe)
 
       toast.add({
         severity: 'success',
@@ -92,7 +83,7 @@ const handleLogin = async () => {
       })
     } else {
       // 管理员登录
-      const userSession = await authManager.login(username, password, rememberMe)
+      const userSession = await authStore.login(username, password, rememberMe)
 
       toast.add({
         severity: 'success',
@@ -102,13 +93,27 @@ const handleLogin = async () => {
       })
     }
 
-    // 跳转到首页
-    await router.push('/')
-  } catch (error: unknown) {
+    // 登录成功后重定向
+    const redirectUri = router.currentRoute.value.query.redirect_uri as string
+    const intendedPath = sessionStorage.getItem('intended_path')
+
+    // 确保状态更新完成后再进行路由跳转
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    if (redirectUri) {
+      await router.replace(redirectUri)
+    } else if (intendedPath) {
+      await router.replace(intendedPath)
+      sessionStorage.removeItem('intended_path')
+    } else {
+      await router.replace('/')
+    }
+  } catch (error) {
+    console.error('Login failed:', error)
     toast.add({
       severity: 'error',
       summary: '登录失败',
-      detail: error instanceof Error ? error.message : '请稍后重试',
+      detail: (error as { message: string }).message || '登录过程中发生错误',
       life: 5000,
     })
   } finally {
@@ -116,66 +121,56 @@ const handleLogin = async () => {
   }
 }
 
-// 切换登录类型时重置表单
-const handleTabChange = (tabValue: string | number) => {
-  const newTab = tabValue.toString()
-
-  // 如果尝试选择访客访问tab但权限不足，强制选择管理员登录
-  if (newTab === '0' && !permissions.value.allowGuest) {
-    activeTab.value = '1'
-    loginForm.value.type = 'admin'
-  } else {
-    activeTab.value = newTab
-    loginForm.value.type = newTab === '0' ? 'guest' : 'admin'
+// 切换标签页
+const switchTab = (tabIndex: string | number) => {
+  activeTab.value = tabIndex.toString()
+  // 重置表单
+  loginForm.value = {
+    type: tabIndex === '0' ? 'guest' : 'admin',
+    username: '',
+    password: '',
+    rememberMe: false,
   }
-
-  // 重置表单数据
-  loginForm.value.username = ''
-  loginForm.value.password = ''
-  loginForm.value.rememberMe = false
 }
 
 // 加载公开设置
 const loadPublicSettings = async () => {
   try {
-    // 从API加载权限设置
-    const config = await authManager.loadPublicSettings()
-    permissions.value = config
-
-    // 从API加载面板标题
-    const title = await authManager.getPanelTitle()
-    panelTitle.value = title
-
-    // 如果未开启游客登录，默认选中管理员登录tab
-    if (!permissions.value.allowGuest) {
-      activeTab.value = '1'
-      loginForm.value.type = 'admin'
-    }
+    permissions.value = await authStore.loadPublicSettings()
   } catch (error) {
-    console.error('加载公开设置失败:', error)
-    // 如果API失败，使用默认配置
-    permissions.value = authManager.getGuestAccessConfig()
+    console.error('Failed to load public settings:', error)
+  }
+}
 
-    // 同样检查默认配置下的游客登录权限
-    if (!permissions.value.allowGuest) {
-      activeTab.value = '1'
-      loginForm.value.type = 'admin'
-    }
+// 加载面板标题
+const loadPanelTitle = async () => {
+  try {
+    panelTitle.value = await authStore.getPanelTitle()
+  } catch (error) {
+    console.error('Failed to load panel title:', error)
+  }
+}
+
+// 检查是否已登录
+const checkLoginStatus = () => {
+  if (authStore.isAuthenticated && router.currentRoute.value.path !== '/') {
+    // 如果已经登录且不在首页，跳转到首页
+    router.replace('/')
   }
 }
 
 onMounted(async () => {
-  await loadPublicSettings()
+  // 加载公开设置和面板标题
+  await Promise.all([loadPublicSettings(), loadPanelTitle()])
 
-  // 如果已经登录且不在首页，跳转到首页
-  if (authManager.isAuthenticated() && router.currentRoute.value.path !== '/') {
-    router.replace('/')
-  }
+  // 检查登录状态
+  checkLoginStatus()
 })
 </script>
 
 <template>
   <div class="login-view">
+    <Toast position="top-right" />
     <div
       class="min-h-screen flex items-center justify-center bg-gradient-to-br from-surface-50 to-surface-100 dark:from-surface-900 dark:to-surface-800 p-4"
     >
@@ -187,7 +182,7 @@ onMounted(async () => {
 
         <Card class="shadow-2xl border-0">
           <template #content>
-            <Tabs :value="activeTab" @update:value="handleTabChange" class="w-full">
+            <Tabs :value="activeTab" @update:value="switchTab" class="w-full">
               <TabList class="w-full">
                 <Tab value="0" class="flex-1" v-if="permissions.allowGuest">
                   <div class="flex items-center justify-center gap-2">

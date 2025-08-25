@@ -9,6 +9,16 @@ export interface UserSession {
   exp: number
 }
 
+// 自定义JWT载荷接口
+export interface CustomJwtPayload {
+  key: string
+  sub: string
+  exp: number
+  iat: number
+  username?: string
+  role?: UserRole
+}
+
 // 游客访问配置接口
 export interface GuestAccessConfig {
   allowGuest: boolean
