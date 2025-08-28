@@ -2,7 +2,7 @@ import type { Router } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 export function setupRouteGuards(router: Router) {
-  router.beforeEach((to, from, next) => {
+  router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore()
 
     // 如果目标路由是登录页面
@@ -32,6 +32,23 @@ export function setupRouteGuards(router: Router) {
     if (requiredRoles && requiredRoles.includes('*')) {
       next()
       return
+    }
+
+    // 如果有token但store还未初始化，等待验证完成
+    if (!authStore.initialized && authStore.getToken()) {
+      try {
+        await authStore.checkLoginStatus()
+      } catch (error) {
+        console.error('Failed to check login status:', error)
+        // 验证失败，清除token并跳转登录页
+        authStore.logout()
+        try {
+          sessionStorage.setItem('intended_path', to.fullPath)
+          authStore.setRedirect(to.fullPath)
+        } catch {}
+        next({ name: 'login', query: { redirect_uri: to.fullPath } })
+        return
+      }
     }
 
     // 如果没有roles配置或roles不是['*']，则需要登录验证

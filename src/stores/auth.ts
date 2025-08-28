@@ -373,10 +373,16 @@ export const useAuthStore = defineStore('auth', () => {
   // 初始化
   const bootstrap = async () => {
     // 记录当前意图路径，用于刷新后跳回
+    // 只有在没有已存在的intended_path时才设置当前路径
     try {
-      const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
-      sessionStorage.setItem('intended_path', currentPath)
-      redirectUri.value = currentPath
+      const existingIntended = sessionStorage.getItem('intended_path')
+      if (!existingIntended) {
+        const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+        sessionStorage.setItem('intended_path', currentPath)
+        redirectUri.value = currentPath
+      } else {
+        redirectUri.value = existingIntended
+      }
     } catch {}
 
     const token = getToken()
