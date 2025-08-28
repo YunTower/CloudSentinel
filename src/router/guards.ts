@@ -25,8 +25,17 @@ export function setupRouteGuards(router: Router) {
       return
     }
 
-    // 检查是否需要认证
-    if (to.meta?.requiresAuth && !authStore.isAuthenticated) {
+    // 检查路由权限
+    const requiredRoles = to.meta?.roles as string[] | undefined
+
+    // 如果roles是['*']，代表所有人都可以访问
+    if (requiredRoles && requiredRoles.includes('*')) {
+      next()
+      return
+    }
+
+    // 如果没有roles配置或roles不是['*']，则需要登录验证
+    if (!authStore.isAuthenticated) {
       try {
         // 记录用户意图访问的受保护路径
         sessionStorage.setItem('intended_path', to.fullPath)
@@ -34,6 +43,16 @@ export function setupRouteGuards(router: Router) {
       } catch {}
       next({ name: 'login', query: { redirect_uri: to.fullPath } })
       return
+    }
+
+    // 如果指定了具体角色，检查用户角色是否匹配
+    if (requiredRoles && requiredRoles.length > 0 && !requiredRoles.includes('*')) {
+      const userRole = authStore.role
+      if (!requiredRoles.includes(userRole)) {
+        // 角色不匹配，重定向到首页
+        next({ name: 'home' })
+        return
+      }
     }
 
     next()
