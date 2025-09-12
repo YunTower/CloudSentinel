@@ -156,20 +156,6 @@ const confirmRestart = (event: Event, server: Server) => {
 </script>
 <template>
   <Card>
-    <template #title>
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <i class="pi pi-server text-primary text-xl"></i>
-          <span class="text-lg font-semibold">服务器列表</span>
-        </div>
-        <div class="flex items-center gap-4">
-          <div class="flex items-center gap-2 text-sm text-muted-color">
-            <span>共 {{ servers.length }} 台服务器</span>
-            <span class="w-1 h-1 bg-muted-color rounded-full"></span>
-          </div>
-        </div>
-      </div>
-    </template>
     <template #content>
       <DataTable
         :value="servers"
