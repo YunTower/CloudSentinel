@@ -98,7 +98,7 @@ const handleLogin = async () => {
     const intendedPath = sessionStorage.getItem('intended_path')
 
     // 确保状态更新完成后再进行路由跳转
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await new Promise((resolve) => setTimeout(resolve, 100))
 
     if (redirectUri) {
       await router.replace(redirectUri)
@@ -165,6 +165,10 @@ onMounted(async () => {
 
   // 检查登录状态
   checkLoginStatus()
+
+  if (!permissions.value.allowGuest) {
+    switchTab('1')
+  }
 })
 </script>
 
