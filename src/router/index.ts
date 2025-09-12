@@ -26,35 +26,24 @@ const router = createRouter({
       },
     },
     {
-      path: '/manager',
+      path: '/servers',
       name: 'manager',
+      component: () => import('@/views/manager/servers/ServersView.vue'),
       meta: {
         title: '服务器',
         icon: 'pi pi-server',
         roles: ['admin'],
       },
-      children: [
-        {
-          path: '/manager/servers',
-          name: 'servers',
-          component: () => import('@/views/manager/servers/ServersView.vue'),
-          meta: {
-            title: '服务器列表',
-            icon: 'pi pi-server',
-            roles: ['admin'],
-          },
-        },
-        {
-          path: '/manager/monitor',
-          name: 'monitor',
-          component: () => import('@/views/manager/monitor/MonitorView.vue'),
-          meta: {
-            title: '监控面板',
-            icon: 'pi pi-chart-line',
-            roles: ['admin'],
-          },
-        },
-      ],
+    },
+    {
+      path: '/monitor',
+      name: 'monitor',
+      component: () => import('@/views/manager/monitor/MonitorView.vue'),
+      meta: {
+        title: '监控面板',
+        icon: 'pi pi-chart-line',
+        roles: ['admin'],
+      },
     },
     {
       path: '/settings',
