@@ -14,11 +14,11 @@ export function setupRouteGuards(router: Router) {
           const intended = sessionStorage.getItem('intended_path')
           if (intended && intended !== to.fullPath) {
             sessionStorage.removeItem('intended_path')
-            next({ name: 'home', query: { redirect_uri: intended } })
+            next({ name: 'overview', query: { redirect_uri: intended } })
             return
           }
         } catch {}
-        next({ name: 'home', query: from.fullPath ? { redirect_uri: from.fullPath } : undefined })
+        next({ name: 'overview', query: from.fullPath ? { redirect_uri: from.fullPath } : undefined })
         return
       }
       next()
@@ -67,7 +67,7 @@ export function setupRouteGuards(router: Router) {
       const userRole = authStore.role
       if (!requiredRoles.includes(userRole)) {
         // 角色不匹配，重定向到首页
-        next({ name: 'home' })
+        next({ name: 'overview' })
         return
       }
     }
@@ -80,7 +80,7 @@ export function setupRouteGuards(router: Router) {
     const authStore = useAuthStore()
 
     // 如果当前在首页且有redirect_uri参数，且用户已认证，则跳转回去
-    if (to.name === 'home' && to.query.redirect_uri && authStore.isAuthenticated) {
+    if (to.name === 'overview' && to.query.redirect_uri && authStore.isAuthenticated) {
       const redirectUri = to.query.redirect_uri as string
       if (redirectUri && redirectUri !== to.fullPath) {
         // 使用replace避免在历史记录中留下多余的条目

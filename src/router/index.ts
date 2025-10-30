@@ -6,10 +6,10 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: () => import('@/views/home/HomeView.vue'),
+      name: 'overview',
+      component: () => import('@/views/overview/OverviewView.vue'),
       meta: {
-        title: '首页',
+        title: '总览',
         icon: 'pi pi-home',
         roles: ['guest', 'admin'],
       },
@@ -35,16 +35,7 @@ const router = createRouter({
         roles: ['admin'],
       },
     },
-    {
-      path: '/monitor',
-      name: 'monitor',
-      component: () => import('@/views/manager/monitor/MonitorView.vue'),
-      meta: {
-        title: '监控面板',
-        icon: 'pi pi-chart-line',
-        roles: ['admin'],
-      },
-    },
+    // 监控面板已移除
     {
       path: '/settings',
       name: 'settings',
