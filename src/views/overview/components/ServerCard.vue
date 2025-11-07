@@ -67,7 +67,7 @@ const formatSpeed = (speedKBps: number) => {
   }
 }
 
-// 格式化操作系统显示（简化显示）
+// 格式化操作系统显示
 const formatOS = (os: string) => {
   if (os.includes('Ubuntu')) return 'Ubuntu'
   if (os.includes('CentOS')) return 'CentOS'

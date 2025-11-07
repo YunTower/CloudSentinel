@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import ServerTable from './components/ServerTable.vue'
 import ServerDialog from './components/ServerDialog.vue'
+import serversApi from '@/apis/servers'
 import type { Server, ServerForm } from '@/types/manager/servers'
 
 // 响应式数据
@@ -35,104 +36,12 @@ const serverForm = ref<ServerForm>({
 
 const toast = useToast()
 
-// 模拟服务器数据
-const servers = ref<Server[]>([
-  {
-    id: '1',
-    name: 'Web服务器-01',
-    ip: '192.168.1.100',
-    port: 22,
-    status: 'online',
-    location: '中国/北京',
-    os: 'Ubuntu 22.04',
-    architecture: 'x86_64',
-    kernel: '5.15.0-91-generic',
-    hostname: 'web-server-01',
-    uptime: '15天2时30分',
-    cpu: 45,
-    memory: 62,
-    disk: 78,
-    networkIO: { upload: 1024, download: 2048 },
-    createdAt: '2024-01-15',
-    updatedAt: '2024-01-20',
-  },
-  {
-    id: '2',
-    name: '数据库服务器-01',
-    ip: '192.168.1.101',
-    port: 22,
-    status: 'online',
-    location: '中国/北京',
-    os: 'CentOS 8',
-    architecture: 'x86_64',
-    kernel: '4.18.0-477.el8.x86_64',
-    hostname: 'db-server-01',
-    uptime: '10天5时15分',
-    cpu: 78,
-    memory: 85,
-    disk: 92,
-    networkIO: { upload: 512, download: 1024 },
-    createdAt: '2024-01-10',
-    updatedAt: '2024-01-20',
-  },
-  {
-    id: '3',
-    name: '缓存服务器-01',
-    ip: '192.168.1.102',
-    port: 22,
-    status: 'offline',
-    location: '中国/上海',
-    os: 'Ubuntu 20.04',
-    architecture: 'x86_64',
-    kernel: '5.4.0-150-generic',
-    hostname: 'cache-server-01',
-    uptime: '12天8时45分',
-    cpu: 23,
-    memory: 34,
-    disk: 45,
-    networkIO: { upload: 256, download: 512 },
-    createdAt: '2024-01-12',
-    updatedAt: '2024-01-19',
-  },
-  {
-    id: '4',
-    name: '文件服务器-01',
-    ip: '192.168.1.103',
-    port: 22,
-    status: 'offline',
-    location: '中国/广州',
-    os: 'Windows Server 2019',
-    architecture: 'x86_64',
-    kernel: '10.0.17763.1',
-    hostname: 'file-server-01',
-    uptime: '8天12时20分',
-    cpu: 0,
-    memory: 0,
-    disk: 0,
-    networkIO: { upload: 0, download: 0 },
-    createdAt: '2024-01-08',
-    updatedAt: '2024-01-18',
-  },
-  {
-    id: '5',
-    name: '监控服务器-01',
-    ip: '192.168.1.104',
-    port: 22,
-    status: 'error',
-    location: '中国/深圳',
-    os: 'Debian 11',
-    architecture: 'x86_64',
-    kernel: '5.10.0-23-amd64',
-    hostname: 'monitor-server-01',
-    uptime: '5天18时30分',
-    cpu: 95,
-    memory: 98,
-    disk: 99,
-    networkIO: { upload: 2048, download: 4096 },
-    createdAt: '2024-01-05',
-    updatedAt: '2024-01-20',
-  },
-])
+// 服务器数据
+const servers = ref<Server[]>([])
+const agentKeyDialog = ref(false)
+const generatedAgentKey = ref('')
+const serverIP = ref('')
+const websocketURL = ref('')
 
 // 计算属性
 const filteredServers = computed(() => {
@@ -164,25 +73,28 @@ const handleEditServer = (server: Server) => {
 const handleDeleteServer = async (server: Server) => {
   deletingServerId.value = server.id
   try {
-    // 模拟API调用
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    const response: any = await serversApi.deleteServer(server.id)
 
-    const index = servers.value.findIndex((s) => s.id === server.id)
-    if (index !== -1) {
-      servers.value.splice(index, 1)
+    if (response.status) {
+      const index = servers.value.findIndex((s) => s.id === server.id)
+      if (index !== -1) {
+        servers.value.splice(index, 1)
+      }
+
+      toast.add({
+        severity: 'success',
+        summary: '删除成功',
+        detail: `服务器 "${server.name}" 已删除`,
+        life: 3000,
+      })
+    } else {
+      throw new Error(response.message || '删除失败')
     }
-
-    toast.add({
-      severity: 'success',
-      summary: '删除成功',
-      detail: `服务器 "${server.name}" 已删除`,
-      life: 3000,
-    })
-  } catch {
+  } catch (error: any) {
     toast.add({
       severity: 'error',
       summary: '删除失败',
-      detail: '请稍后重试',
+      detail: error.message || '请稍后重试',
       life: 3000,
     })
   } finally {
@@ -218,58 +130,150 @@ const handleSaveServer = async (form: ServerForm) => {
   saving.value = true
 
   try {
-    // 模拟API调用
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
     if (editingServer.value) {
       // 更新服务器
-      const index = servers.value.findIndex((s) => s.id === editingServer.value!.id)
-      if (index !== -1) {
-        servers.value[index] = {
-          ...servers.value[index],
-          ...form,
-          updatedAt: new Date().toISOString().split('T')[0],
-        }
+      const response: any = await serversApi.updateServer(editingServer.value.id, form)
+
+      if (response.status) {
+        // 重新加载服务器列表
+        await loadServers()
+
+        toast.add({
+          severity: 'success',
+          summary: '更新成功',
+          detail: '服务器信息已更新',
+          life: 3000,
+        })
+      } else {
+        throw new Error(response.message || '更新失败')
       }
-      toast.add({
-        severity: 'success',
-        summary: '更新成功',
-        detail: '服务器信息已更新',
-        life: 3000,
-      })
     } else {
       // 添加新服务器
-      const newServer: Server = {
-        id: Date.now().toString(),
-        ...form,
-        cpu: 0,
-        memory: 0,
-        disk: 0,
-        networkIO: { upload: 0, download: 0 },
-        uptime: '0天0时0分',
-        createdAt: new Date().toISOString().split('T')[0],
-        updatedAt: new Date().toISOString().split('T')[0],
+      const response: any = await serversApi.createServer(form)
+
+      if (response.status && response.data) {
+        // 保存生成的agent_key和服务器IP
+        generatedAgentKey.value = response.data.agent_key
+        serverIP.value = response.data.ip
+
+        // 获取WebSocket URL（从当前页面URL推断）
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+        const host = window.location.host
+        websocketURL.value = `${protocol}//${host}/api/ws/agent`
+
+        // 重新加载服务器列表
+        await loadServers()
+
+        toast.add({
+          severity: 'success',
+          summary: '添加成功',
+          detail: '新服务器已添加',
+          life: 3000,
+        })
+
+        // 显示agent_key对话框
+        agentKeyDialog.value = true
+      } else {
+        throw new Error(response.message || '添加失败')
       }
-      servers.value.unshift(newServer)
-      toast.add({
-        severity: 'success',
-        summary: '添加成功',
-        detail: '新服务器已添加',
-        life: 3000,
-      })
     }
 
     showAddDialog.value = false
     resetForm()
-  } catch {
+  } catch (error: any) {
     toast.add({
       severity: 'error',
       summary: '操作失败',
-      detail: '请稍后重试',
+      detail: error.message || '请稍后重试',
       life: 3000,
     })
   } finally {
     saving.value = false
+  }
+}
+
+const loadServers = async () => {
+  loading.value = true
+  try {
+    const response: any = await serversApi.getServers()
+
+    if (response.status && response.data) {
+      servers.value = response.data.map((server: any) => ({
+        id: server.id,
+        name: server.name,
+        ip: server.ip,
+        port: server.port || 22,
+        status: server.status || 'offline',
+        location: server.location || '',
+        os: server.os || '',
+        architecture: server.architecture || '',
+        kernel: server.kernel || '',
+        hostname: server.hostname || '',
+        uptime: server.uptime || '0天0时0分',
+        cpu: 0, // 这些需要从性能指标表获取，暂时设为0
+        memory: 0,
+        disk: 0,
+        networkIO: { upload: 0, download: 0 },
+        agent_key: server.agent_key,
+        createdAt: server.created_at || '',
+        updatedAt: server.updated_at || '',
+      }))
+    }
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: '加载失败',
+      detail: error.message || '获取服务器列表失败',
+      life: 3000,
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+const copyAgentKey = async () => {
+  try {
+    await navigator.clipboard.writeText(generatedAgentKey.value)
+    toast.add({
+      severity: 'success',
+      summary: '复制成功',
+      detail: 'Agent Key已复制到剪贴板',
+      life: 2000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: '复制失败',
+      detail: '请手动复制Agent Key',
+      life: 3000,
+    })
+  }
+}
+
+const installCommand = computed(() => {
+  if (!generatedAgentKey.value || !serverIP.value) return ''
+  // 这里需要根据实际的安装脚本URL来生成命令
+  // 暂时使用占位符，实际应该从配置或环境变量获取
+  const installScriptURL = window.location.origin + '/install.sh'
+  return `curl -fsSL ${installScriptURL} | bash -s -- --server=${websocketURL.value} --key=${generatedAgentKey.value}`
+})
+
+const copyInstallCommand = async () => {
+  try {
+    await navigator.clipboard.writeText(installCommand.value)
+    toast.add({
+      severity: 'success',
+      summary: '复制成功',
+      detail: '安装命令已复制到剪贴板',
+      life: 2000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: '复制失败',
+      detail: '请手动复制安装命令',
+      life: 3000,
+    })
   }
 }
 
@@ -333,7 +337,10 @@ const handleExpandServer = async (serverId: string) => {
 }
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
+  // 加载服务器列表
+  await loadServers()
+
   // 检查URL参数，自动展开指定服务器详情
   const urlParams = new URLSearchParams(window.location.search)
   const serverId = urlParams.get('server')
@@ -350,9 +357,17 @@ onMounted(() => {
 
 <template>
   <div class="servers-view">
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-color mb-2">服务器管理</h1>
-      <p class="text-muted-color">管理和监控所有服务器节点</p>
+    <div class="mb-6 flex justify-between items-start">
+      <div>
+        <h1 class="text-3xl font-bold text-color mb-2">服务器管理</h1>
+        <p class="text-muted-color">管理和监控所有服务器节点</p>
+      </div>
+      <Button
+        label="添加服务器"
+        icon="pi pi-plus"
+        @click="showAddDialog = true"
+        class="shadow-sm"
+      />
     </div>
 
     <div class="space-y-6">
@@ -380,6 +395,104 @@ onMounted(() => {
       @save="handleSaveServer"
       @cancel="handleCancelDialog"
     />
+
+    <!-- Agent Key和安装命令显示对话框 -->
+    <Dialog
+      v-model:visible="agentKeyDialog"
+      header="服务器添加成功"
+      modal
+      :closable="true"
+      class="w-3xl"
+    >
+      <div class="space-y-4">
+        <!-- Agent Key -->
+        <div class="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div class="flex items-start gap-3">
+            <i class="pi pi-check-circle text-green-600 dark:text-green-400 text-2xl mt-0.5"></i>
+            <div class="flex-1">
+              <p class="font-medium text-green-700 dark:text-green-300 mb-2">
+                服务器已成功添加！请保存以下Agent Key：
+              </p>
+              <div class="bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm break-all">
+                {{ generatedAgentKey }}
+              </div>
+              <Button
+                icon="pi pi-copy"
+                label="复制Agent Key"
+                text
+                size="small"
+                class="mt-2"
+                @click="copyAgentKey"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- 安装命令 -->
+        <div class="p-4 bg-surface-50 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700">
+          <div class="flex items-center gap-2 mb-3">
+            <i class="pi pi-terminal text-primary"></i>
+            <h4 class="text-lg font-semibold text-color">安装被控探针</h4>
+          </div>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-color">Linux 安装命令</span>
+              <Button
+                icon="pi pi-copy"
+                text
+                size="small"
+                @click="copyInstallCommand"
+                v-tooltip.top="'复制命令'"
+              />
+            </div>
+            <div class="bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm overflow-x-auto break-all">
+              {{ installCommand }}
+            </div>
+          </div>
+
+          <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div class="flex items-start gap-2">
+              <i class="pi pi-info-circle text-blue-600 dark:text-blue-400 mt-0.5"></i>
+              <div class="text-sm text-blue-700 dark:text-blue-300">
+                <p class="font-medium mb-1">安装说明</p>
+                <ul class="text-xs text-blue-600 dark:text-blue-400 space-y-1">
+                  <li>• 在目标Linux服务器上执行上述安装命令</li>
+                  <li>• 安装完成后，探针会自动连接到控制中心</li>
+                  <li>• 系统信息（位置、操作系统等）将自动获取</li>
+                  <li>• 请妥善保管Agent Key，用于服务器身份验证</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 重要提示 -->
+        <div class="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div class="flex items-start gap-2">
+            <i class="pi pi-exclamation-triangle text-blue-600 dark:text-blue-400 mt-0.5"></i>
+            <div class="text-sm text-blue-700 dark:text-blue-300">
+              <p class="font-medium mb-1">重要提示</p>
+              <ul class="text-xs text-blue-600 dark:text-blue-400 space-y-1">
+                <li>• 请务必保存此Agent Key，关闭后将无法再次查看</li>
+                <li>• Agent Key用于验证服务器身份，请妥善保管</li>
+                <li>• 如果丢失Agent Key，需要重新添加服务器</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end">
+          <Button
+            label="我已保存"
+            icon="pi pi-check"
+            @click="agentKeyDialog = false"
+            class="px-6 py-2"
+          />
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 

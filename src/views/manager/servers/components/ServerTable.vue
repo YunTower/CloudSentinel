@@ -173,6 +173,20 @@ const confirmRestart = (event: Event, server: Server) => {
         scrollable
         @row-expand="onRowExpand"
       >
+        <!-- 空数据占位 -->
+        <template #empty>
+          <div class="flex flex-col items-center justify-center py-12 px-4">
+            <p class="text-lg font-medium text-color mb-2">暂无服务器数据</p>
+            <p class="text-sm text-muted-color text-center max-w-md">
+              {{
+                loading
+                  ? '正在加载服务器列表...'
+                  : '点击右上角"添加服务器"按钮来添加您的第一台服务器'
+              }}
+            </p>
+          </div>
+        </template>
+
         <!-- 展开列 -->
         <Column expander style="width: 3rem" />
 
@@ -181,10 +195,10 @@ const confirmRestart = (event: Event, server: Server) => {
           <template #body="{ data }">
             <div class="flex items-center gap-3">
               <div class="w-3 h-3 rounded-full" :class="getStatusColor(data.status)"></div>
-              <div class="flex-1 min-w-0">
-                <div class="font-medium text-color truncate">{{ data.name }}</div>
-                <div class="text-xs text-muted-color truncate">{{ data.ip }}</div>
-              </div>
+              <p class="flex-1 min-w-0 space-x-1">
+                <span class="font-medium text-color truncate">{{ data.name }}</span>
+                <span class="text-muted-color truncate"> ({{ data.ip }}) </span>
+              </p>
             </div>
           </template>
         </Column>
@@ -204,8 +218,8 @@ const confirmRestart = (event: Event, server: Server) => {
         <Column field="location" header="位置" sortable class="w-32">
           <template #body="{ data }">
             <div class="flex items-center gap-2">
-              <i class="pi pi-map-marker text-muted-color text-xs"></i>
-              <span class="text-sm truncate">{{ data.location }}</span>
+              <i v-if="data.location !== ''" class="pi pi-map-marker text-muted-color text-xs"></i>
+              <span class="text-sm truncate">{{ data.location == '' ? '-' : data.location }}</span>
             </div>
           </template>
         </Column>
@@ -214,44 +228,9 @@ const confirmRestart = (event: Event, server: Server) => {
         <Column field="os" header="系统" sortable class="w-40">
           <template #body="{ data }">
             <div class="space-y-1">
-              <div class="text-sm font-medium text-color">{{ data.os }}</div>
-              <div class="text-xs text-muted-color">{{ data.architecture || 'x86_64' }}</div>
-            </div>
-          </template>
-        </Column>
-
-        <!-- CPU列 -->
-        <Column field="cpu" header="CPU" sortable class="w-20">
-          <template #body="{ data }">
-            <div class="text-left">
-              <div class="text-lg font-bold" :class="getCpuTextColorClass(data.cpu)">
-                {{ data.cpu }}%
+              <div class="text-sm font-medium text-color">
+                {{ data.os }} ({{ data.architecture || 'x86_64' }})
               </div>
-              <div class="text-xs text-muted-color">使用率</div>
-            </div>
-          </template>
-        </Column>
-
-        <!-- 内存列 -->
-        <Column field="memory" header="内存" sortable class="w-25">
-          <template #body="{ data }">
-            <div class="text-left">
-              <div class="text-lg font-bold" :class="getMemoryTextColorClass(data.memory)">
-                {{ data.memory }}%
-              </div>
-              <div class="text-xs text-muted-color">使用率</div>
-            </div>
-          </template>
-        </Column>
-
-        <!-- 磁盘列 -->
-        <Column field="disk" header="磁盘" sortable class="w-25">
-          <template #body="{ data }">
-            <div class="text-left">
-              <div class="text-lg font-bold" :class="getDiskTextColorClass(data.disk)">
-                {{ data.disk }}%
-              </div>
-              <div class="text-xs text-muted-color">使用率</div>
             </div>
           </template>
         </Column>
@@ -261,7 +240,6 @@ const confirmRestart = (event: Event, server: Server) => {
           <template #body="{ data }">
             <div class="text-left">
               <div class="text-sm font-medium text-color">{{ formatUptime(data.uptime) }}</div>
-              <div class="text-xs text-muted-color">天时分</div>
             </div>
           </template>
         </Column>
@@ -331,7 +309,7 @@ const confirmRestart = (event: Event, server: Server) => {
                     class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
                   >
                     <span class="text-muted-color">位置</span>
-                    <span>{{ data.location }}</span>
+                    <span>{{ data.location == '' ? '-' : data.location }}</span>
                   </div>
                   <div
                     class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
@@ -414,7 +392,7 @@ const confirmRestart = (event: Event, server: Server) => {
                   >
                     <div class="flex items-center justify-between mb-3">
                       <div class="flex items-center gap-2">
-                        <i class="pi pi-memory text-primary"></i>
+                        <i class="pi pi-history text-primary"></i>
                         <span class="font-medium">内存使用率</span>
                       </div>
                       <span
@@ -451,7 +429,7 @@ const confirmRestart = (event: Event, server: Server) => {
                   >
                     <div class="flex items-center justify-between mb-3">
                       <div class="flex items-center gap-2">
-                        <i class="pi pi-hdd text-primary"></i>
+                        <i class="pi pi-database text-primary"></i>
                         <span class="font-medium">磁盘使用率</span>
                       </div>
                       <span class="text-2xl font-bold" :class="getDiskTextColorClass(data.disk)">
