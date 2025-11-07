@@ -22,16 +22,42 @@ const emit = defineEmits<{
 
 const confirm = useConfirm()
 const expandedRows = ref<{ [key: string]: boolean }>({})
+const pendingExpandServerId = ref<string>('') // 等待展开的服务器ID
 
 // 处理行展开事件
 const onRowExpand = (event: { data: Server }) => {
-  emit('expand-server', event.data.id)
+  const serverId = event.data.id
+
+  // 如果已经在加载中，阻止重复展开
+  if (props.expandingServerId === serverId) {
+    return
+  }
+
+  // 总是先展开，然后触发数据加载
+  // 如果数据已加载，显示现有数据；如果未加载，显示 loading
+  expandedRows.value[serverId] = true
+  pendingExpandServerId.value = serverId
+  emit('expand-server', serverId)
+}
+
+// 确认展开
+const confirmExpand = (serverId: string) => {
+  expandedRows.value[serverId] = true
+  pendingExpandServerId.value = ''
+}
+
+// 取消展开
+const cancelExpand = (serverId: string) => {
+  expandedRows.value[serverId] = false
+  pendingExpandServerId.value = ''
 }
 
 // 自动展开指定服务器详情
 const autoExpandServer = (serverId: string) => {
   const server = props.servers.find((s) => s.id === serverId)
   if (server) {
+    // 总是先展开，然后触发数据加载
+    pendingExpandServerId.value = serverId
     expandedRows.value[serverId] = true
     emit('expand-server', serverId)
   }
@@ -40,6 +66,8 @@ const autoExpandServer = (serverId: string) => {
 // 暴露方法给父组件
 defineExpose({
   autoExpandServer,
+  confirmExpand,
+  cancelExpand,
 })
 
 // 工具函数
@@ -219,7 +247,7 @@ const confirmRestart = (event: Event, server: Server) => {
           <template #body="{ data }">
             <div class="flex items-center gap-2">
               <i v-if="data.location !== ''" class="pi pi-map-marker text-muted-color text-xs"></i>
-              <span class="text-sm truncate">{{ data.location == '' ? '-' : data.location }}</span>
+              <span class="text-sm truncate">{{ data.location || '-' }}</span>
             </div>
           </template>
         </Column>
@@ -229,7 +257,7 @@ const confirmRestart = (event: Event, server: Server) => {
           <template #body="{ data }">
             <div class="space-y-1">
               <div class="text-sm font-medium text-color">
-                {{ data.os }} ({{ data.architecture || 'x86_64' }})
+                {{ data.os || '-' }} ({{ data.architecture || '-' }})
               </div>
             </div>
           </template>
@@ -267,14 +295,12 @@ const confirmRestart = (event: Event, server: Server) => {
           <div
             class="p-6 bg-surface-50 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700"
           >
-            <!-- 展开时的Loading状态 -->
             <div
-              v-if="props.expandingServerId === data.id"
+              v-if="props.expandingServerId === data.id && !data._detailLoaded"
               class="flex items-center justify-center py-8"
             >
               <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
             </div>
-            <!-- 正常内容 -->
             <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <!-- 左侧：基本信息 -->
               <div class="space-y-4">
@@ -321,7 +347,7 @@ const confirmRestart = (event: Event, server: Server) => {
                     class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
                   >
                     <span class="text-muted-color">系统架构</span>
-                    <span>{{ data.architecture || 'x86_64' }}</span>
+                    <span>{{ data.architecture || '-' }}</span>
                   </div>
                   <div
                     class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"

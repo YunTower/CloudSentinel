@@ -4,7 +4,15 @@ import { useToast } from 'primevue/usetoast'
 import ServerTable from './components/ServerTable.vue'
 import ServerDialog from './components/ServerDialog.vue'
 import serversApi from '@/apis/servers'
-import type { Server, ServerForm } from '@/types/manager/servers'
+import type {
+  Server,
+  ServerForm,
+  ServerDetailResponse,
+  CreateServerResponse,
+  GetServersResponse,
+  DeleteServerResponse,
+  UpdateServerResponse,
+} from '@/types/manager/servers'
 
 // 响应式数据
 const loading = ref(false)
@@ -61,7 +69,6 @@ const filteredServers = computed(() => {
   if (statusFilter.value && statusFilter.value !== 'all') {
     filtered = filtered.filter((server) => server.status === statusFilter.value)
   }
-
   return filtered
 })
 
@@ -73,7 +80,7 @@ const handleEditServer = (server: Server) => {
 const handleDeleteServer = async (server: Server) => {
   deletingServerId.value = server.id
   try {
-    const response: any = await serversApi.deleteServer(server.id)
+    const response = (await serversApi.deleteServer(server.id)) as DeleteServerResponse
 
     if (response.status) {
       const index = servers.value.findIndex((s) => s.id === server.id)
@@ -90,11 +97,12 @@ const handleDeleteServer = async (server: Server) => {
     } else {
       throw new Error(response.message || '删除失败')
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '请稍后重试'
     toast.add({
       severity: 'error',
       summary: '删除失败',
-      detail: error.message || '请稍后重试',
+      detail: errorMessage,
       life: 3000,
     })
   } finally {
@@ -132,7 +140,7 @@ const handleSaveServer = async (form: ServerForm) => {
   try {
     if (editingServer.value) {
       // 更新服务器
-      const response: any = await serversApi.updateServer(editingServer.value.id, form)
+      const response = (await serversApi.updateServer(editingServer.value.id, form)) as UpdateServerResponse
 
       if (response.status) {
         // 重新加载服务器列表
@@ -149,7 +157,7 @@ const handleSaveServer = async (form: ServerForm) => {
       }
     } else {
       // 添加新服务器
-      const response: any = await serversApi.createServer(form)
+      const response = (await serversApi.createServer(form)) as CreateServerResponse
 
       if (response.status && response.data) {
         // 保存生成的agent_key和服务器IP
@@ -180,11 +188,12 @@ const handleSaveServer = async (form: ServerForm) => {
 
     showAddDialog.value = false
     resetForm()
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '请稍后重试'
     toast.add({
       severity: 'error',
       summary: '操作失败',
-      detail: error.message || '请稍后重试',
+      detail: errorMessage,
       life: 3000,
     })
   } finally {
@@ -195,10 +204,10 @@ const handleSaveServer = async (form: ServerForm) => {
 const loadServers = async () => {
   loading.value = true
   try {
-    const response: any = await serversApi.getServers()
+    const response = (await serversApi.getServers()) as GetServersResponse
 
     if (response.status && response.data) {
-      servers.value = response.data.map((server: any) => ({
+      servers.value = response.data.map((server) => ({
         id: server.id,
         name: server.name,
         ip: server.ip,
@@ -207,28 +216,53 @@ const loadServers = async () => {
         location: server.location || '',
         os: server.os || '',
         architecture: server.architecture || '',
-        kernel: server.kernel || '',
-        hostname: server.hostname || '',
-        uptime: server.uptime || '0天0时0分',
-        cpu: 0, // 这些需要从性能指标表获取，暂时设为0
+        kernel: '',
+        hostname: '',
+        uptime: '0天0时0分',
+        cpu: 0,
         memory: 0,
         disk: 0,
         networkIO: { upload: 0, download: 0 },
         agent_key: server.agent_key,
         createdAt: server.created_at || '',
         updatedAt: server.updated_at || '',
+        _detailLoaded: false, // 标记详细信息是否已加载
       }))
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '获取服务器列表失败'
     toast.add({
       severity: 'error',
       summary: '加载失败',
-      detail: error.message || '获取服务器列表失败',
+      detail: errorMessage,
       life: 3000,
     })
   } finally {
     loading.value = false
   }
+}
+
+// 加载服务器详细信息
+const loadServerDetail = async (serverId: string) => {
+  const server = servers.value.find((s) => s.id === serverId)
+  if (!server) {
+    return
+  }
+
+  const response = (await serversApi.getServerDetail(serverId)) as ServerDetailResponse
+
+  if (!response.status || !response.data) {
+    throw new Error(response.message || '获取服务器详细信息失败')
+  }
+
+  const detail = response.data
+  // 更新服务器详细信息
+  server.os = detail.os || ''
+  server.architecture = detail.architecture || ''
+  server.kernel = detail.kernel || ''
+  server.hostname = detail.hostname || ''
+  server.uptime = detail.uptime_days ? `${detail.uptime_days}天` : '0天0时0分'
+  server._detailLoaded = true
 }
 
 const copyAgentKey = async () => {
@@ -327,10 +361,37 @@ watch(
 
 // 展开详情处理
 const handleExpandServer = async (serverId: string) => {
-  expandingServerId.value = serverId
+  const server = servers.value.find((s) => s.id === serverId)
+  if (!server) {
+    return
+  }
+
+  // 如果数据已加载过，先展开显示现有数据，然后后台刷新
+  const hasData = server._detailLoaded
+
+  // 设置 loading 状态（仅在数据未加载时显示）
+  if (!hasData) {
+    expandingServerId.value = serverId
+  }
+
   try {
-    // 模拟加载服务器详细信息
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    // 加载服务器详细信息
+    await loadServerDetail(serverId)
+  } catch (error: unknown) {
+    // 如果数据未加载过，加载失败时取消展开
+    if (!hasData) {
+      if (serverTableRef.value && 'cancelExpand' in serverTableRef.value) {
+        ;(serverTableRef.value as { cancelExpand: (id: string) => void }).cancelExpand(serverId)
+      }
+    }
+
+    const errorMessage = error instanceof Error ? error.message : '获取服务器详细信息失败'
+    toast.add({
+      severity: 'error',
+      summary: '加载失败',
+      detail: errorMessage,
+      life: 3000,
+    })
   } finally {
     expandingServerId.value = ''
   }
@@ -406,14 +467,18 @@ onMounted(async () => {
     >
       <div class="space-y-4">
         <!-- Agent Key -->
-        <div class="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+        <div
+          class="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg"
+        >
           <div class="flex items-start gap-3">
             <i class="pi pi-check-circle text-green-600 dark:text-green-400 text-2xl mt-0.5"></i>
             <div class="flex-1">
               <p class="font-medium text-green-700 dark:text-green-300 mb-2">
                 服务器已成功添加！请保存以下Agent Key：
               </p>
-              <div class="bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm break-all">
+              <div
+                class="bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm break-all"
+              >
                 {{ generatedAgentKey }}
               </div>
               <Button
@@ -429,7 +494,9 @@ onMounted(async () => {
         </div>
 
         <!-- 安装命令 -->
-        <div class="p-4 bg-surface-50 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700">
+        <div
+          class="p-4 bg-surface-50 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700"
+        >
           <div class="flex items-center gap-2 mb-3">
             <i class="pi pi-terminal text-primary"></i>
             <h4 class="text-lg font-semibold text-color">安装被控探针</h4>
@@ -445,12 +512,16 @@ onMounted(async () => {
                 v-tooltip.top="'复制命令'"
               />
             </div>
-            <div class="bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm overflow-x-auto break-all">
+            <div
+              class="bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm overflow-x-auto break-all"
+            >
               {{ installCommand }}
             </div>
           </div>
 
-          <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div
+            class="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+          >
             <div class="flex items-start gap-2">
               <i class="pi pi-info-circle text-blue-600 dark:text-blue-400 mt-0.5"></i>
               <div class="text-sm text-blue-700 dark:text-blue-300">
@@ -467,7 +538,9 @@ onMounted(async () => {
         </div>
 
         <!-- 重要提示 -->
-        <div class="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <div
+          class="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+        >
           <div class="flex items-start gap-2">
             <i class="pi pi-exclamation-triangle text-blue-600 dark:text-blue-400 mt-0.5"></i>
             <div class="text-sm text-blue-700 dark:text-blue-300">
