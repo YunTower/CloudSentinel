@@ -18,6 +18,7 @@ export interface Server {
     upload: number
     download: number
   }
+  agent_key?: string
   createdAt: string
   updatedAt: string
 }
