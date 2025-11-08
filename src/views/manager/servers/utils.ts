@@ -1,5 +1,3 @@
-// 服务器管理相关的工具函数
-
 // 状态文本映射
 export const getStatusText = (status: string) => {
   const texts = {
