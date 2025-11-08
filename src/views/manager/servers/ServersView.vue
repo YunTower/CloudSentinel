@@ -4,17 +4,19 @@ import { useToast } from 'primevue/usetoast'
 import ServerTable from './components/ServerTable.vue'
 import ServerDialog from './components/ServerDialog.vue'
 import serversApi from '@/apis/servers'
+import { useWebSocket } from '@/composables/useWebSocket'
 import type {
   Server,
   ServerForm,
   ServerDetailResponse,
+  ExtendedServerDetailData,
   CreateServerResponse,
   GetServersResponse,
   DeleteServerResponse,
   UpdateServerResponse,
+  RestartServerResponse,
 } from '@/types/manager/servers'
 
-// 响应式数据
 const loading = ref(false)
 const saving = ref(false)
 const filterLoading = ref(false)
@@ -25,8 +27,6 @@ const searchQuery = ref('')
 const statusFilter = ref<string>('all')
 const showAddDialog = ref(false)
 const editingServer = ref<Server | null>(null)
-
-// 组件引用
 const serverTableRef = ref<InstanceType<typeof ServerTable> | null>(null)
 
 // 表单数据
@@ -51,7 +51,41 @@ const generatedAgentKey = ref('')
 const serverIP = ref('')
 const websocketURL = ref('')
 
-// 计算属性
+// 查看安装脚本和连接密钥对话框
+const showInstallCommandDialog = ref(false)
+const showAgentKeyDialog = ref(false)
+const selectedServerForInstall = ref<Server | null>(null)
+const selectedServerForKey = ref<Server | null>(null)
+
+// WebSocket连接
+const websocket = useWebSocket({
+  onMetricsUpdate: (data) => {
+    const server = servers.value.find((s) => s.id === data.server_id)
+    if (server) {
+      if (data.cpu_usage !== undefined) server.cpu = data.cpu_usage
+      if (data.memory_usage !== undefined) server.memory = data.memory_usage
+      if (data.disk_usage !== undefined) server.disk = data.disk_usage
+      if (data.network_upload !== undefined || data.network_download !== undefined) {
+        server.networkIO = {
+          upload: data.network_upload ?? 0,
+          download: data.network_download ?? 0,
+        }
+      }
+      if (data.uptime !== undefined) server.uptime = data.uptime
+    }
+  },
+  onSystemInfoUpdate: (data) => {
+    const server = servers.value.find((s) => s.id === data.server_id)
+    if (server && data.data) {
+      if (data.data.os !== undefined) server.os = data.data.os
+      if (data.data.architecture !== undefined) server.architecture = data.data.architecture
+      if (data.data.kernel !== undefined) server.kernel = data.data.kernel
+      if (data.data.hostname !== undefined) server.hostname = data.data.hostname
+    }
+  },
+})
+
+// 过滤后的服务器
 const filteredServers = computed(() => {
   let filtered = servers.value
 
@@ -113,20 +147,24 @@ const handleDeleteServer = async (server: Server) => {
 const handleRestartServer = async (server: Server) => {
   restartingServerId.value = server.id
   try {
-    // 模拟API调用
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    const response = (await serversApi.restartServer(server.id)) as RestartServerResponse
 
-    toast.add({
-      severity: 'success',
-      summary: '重启成功',
-      detail: `服务器 "${server.name}" 重启完成`,
-      life: 3000,
-    })
-  } catch {
+    if (response.status) {
+      toast.add({
+        severity: 'success',
+        summary: '重启成功',
+        detail: `服务器 "${server.name}" 的重启命令已发送`,
+        life: 3000,
+      })
+    } else {
+      throw new Error(response.message || '重启失败')
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '请稍后重试'
     toast.add({
       severity: 'error',
       summary: '重启失败',
-      detail: '请稍后重试',
+      detail: errorMessage,
       life: 3000,
     })
   } finally {
@@ -140,12 +178,13 @@ const handleSaveServer = async (form: ServerForm) => {
   try {
     if (editingServer.value) {
       // 更新服务器
-      const response = (await serversApi.updateServer(editingServer.value.id, form)) as UpdateServerResponse
+      const response = (await serversApi.updateServer(
+        editingServer.value.id,
+        form,
+      )) as UpdateServerResponse
 
       if (response.status) {
-        // 重新加载服务器列表
         await loadServers()
-
         toast.add({
           severity: 'success',
           summary: '更新成功',
@@ -158,18 +197,14 @@ const handleSaveServer = async (form: ServerForm) => {
     } else {
       // 添加新服务器
       const response = (await serversApi.createServer(form)) as CreateServerResponse
-
       if (response.status && response.data) {
-        // 保存生成的agent_key和服务器IP
         generatedAgentKey.value = response.data.agent_key
         serverIP.value = response.data.ip
 
-        // 获取WebSocket URL（从当前页面URL推断）
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
         const host = window.location.host
         websocketURL.value = `${protocol}//${host}/api/ws/agent`
 
-        // 重新加载服务器列表
         await loadServers()
 
         toast.add({
@@ -250,7 +285,6 @@ const loadServerDetail = async (serverId: string) => {
   }
 
   const response = (await serversApi.getServerDetail(serverId)) as ServerDetailResponse
-
   if (!response.status || !response.data) {
     throw new Error(response.message || '获取服务器详细信息失败')
   }
@@ -261,7 +295,25 @@ const loadServerDetail = async (serverId: string) => {
   server.architecture = detail.architecture || ''
   server.kernel = detail.kernel || ''
   server.hostname = detail.hostname || ''
-  server.uptime = detail.uptime_days ? `${detail.uptime_days}天` : '0天0时0分'
+  // 使用后端计算的运行时间，否则使用uptime_days
+  const detailWithUptime = detail as ExtendedServerDetailData
+  server.uptime =
+    detailWithUptime.uptime || (detail.uptime_days ? `${detail.uptime_days}天` : '0天0时0分')
+
+  // 更新新增的字段
+  if (detailWithUptime.disks) {
+    server.disks = detailWithUptime.disks
+  }
+  if (detailWithUptime.cpus) {
+    server.cpus = detailWithUptime.cpus
+  }
+  if (detailWithUptime.memory) {
+    server.memoryInfo = detailWithUptime.memory
+  }
+  if (detailWithUptime.traffic) {
+    server.traffic = detailWithUptime.traffic
+  }
+
   server._detailLoaded = true
 }
 
@@ -285,12 +337,70 @@ const copyAgentKey = async () => {
 }
 
 const installCommand = computed(() => {
+  if (selectedServerForInstall.value) {
+    const server = selectedServerForInstall.value
+    if (!server.agent_key) return ''
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const host = window.location.host
+    const wsUrl = `${protocol}//${host}/api/ws/agent`
+    const installScriptURL = window.location.origin + '/install.sh'
+    return `curl -fsSL ${installScriptURL} | bash -s -- --server=${wsUrl} --key=${server.agent_key}`
+  }
   if (!generatedAgentKey.value || !serverIP.value) return ''
-  // 这里需要根据实际的安装脚本URL来生成命令
-  // 暂时使用占位符，实际应该从配置或环境变量获取
   const installScriptURL = window.location.origin + '/install.sh'
   return `curl -fsSL ${installScriptURL} | bash -s -- --server=${websocketURL.value} --key=${generatedAgentKey.value}`
 })
+
+// 处理查看安装脚本
+const handleViewInstallCommand = (server: Server) => {
+  selectedServerForInstall.value = server
+  showInstallCommandDialog.value = true
+}
+
+// 处理查看连接密钥
+const handleViewAgentKey = (server: Server) => {
+  selectedServerForKey.value = server
+  showAgentKeyDialog.value = true
+}
+
+const copySelectedAgentKey = async () => {
+  if (!selectedServerForKey.value?.agent_key) return
+  try {
+    await navigator.clipboard.writeText(selectedServerForKey.value.agent_key)
+    toast.add({
+      severity: 'success',
+      summary: '复制成功',
+      detail: 'Agent Key已复制到剪贴板',
+      life: 2000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: '复制失败',
+      detail: '请手动复制Agent Key',
+      life: 3000,
+    })
+  }
+}
+
+const copySelectedInstallCommand = async () => {
+  try {
+    await navigator.clipboard.writeText(installCommand.value)
+    toast.add({
+      severity: 'success',
+      summary: '复制成功',
+      detail: '安装命令已复制到剪贴板',
+      life: 2000,
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: '复制失败',
+      detail: '请手动复制安装命令',
+      life: 3000,
+    })
+  }
+}
 
 const copyInstallCommand = async () => {
   try {
@@ -334,9 +444,6 @@ const resetForm = () => {
 // 监听筛选状态变化
 watch(statusFilter, async (newValue, oldValue) => {
   if (oldValue !== undefined && newValue !== oldValue) {
-    filterLoading.value = true
-    // 模拟筛选加载延迟
-    await new Promise((resolve) => setTimeout(resolve, 300))
     filterLoading.value = false
   }
 })
@@ -350,7 +457,7 @@ watch(
     if (serverId && serverTableRef.value) {
       // 清除之前的展开状态
       expandingServerId.value = ''
-      // 自动展开新的服务器
+      // 展开新的服务器
       nextTick(() => {
         serverTableRef.value?.autoExpandServer(serverId)
       })
@@ -369,16 +476,19 @@ const handleExpandServer = async (serverId: string) => {
   // 如果数据已加载过，先展开显示现有数据，然后后台刷新
   const hasData = server._detailLoaded
 
-  // 设置 loading 状态（仅在数据未加载时显示）
+  // 设置 loading 状态
   if (!hasData) {
     expandingServerId.value = serverId
   }
 
   try {
-    // 加载服务器详细信息
     await loadServerDetail(serverId)
+    if (serverTableRef.value && 'confirmExpand' in serverTableRef.value) {
+      await (
+        serverTableRef.value as { confirmExpand: (id: string) => Promise<void> }
+      ).confirmExpand(serverId)
+    }
   } catch (error: unknown) {
-    // 如果数据未加载过，加载失败时取消展开
     if (!hasData) {
       if (serverTableRef.value && 'cancelExpand' in serverTableRef.value) {
         ;(serverTableRef.value as { cancelExpand: (id: string) => void }).cancelExpand(serverId)
@@ -397,17 +507,14 @@ const handleExpandServer = async (serverId: string) => {
   }
 }
 
-// 生命周期
 onMounted(async () => {
-  // 加载服务器列表
   await loadServers()
+  websocket.connect()
 
-  // 检查URL参数，自动展开指定服务器详情
   const urlParams = new URLSearchParams(window.location.search)
   const serverId = urlParams.get('server')
   if (serverId) {
-    // 延迟执行，确保组件完全挂载
-    nextTick(() => {
+    await nextTick(() => {
       if (serverTableRef.value) {
         serverTableRef.value.autoExpandServer(serverId)
       }
@@ -432,7 +539,6 @@ onMounted(async () => {
     </div>
 
     <div class="space-y-6">
-      <!-- 服务器数据表格 -->
       <ServerTable
         ref="serverTableRef"
         :servers="filteredServers"
@@ -444,10 +550,11 @@ onMounted(async () => {
         @delete-server="handleDeleteServer"
         @restart-server="handleRestartServer"
         @expand-server="handleExpandServer"
+        @view-install-command="handleViewInstallCommand"
+        @view-agent-key="handleViewAgentKey"
       />
     </div>
 
-    <!-- 添加/编辑服务器对话框 -->
     <ServerDialog
       v-model:visible="showAddDialog"
       v-model:form="serverForm"
@@ -565,6 +672,83 @@ onMounted(async () => {
           />
         </div>
       </template>
+    </Dialog>
+
+    <!-- 查看安装脚本对话框 -->
+    <Dialog
+      v-model:visible="showInstallCommandDialog"
+      header="安装脚本"
+      modal
+      :closable="true"
+      class="w-3xl"
+    >
+      <div class="space-y-4" v-if="selectedServerForInstall">
+        <div
+          class="p-4 bg-surface-50 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700"
+        >
+          <div class="flex items-center gap-2 mb-3">
+            <i class="pi pi-terminal text-primary"></i>
+            <h4 class="text-lg font-semibold text-color">Linux 安装命令</h4>
+          </div>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-color"
+                >服务器: {{ selectedServerForInstall.name }}</span
+              >
+              <Button
+                icon="pi pi-copy"
+                text
+                size="small"
+                @click="copySelectedInstallCommand"
+                v-tooltip.top="'复制命令'"
+              />
+            </div>
+            <div
+              class="bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm overflow-x-auto break-all"
+            >
+              {{ installCommand || '无法生成安装命令：缺少Agent Key' }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Dialog>
+
+    <!-- 查看连接密钥对话框 -->
+    <Dialog
+      v-model:visible="showAgentKeyDialog"
+      header="连接密钥"
+      modal
+      :closable="true"
+      class="w-2xl"
+    >
+      <div class="space-y-4" v-if="selectedServerForKey">
+        <div
+          class="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg"
+        >
+          <div class="flex items-start gap-3">
+            <i class="pi pi-key text-green-600 dark:text-green-400 text-2xl mt-0.5"></i>
+            <div class="flex-1">
+              <p class="font-medium text-green-700 dark:text-green-300 mb-2">
+                服务器: {{ selectedServerForKey.name }}
+              </p>
+              <div
+                class="bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm break-all"
+              >
+                {{ selectedServerForKey.agent_key || '未设置' }}
+              </div>
+              <Button
+                icon="pi pi-copy"
+                label="复制Agent Key"
+                text
+                size="small"
+                class="mt-2"
+                @click="copySelectedAgentKey"
+                :disabled="!selectedServerForKey.agent_key"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </Dialog>
   </div>
 </template>

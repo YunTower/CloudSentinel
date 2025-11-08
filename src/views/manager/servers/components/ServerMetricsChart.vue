@@ -1,0 +1,514 @@
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import type { MetricsData } from '@/types/manager/servers'
+import { initChart, getThemeColors, type ECOption } from '@/utils/echarts'
+import type { LineSeriesOption } from 'echarts/charts'
+import type { YAXisOption } from 'echarts/types/dist/shared'
+import { formatSpeed } from '../utils'
+
+interface Props {
+  serverId: string
+  chartType: 'cpu' | 'memory' | 'disk' | 'network'
+  data: MetricsData[]
+  timeRange: number // 小时数
+}
+
+const props = defineProps<Props>()
+
+const emit = defineEmits<{
+  'update:timeRange': [value: number]
+}>()
+
+const chartContainer = ref<HTMLDivElement | null>(null)
+let chartInstance: ReturnType<typeof initChart> | null = null
+
+// 图表标题映射
+const chartTitles = {
+  cpu: 'CPU负载',
+  memory: '内存负载',
+  disk: '磁盘读写负载',
+  network: '网络IO负载',
+}
+
+// 时间范围选项
+const timeRangeOptions = [
+  { label: '1小时', value: 1 },
+  { label: '6小时', value: 6 },
+  { label: '12小时', value: 12 },
+  { label: '24小时', value: 24 },
+]
+
+// 创建图表配置
+const createChartOption = (): ECOption => {
+  const theme = getThemeColors()
+  const data = props.data || []
+
+  let series: LineSeriesOption[] = []
+  const yAxisConfig: YAXisOption = {
+    type: 'value',
+    name: '',
+    nameTextStyle: {
+      color: theme.textColor,
+    },
+    axisLabel: {
+      color: theme.textColor,
+      formatter: (value: number) => {
+        if (props.chartType === 'network' || props.chartType === 'disk') {
+          return formatSpeed(value * 1024) // value 是 KB/s，转换为字节显示
+        }
+        return `${value}%`
+      },
+    },
+    splitLine: {
+      lineStyle: {
+        color: theme.gridColor,
+      },
+    },
+  }
+
+  if (props.chartType === 'network') {
+    const uploadData: Array<[number, number]> = data.map((item) => {
+      const timestamp = typeof item.timestamp === 'number' ? item.timestamp * 1000 : Date.now()
+      return [timestamp, item.network_upload / 1024] // 转换为KB/s
+    })
+    const downloadData: Array<[number, number]> = data.map((item) => {
+      const timestamp = typeof item.timestamp === 'number' ? item.timestamp * 1000 : Date.now()
+      return [timestamp, item.network_download / 1024] // 转换为KB/s
+    })
+
+    series = [
+      {
+        name: '上传',
+        type: 'line',
+        data: uploadData,
+        smooth: true,
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
+              { offset: 1, color: 'rgba(16, 185, 129, 0.05)' },
+            ],
+          },
+        },
+        lineStyle: {
+          color: '#10b981',
+          width: 2,
+        },
+        stack: 'network',
+        symbol: 'none',
+      },
+      {
+        name: '速度',
+        type: 'line',
+        data: downloadData,
+        smooth: true,
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
+              { offset: 1, color: 'rgba(59, 130, 246, 0.05)' },
+            ],
+          },
+        },
+        lineStyle: {
+          color: '#3b82f6',
+          width: 2,
+        },
+        stack: 'network',
+        symbol: 'none',
+      },
+    ]
+    // yAxisConfig.name = '速度'
+  } else if (props.chartType === 'disk') {
+    const readData: Array<[number, number]> = data.map((item) => {
+      const timestamp = typeof item.timestamp === 'number' ? item.timestamp * 1000 : Date.now()
+      return [timestamp, item.disk_read || 0]
+    })
+    const writeData: Array<[number, number]> = data.map((item) => {
+      const timestamp = typeof item.timestamp === 'number' ? item.timestamp * 1000 : Date.now()
+      return [timestamp, item.disk_write || 0]
+    })
+
+    series = [
+      {
+        name: '读取速度',
+        type: 'line',
+        data: readData,
+        smooth: true,
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(249, 115, 22, 0.3)' },
+              { offset: 1, color: 'rgba(249, 115, 22, 0.05)' },
+            ],
+          },
+        },
+        lineStyle: {
+          color: '#f97316',
+          width: 2,
+        },
+        stack: 'disk',
+        symbol: 'none',
+      },
+      {
+        name: '写入速度',
+        type: 'line',
+        data: writeData,
+        smooth: true,
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(168, 85, 247, 0.3)' },
+              { offset: 1, color: 'rgba(168, 85, 247, 0.05)' },
+            ],
+          },
+        },
+        lineStyle: {
+          color: '#a855f7',
+          width: 2,
+        },
+        stack: 'disk',
+        symbol: 'none',
+      },
+    ]
+    // yAxisConfig.name = '速度'
+  } else {
+    let valueKey: 'cpu_usage' | 'memory_usage' = 'cpu_usage'
+    let color = '#ef4444'
+    let colorStops: Array<{ offset: number; color: string }> = []
+    const seriesName = ''
+
+    switch (props.chartType) {
+      case 'cpu':
+        valueKey = 'cpu_usage'
+        color = '#ef4444'
+        // seriesName = 'CPU使用率'
+        colorStops = [
+          { offset: 0, color: 'rgba(239, 68, 68, 0.3)' },
+          { offset: 1, color: 'rgba(239, 68, 68, 0.05)' },
+        ]
+        break
+      case 'memory':
+        valueKey = 'memory_usage'
+        color = '#3b82f6'
+        // seriesName = '内存使用率'
+        colorStops = [
+          { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
+          { offset: 1, color: 'rgba(59, 130, 246, 0.05)' },
+        ]
+        break
+    }
+
+    const chartData: Array<[number, number]> = data.map((item) => {
+      const timestamp = typeof item.timestamp === 'number' ? item.timestamp * 1000 : Date.now()
+      return [timestamp, item[valueKey]]
+    })
+
+    series = [
+      {
+        name: seriesName,
+        type: 'line',
+        data: chartData,
+        smooth: true,
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops,
+          },
+        },
+        lineStyle: {
+          color,
+          width: 2,
+        },
+        symbol: 'none',
+      },
+    ]
+    // yAxisConfig.name = '使用率 (%)'
+    yAxisConfig.max = 100
+  }
+
+  return {
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: theme.backgroundColor,
+      borderColor: theme.gridColor,
+      textStyle: {
+        color: theme.textColor,
+      },
+      axisPointer: {
+        type: 'cross',
+        label: {
+          backgroundColor: theme.backgroundColor,
+        },
+      },
+    },
+    legend: {
+      data: series.map((s) => s.name).filter((name): name is string => name !== undefined),
+      top: 10,
+      textStyle: {
+        color: theme.textColor,
+      },
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      top: '15%',
+      containLabel: true,
+    },
+    xAxis: {
+      type: 'time',
+      boundaryGap: [0, 0],
+      axisLabel: {
+        color: theme.textColor,
+        formatter: '{MM}:{dd} {HH}:{mm}',
+        hideOverlap: true,
+        rotate: 0,
+      },
+      splitLine: {
+        show: false,
+      },
+    },
+    yAxis: yAxisConfig,
+    dataZoom: [
+      {
+        type: 'inside',
+        start: 0,
+        end: 100,
+      },
+      {
+        type: 'slider',
+        start: 0,
+        end: 100,
+        height: 20,
+        textStyle: {
+          color: theme.textColor,
+        },
+        borderColor: theme.gridColor,
+      },
+    ],
+    series,
+  }
+}
+
+// 初始化图表
+const initChartInstance = async () => {
+  if (!chartContainer.value) return
+
+  await nextTick()
+
+  if (chartInstance) {
+    chartInstance.dispose()
+  }
+
+  chartInstance = initChart(chartContainer.value)
+  updateChart()
+}
+
+// 更新图表
+const updateChart = () => {
+  if (!chartInstance) return
+
+  const option = createChartOption()
+  chartInstance.setOption(option, { notMerge: false })
+}
+
+// 添加实时数据点
+const addDataPoint = (dataPoint: {
+  timestamp: number
+  cpu_usage?: number
+  memory_usage?: number
+  disk_usage?: number
+  disk_read?: number
+  disk_write?: number
+  network_upload?: number
+  network_download?: number
+}) => {
+  if (!chartInstance) return
+
+  const timestamp = dataPoint.timestamp * 1000 // 转换为毫秒
+
+  // 获取当前配置
+  const currentOption = chartInstance.getOption() as ECOption | ECOption[]
+  const option = Array.isArray(currentOption) ? currentOption[0] : currentOption
+  if (!option || !Array.isArray(option.series) || option.series.length === 0) return
+
+  if (props.chartType === 'network') {
+    // 网络图表
+    const uploadValue = (dataPoint.network_upload || 0) / 1024
+    const downloadValue = (dataPoint.network_download || 0) / 1024
+
+    // 获取当前数据并添加新点
+    const uploadData = (option.series[0]?.data as Array<[number, number]>) || []
+    const downloadData = (option.series[1]?.data as Array<[number, number]>) || []
+
+    // 限制数据点数量
+    if (uploadData.length >= 500) {
+      uploadData.shift()
+      downloadData.shift()
+    }
+
+    uploadData.push([timestamp, uploadValue])
+    downloadData.push([timestamp, downloadValue])
+
+    chartInstance.setOption(
+      {
+        series: [
+          { data: uploadData, stack: 'network' },
+          { data: downloadData, stack: 'network' },
+        ],
+      },
+      { notMerge: false },
+    )
+  } else if (props.chartType === 'disk') {
+    // 磁盘图表
+    const readValue = dataPoint.disk_read || 0
+    const writeValue = dataPoint.disk_write || 0
+
+    // 获取当前数据并添加新点
+    const readData = (option.series[0]?.data as Array<[number, number]>) || []
+    const writeData = (option.series[1]?.data as Array<[number, number]>) || []
+
+    // 限制数据点数量
+    if (readData.length >= 500) {
+      readData.shift()
+      writeData.shift()
+    }
+
+    readData.push([timestamp, readValue])
+    writeData.push([timestamp, writeValue])
+
+    chartInstance.setOption(
+      {
+        series: [
+          { data: readData, stack: 'disk' },
+          { data: writeData, stack: 'disk' },
+        ],
+      },
+      { notMerge: false },
+    )
+  } else {
+    // CPU/内存：添加单个数据点
+    let value = 0
+    switch (props.chartType) {
+      case 'cpu':
+        value = dataPoint.cpu_usage || 0
+        break
+      case 'memory':
+        value = dataPoint.memory_usage || 0
+        break
+    }
+
+    // 获取当前数据并添加新点
+    const currentData = (option.series[0]?.data as Array<[number, number]>) || []
+
+    // 限制数据点数量
+    if (currentData.length >= 500) {
+      currentData.shift()
+    }
+
+    currentData.push([timestamp, value])
+
+    chartInstance.setOption(
+      {
+        series: [{ data: currentData }],
+      },
+      { notMerge: false },
+    )
+  }
+}
+
+// 监听数据变化
+watch(
+  () => props.data,
+  () => {
+    updateChart()
+  },
+  { deep: true },
+)
+
+// 监听时间范围变化
+watch(
+  () => props.timeRange,
+  () => {
+    updateChart()
+  },
+)
+
+// 监听主题变化
+watch(
+  () => document.documentElement.classList.contains('p-dark'),
+  () => {
+    updateChart()
+  },
+)
+
+// 处理时间范围切换
+const handleTimeRangeChange = (value: number) => {
+  emit('update:timeRange', value)
+}
+
+onMounted(() => {
+  initChartInstance()
+})
+
+onUnmounted(() => {
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
+})
+
+defineExpose({
+  addDataPoint,
+  updateChart,
+})
+</script>
+
+<template>
+  <div
+    class="chart-card bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700 shadow-sm"
+  >
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-2">
+        <i class="pi pi-chart-line text-primary"></i>
+        <span class="font-medium">{{ chartTitles[chartType] }}</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <SelectButton
+          :modelValue="timeRange"
+          :options="timeRangeOptions"
+          optionLabel="label"
+          optionValue="value"
+          @update:modelValue="handleTimeRangeChange"
+          size="small"
+        />
+      </div>
+    </div>
+    <div ref="chartContainer" class="mt-4" style="height: 250px"></div>
+  </div>
+</template>

@@ -29,7 +29,7 @@ export interface ServerDetailData {
 }
 
 // 服务器详情响应类型
-export type ServerDetailResponse = ApiResponse<ServerDetailData>
+export type ServerDetailResponse = ApiResponse<ExtendedServerDetailData>
 
 // 创建服务器响应数据接口
 export interface CreateServerData {
@@ -67,9 +67,10 @@ export interface ServerListItemData {
 // 获取服务器列表响应类型
 export type GetServersResponse = ApiResponse<ServerListItemData[]>
 
-// 删除/更新服务器响应类型（通常只返回状态和消息，没有数据）
+// 删除/更新/重启服务器响应类型
 export type DeleteServerResponse = ApiResponse<null>
 export type UpdateServerResponse = ApiResponse<null>
+export type RestartServerResponse = ApiResponse<null>
 
 // 服务器接口定义
 export interface Server {
@@ -91,6 +92,10 @@ export interface Server {
     upload: number
     download: number
   }
+  disks?: DiskInfo[]
+  cpus?: CPUInfo[]
+  memoryInfo?: MemoryInfo
+  traffic?: TrafficInfo
   agent_key?: string
   createdAt: string
   updatedAt: string
@@ -114,4 +119,60 @@ export interface ServerForm {
 export interface StatusOption {
   label: string
   value: string
+}
+
+// 磁盘信息接口
+export interface DiskInfo {
+  disk_name: string
+  mount_point: string
+  total_size: number
+  used_size: number
+  free_size: number
+  usage_percent: number
+}
+
+// CPU核心信息接口
+export interface CPUInfo {
+  cpu_name: string
+  cpu_usage: number
+  cores: number
+  timestamp?: number
+}
+
+// 内存信息接口
+export interface MemoryInfo {
+  memory_total: number
+  memory_used: number
+  memory_usage_percent: number
+  timestamp?: number
+}
+
+// 流量信息接口
+export interface TrafficInfo {
+  upload_bytes: number
+  download_bytes: number
+}
+
+// 性能指标数据接口
+export interface MetricsData {
+  timestamp: number
+  cpu_usage: number
+  memory_usage: number
+  disk_usage?: number // 磁盘使用率
+  disk_read?: number // 磁盘读取速度（KB/s）
+  disk_write?: number // 磁盘写入速度（KB/s）
+  network_upload: number
+  network_download: number
+}
+
+// 性能指标响应类型
+export type GetServerMetricsResponse = ApiResponse<MetricsData[]>
+
+// 扩展服务器详情数据接口
+export interface ExtendedServerDetailData extends ServerDetailData {
+  uptime?: string
+  disks?: DiskInfo[]
+  cpus?: CPUInfo[]
+  memory?: MemoryInfo
+  traffic?: TrafficInfo
 }
