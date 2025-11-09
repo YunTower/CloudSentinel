@@ -22,8 +22,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const emit = defineEmits<{
-  'view-install-command': [server: Server]
-  'view-agent-key': [server: Server]
+  'view-install-info': [server: Server]
   'delete-server': [server: Server]
   'edit-server': [server: Server]
   'restart-server': [server: Server]
@@ -577,17 +576,10 @@ defineExpose({
                 class="mt-6 pt-6 border-t border-surface-200 dark:border-surface-700 flex justify-end gap-3"
               >
                 <Button
-                  label="查看安装脚本"
-                  icon="pi pi-code"
+                  label="查看安装信息"
+                  icon="pi pi-info-circle"
                   text
-                  @click="$emit('view-install-command', data)"
-                  class="shadow-sm"
-                />
-                <Button
-                  label="查看连接密钥"
-                  icon="pi pi-key"
-                  text
-                  @click="$emit('view-agent-key', data)"
+                  @click="$emit('view-install-info', data)"
                   class="shadow-sm"
                 />
                 <Button

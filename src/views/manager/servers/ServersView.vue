@@ -51,11 +51,9 @@ const generatedAgentKey = ref('')
 const serverIP = ref('')
 const websocketURL = ref('')
 
-// 查看安装脚本和连接密钥对话框
-const showInstallCommandDialog = ref(false)
-const showAgentKeyDialog = ref(false)
+// 查看安装信息对话框
+const showInstallInfoDialog = ref(false)
 const selectedServerForInstall = ref<Server | null>(null)
-const selectedServerForKey = ref<Server | null>(null)
 
 // WebSocket连接
 const websocket = useWebSocket({
@@ -309,6 +307,8 @@ const loadServerDetail = async (serverId: string) => {
   server.architecture = detail.architecture || ''
   server.kernel = detail.kernel || ''
   server.hostname = detail.hostname || ''
+  server.agent_key = detail.agent_key || ''
+
   // 使用后端计算的运行时间，否则使用uptime_days
   const detailWithUptime = detail as ExtendedServerDetailData
   server.uptime =
@@ -366,28 +366,32 @@ const installCommand = computed(() => {
 })
 
 // 处理查看安装脚本
-const handleViewInstallCommand = (server: Server) => {
+// 处理查看安装信息
+const handleViewInstallInfo = (server: Server) => {
   selectedServerForInstall.value = server
-  showInstallCommandDialog.value = true
-}
-
-// 处理查看连接密钥
-const handleViewAgentKey = (server: Server) => {
-  selectedServerForKey.value = server
-  showAgentKeyDialog.value = true
+  showInstallInfoDialog.value = true
 }
 
 const copySelectedAgentKey = async () => {
-  if (!selectedServerForKey.value?.agent_key) return
+  if (!selectedServerForInstall.value?.agent_key) {
+    toast.add({
+      severity: 'warn',
+      summary: '无法复制',
+      detail: 'Agent Key 不存在',
+      life: 2000,
+    })
+    return
+  }
   try {
-    await navigator.clipboard.writeText(selectedServerForKey.value.agent_key)
+    await navigator.clipboard.writeText(selectedServerForInstall.value.agent_key)
     toast.add({
       severity: 'success',
       summary: '复制成功',
       detail: 'Agent Key已复制到剪贴板',
       life: 2000,
     })
-  } catch {
+  } catch (error) {
+    console.error('复制失败:', error)
     toast.add({
       severity: 'error',
       summary: '复制失败',
@@ -564,8 +568,7 @@ onMounted(async () => {
         @delete-server="handleDeleteServer"
         @restart-server="handleRestartServer"
         @expand-server="handleExpandServer"
-        @view-install-command="handleViewInstallCommand"
-        @view-agent-key="handleViewAgentKey"
+        @view-install-info="handleViewInstallInfo"
       />
     </div>
 
@@ -618,27 +621,24 @@ onMounted(async () => {
         <div
           class="p-4 bg-surface-50 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700"
         >
-          <div class="flex items-center gap-2 mb-3">
-            <i class="pi pi-terminal text-primary"></i>
-            <h4 class="text-lg font-semibold text-color">安装被控探针</h4>
-          </div>
-          <div class="space-y-3">
-            <div class="flex items-center justify-between">
-              <span class="text-sm font-medium text-color">Linux 安装命令</span>
-              <Button
-                icon="pi pi-copy"
-                text
-                size="small"
-                @click="copyInstallCommand"
-                v-tooltip.top="'复制命令'"
-              />
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <i class="pi pi-terminal text-primary"></i>
+              <h4 class="text-lg font-semibold text-color">Linux 安装命令</h4>
             </div>
-            <div
-              class="bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm overflow-x-auto break-all"
-            >
-              {{ installCommand }}
-            </div>
+            <Button
+              icon="pi pi-copy"
+              text
+              size="small"
+              @click="copyInstallCommand"
+              v-tooltip.top="'复制命令'"
+            />
           </div>
+          <code
+            class="block bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
+          >
+            {{ installCommand }}
+          </code>
 
           <div
             class="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg"
@@ -657,23 +657,6 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-
-        <!-- 重要提示 -->
-        <div
-          class="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg"
-        >
-          <div class="flex items-start gap-2">
-            <i class="pi pi-exclamation-triangle text-blue-600 dark:text-blue-400 mt-0.5"></i>
-            <div class="text-sm text-blue-700 dark:text-blue-300">
-              <p class="font-medium mb-1">重要提示</p>
-              <ul class="text-xs text-blue-600 dark:text-blue-400 space-y-1">
-                <li>• 请务必保存此Agent Key，关闭后将无法再次查看</li>
-                <li>• Agent Key用于验证服务器身份，请妥善保管</li>
-                <li>• 如果丢失Agent Key，需要重新添加服务器</li>
-              </ul>
-            </div>
-          </div>
-        </div>
       </div>
 
       <template #footer>
@@ -688,78 +671,59 @@ onMounted(async () => {
       </template>
     </Dialog>
 
-    <!-- 查看安装脚本对话框 -->
+    <!-- 查看安装信息对话框 -->
     <Dialog
-      v-model:visible="showInstallCommandDialog"
-      header="安装脚本"
+      v-model:visible="showInstallInfoDialog"
+      header="安装信息"
       modal
       :closable="true"
       class="w-3xl"
     >
       <div class="space-y-4" v-if="selectedServerForInstall">
+        <!-- 连接密钥 -->
+        <div class="mb-4">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+              <span class="font-medium text-color whitespace-nowrap">连接密钥 (Agent Key):</span>
+              <code
+                class="block bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-1 rounded font-mono text-sm break-all whitespace-pre-wrap"
+                >{{ selectedServerForInstall.agent_key || '未设置' }}</code
+              >
+            </div>
+            <Button
+              icon="pi pi-copy"
+              text
+              size="small"
+              @click.stop="copySelectedAgentKey"
+              v-tooltip.top="'复制密钥'"
+              class="flex-shrink-0"
+            />
+          </div>
+        </div>
+
+        <!-- 安装命令 -->
         <div
           class="p-4 bg-surface-50 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700"
         >
-          <div class="flex items-center gap-2 mb-3">
-            <i class="pi pi-terminal text-primary"></i>
-            <h4 class="text-lg font-semibold text-color">Linux 安装命令</h4>
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <i class="pi pi-terminal text-primary"></i>
+              <h4 class="text-lg font-semibold text-color">Linux 安装命令</h4>
+            </div>
+            <Button
+              icon="pi pi-copy"
+              text
+              size="small"
+              @click="copySelectedInstallCommand"
+              v-tooltip.top="'复制命令'"
+            />
           </div>
           <div class="space-y-3">
-            <div class="flex items-center justify-between">
-              <span class="text-sm font-medium text-color"
-                >服务器: {{ selectedServerForInstall.name }}</span
-              >
-              <Button
-                icon="pi pi-copy"
-                text
-                size="small"
-                @click="copySelectedInstallCommand"
-                v-tooltip.top="'复制命令'"
-              />
-            </div>
-            <div
-              class="bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm overflow-x-auto break-all"
+            <code
+              class="block bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
             >
               {{ installCommand || '无法生成安装命令：缺少Agent Key' }}
-            </div>
-          </div>
-        </div>
-      </div>
-    </Dialog>
-
-    <!-- 查看连接密钥对话框 -->
-    <Dialog
-      v-model:visible="showAgentKeyDialog"
-      header="连接密钥"
-      modal
-      :closable="true"
-      class="w-2xl"
-    >
-      <div class="space-y-4" v-if="selectedServerForKey">
-        <div
-          class="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg"
-        >
-          <div class="flex items-start gap-3">
-            <i class="pi pi-key text-green-600 dark:text-green-400 text-2xl mt-0.5"></i>
-            <div class="flex-1">
-              <p class="font-medium text-green-700 dark:text-green-300 mb-2">
-                服务器: {{ selectedServerForKey.name }}
-              </p>
-              <div
-                class="bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm break-all"
-              >
-                {{ selectedServerForKey.agent_key || '未设置' }}
-              </div>
-              <Button
-                icon="pi pi-copy"
-                label="复制Agent Key"
-                text
-                size="small"
-                class="mt-2"
-                @click="copySelectedAgentKey"
-                :disabled="!selectedServerForKey.agent_key"
-              />
-            </div>
+            </code>
           </div>
         </div>
       </div>

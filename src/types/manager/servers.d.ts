@@ -60,6 +60,7 @@ export interface ServerListItemData {
   os?: string
   architecture?: string
   agent_key?: string
+  uptime?: string
   created_at?: string
   updated_at?: string
 }
