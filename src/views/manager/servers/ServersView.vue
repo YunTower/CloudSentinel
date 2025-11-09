@@ -253,7 +253,7 @@ const loadServers = async () => {
         architecture: server.architecture || '',
         kernel: '',
         hostname: '',
-        uptime: '0天0时0分',
+        uptime: server.uptime || '0天0时0分',
         cpu: 0,
         memory: 0,
         disk: 0,

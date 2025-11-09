@@ -75,7 +75,7 @@ const confirmExpand = async (serverId: string) => {
   initChartTimeRange(serverId)
 
   // 加载所有图表数据
-  const hours = chartTimeRange.value[serverId]?.cpu || 24
+  const hours = chartTimeRange.value[serverId]?.cpu || 1
 
   try {
     // 并行加载所有图表数据
@@ -157,10 +157,10 @@ const confirmRestart = (event: Event, server: Server) => {
 const initChartTimeRange = (serverId: string) => {
   if (!chartTimeRange.value[serverId]) {
     chartTimeRange.value[serverId] = {
-      cpu: 24,
-      memory: 24,
-      disk: 24,
-      network: 24,
+      cpu: 1,
+      memory: 1,
+      disk: 1,
+      network: 1,
     }
   }
 }
@@ -494,7 +494,7 @@ defineExpose({
                     :server-id="data.id"
                     chart-type="cpu"
                     :data="metricsData[data.id]?.cpu || []"
-                    :time-range="chartTimeRange[data.id]?.cpu || 24"
+                    :time-range="chartTimeRange[data.id]?.cpu || 1"
                     @update:time-range="(value) => updateChartTimeRange(data.id, 'cpu', value)"
                   />
                 </div>
@@ -515,7 +515,7 @@ defineExpose({
                     :server-id="data.id"
                     chart-type="memory"
                     :data="metricsData[data.id]?.memory || []"
-                    :time-range="chartTimeRange[data.id]?.memory || 24"
+                    :time-range="chartTimeRange[data.id]?.memory || 1"
                     @update:time-range="(value) => updateChartTimeRange(data.id, 'memory', value)"
                   />
                 </div>
@@ -536,7 +536,7 @@ defineExpose({
                     :server-id="data.id"
                     chart-type="disk"
                     :data="metricsData[data.id]?.disk || []"
-                    :time-range="chartTimeRange[data.id]?.disk || 24"
+                    :time-range="chartTimeRange[data.id]?.disk || 1"
                     @update:time-range="(value) => updateChartTimeRange(data.id, 'disk', value)"
                   />
                 </div>
@@ -557,7 +557,7 @@ defineExpose({
                     :server-id="data.id"
                     chart-type="network"
                     :data="metricsData[data.id]?.network || []"
-                    :time-range="chartTimeRange[data.id]?.network || 24"
+                    :time-range="chartTimeRange[data.id]?.network || 1"
                     @update:time-range="(value) => updateChartTimeRange(data.id, 'network', value)"
                   />
                 </div>

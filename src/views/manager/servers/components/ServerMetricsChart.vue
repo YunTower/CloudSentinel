@@ -26,8 +26,8 @@ let chartInstance: ReturnType<typeof initChart> | null = null
 const chartTitles = {
   cpu: 'CPU负载',
   memory: '内存负载',
-  disk: '磁盘读写负载',
-  network: '网络IO负载',
+  disk: '磁盘IO',
+  network: '网络IO',
 }
 
 // 时间范围选项
@@ -196,13 +196,13 @@ const createChartOption = (): ECOption => {
     let valueKey: 'cpu_usage' | 'memory_usage' = 'cpu_usage'
     let color = '#ef4444'
     let colorStops: Array<{ offset: number; color: string }> = []
-    const seriesName = ''
+    let seriesName = ''
 
     switch (props.chartType) {
       case 'cpu':
         valueKey = 'cpu_usage'
         color = '#ef4444'
-        // seriesName = 'CPU使用率'
+        seriesName = '使用率'
         colorStops = [
           { offset: 0, color: 'rgba(239, 68, 68, 0.3)' },
           { offset: 1, color: 'rgba(239, 68, 68, 0.05)' },
@@ -211,7 +211,7 @@ const createChartOption = (): ECOption => {
       case 'memory':
         valueKey = 'memory_usage'
         color = '#3b82f6'
-        // seriesName = '内存使用率'
+        seriesName = '使用率'
         colorStops = [
           { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
           { offset: 1, color: 'rgba(59, 130, 246, 0.05)' },
@@ -261,9 +261,6 @@ const createChartOption = (): ECOption => {
       },
       axisPointer: {
         type: 'cross',
-        label: {
-          backgroundColor: theme.backgroundColor,
-        },
       },
     },
     legend: {
@@ -294,23 +291,6 @@ const createChartOption = (): ECOption => {
       },
     },
     yAxis: yAxisConfig,
-    dataZoom: [
-      {
-        type: 'inside',
-        start: 0,
-        end: 100,
-      },
-      {
-        type: 'slider',
-        start: 0,
-        end: 100,
-        height: 20,
-        textStyle: {
-          color: theme.textColor,
-        },
-        borderColor: theme.gridColor,
-      },
-    ],
     series,
   }
 }
