@@ -22,6 +22,8 @@ export interface WebSocketCallbacks {
     cpu_usage?: number
     memory_usage?: number
     disk_usage?: number
+    disk_read?: number
+    disk_write?: number
     network_upload?: number
     network_download?: number
   }) => void
@@ -115,7 +117,15 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
 
       websocket.onclose = (event) => {
         clearTimeout(connectTimeout)
-        console.log('WebSocket连接已关闭', 'code:', event.code, 'reason:', event.reason, 'wasClean:', event.wasClean)
+        console.log(
+          'WebSocket连接已关闭',
+          'code:',
+          event.code,
+          'reason:',
+          event.reason,
+          'wasClean:',
+          event.wasClean,
+        )
         isConnected.value = false
         ws.value = null
         callbacks.onClose?.()
@@ -128,7 +138,9 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
 
         // 如果不是正常关闭（code 1000），尝试重连
         if (event.code !== 1000) {
-          console.log(`WebSocket异常关闭 (code: ${event.code})，${reconnectDelay / 1000}秒后尝试重连...`)
+          console.log(
+            `WebSocket异常关闭 (code: ${event.code})，${reconnectDelay / 1000}秒后尝试重连...`,
+          )
           // 尝试重连
           if (reconnectTimer.value) {
             clearTimeout(reconnectTimer.value)
@@ -181,39 +193,45 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
         network_download?: number
         uptime?: string
       }
-          if (data.server_id) {
-            callbacks.onMetricsUpdate?.({
-              server_id: data.server_id,
-              cpu_usage: typeof data.cpu_usage === 'number' ? data.cpu_usage : undefined,
-              memory_usage: typeof data.memory_usage === 'number' ? data.memory_usage : undefined,
-              disk_usage: typeof data.disk_usage === 'number' ? data.disk_usage : undefined,
-              network_upload: typeof data.network_upload === 'number' ? data.network_upload : undefined,
-              network_download: typeof data.network_download === 'number' ? data.network_download : undefined,
-              uptime: typeof data.uptime === 'string' ? data.uptime : undefined,
-            })
-          }
-        } else if (message.type === 'metrics_realtime' && message.data) {
-          const data = message.data as {
-            server_id?: string
-            timestamp?: number
-            cpu_usage?: number
-            memory_usage?: number
-            disk_usage?: number
-            network_upload?: number
-            network_download?: number
-          }
-          if (data.server_id && data.timestamp) {
-            callbacks.onMetricsRealtime?.({
-              server_id: data.server_id,
-              timestamp: data.timestamp,
-              cpu_usage: typeof data.cpu_usage === 'number' ? data.cpu_usage : undefined,
-              memory_usage: typeof data.memory_usage === 'number' ? data.memory_usage : undefined,
-              disk_usage: typeof data.disk_usage === 'number' ? data.disk_usage : undefined,
-              network_upload: typeof data.network_upload === 'number' ? data.network_upload : undefined,
-              network_download: typeof data.network_download === 'number' ? data.network_download : undefined,
-            })
-          }
-        } else if (message.type === 'system_info_update' && message.data) {
+      if (data.server_id) {
+        callbacks.onMetricsUpdate?.({
+          server_id: data.server_id,
+          cpu_usage: typeof data.cpu_usage === 'number' ? data.cpu_usage : undefined,
+          memory_usage: typeof data.memory_usage === 'number' ? data.memory_usage : undefined,
+          disk_usage: typeof data.disk_usage === 'number' ? data.disk_usage : undefined,
+          network_upload: typeof data.network_upload === 'number' ? data.network_upload : undefined,
+          network_download:
+            typeof data.network_download === 'number' ? data.network_download : undefined,
+          uptime: typeof data.uptime === 'string' ? data.uptime : undefined,
+        })
+      }
+    } else if (message.type === 'metrics_realtime' && message.data) {
+      const data = message.data as {
+        server_id?: string
+        timestamp?: number
+        cpu_usage?: number
+        memory_usage?: number
+        disk_usage?: number
+        disk_read?: number
+        disk_write?: number
+        network_upload?: number
+        network_download?: number
+      }
+      if (data.server_id && data.timestamp) {
+        callbacks.onMetricsRealtime?.({
+          server_id: data.server_id,
+          timestamp: data.timestamp,
+          cpu_usage: typeof data.cpu_usage === 'number' ? data.cpu_usage : undefined,
+          memory_usage: typeof data.memory_usage === 'number' ? data.memory_usage : undefined,
+          disk_usage: typeof data.disk_usage === 'number' ? data.disk_usage : undefined,
+          disk_read: typeof data.disk_read === 'number' ? data.disk_read : undefined,
+          disk_write: typeof data.disk_write === 'number' ? data.disk_write : undefined,
+          network_upload: typeof data.network_upload === 'number' ? data.network_upload : undefined,
+          network_download:
+            typeof data.network_download === 'number' ? data.network_download : undefined,
+        })
+      }
+    } else if (message.type === 'system_info_update' && message.data) {
       const data = message.data as {
         server_id?: string
         data?: {
@@ -243,4 +261,3 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
     isConnected,
   }
 }
-

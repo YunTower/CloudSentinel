@@ -331,26 +331,34 @@ const addDataPoint = (dataPoint: {
   if (!chartInstance) return
 
   const timestamp = dataPoint.timestamp * 1000 // 转换为毫秒
+  const now = Date.now()
+
+  // 根据当前选择的时间范围计算时间窗口（毫秒）
+  const timeWindowMs = props.timeRange * 60 * 60 * 1000
+  const timeWindowStart = now - timeWindowMs
 
   // 获取当前配置
   const currentOption = chartInstance.getOption() as ECOption | ECOption[]
   const option = Array.isArray(currentOption) ? currentOption[0] : currentOption
   if (!option || !Array.isArray(option.series) || option.series.length === 0) return
 
+  // 只保留时间窗口内的数据点
+  const filterDataByTimeWindow = (data: Array<[number, number]>): Array<[number, number]> => {
+    return data.filter((point) => point[0] >= timeWindowStart)
+  }
+
   if (props.chartType === 'network') {
     // 网络图表
     const uploadValue = (dataPoint.network_upload || 0) / 1024
     const downloadValue = (dataPoint.network_download || 0) / 1024
 
-    // 获取当前数据并添加新点
-    const uploadData = (option.series[0]?.data as Array<[number, number]>) || []
-    const downloadData = (option.series[1]?.data as Array<[number, number]>) || []
-
-    // 限制数据点数量
-    if (uploadData.length >= 500) {
-      uploadData.shift()
-      downloadData.shift()
-    }
+    // 获取当前数据，过滤掉超出时间窗口的旧数据，然后添加新点
+    const uploadData = filterDataByTimeWindow(
+      (option.series[0]?.data as Array<[number, number]>) || []
+    )
+    const downloadData = filterDataByTimeWindow(
+      (option.series[1]?.data as Array<[number, number]>) || []
+    )
 
     uploadData.push([timestamp, uploadValue])
     downloadData.push([timestamp, downloadValue])
@@ -369,15 +377,13 @@ const addDataPoint = (dataPoint: {
     const readValue = dataPoint.disk_read || 0
     const writeValue = dataPoint.disk_write || 0
 
-    // 获取当前数据并添加新点
-    const readData = (option.series[0]?.data as Array<[number, number]>) || []
-    const writeData = (option.series[1]?.data as Array<[number, number]>) || []
-
-    // 限制数据点数量
-    if (readData.length >= 500) {
-      readData.shift()
-      writeData.shift()
-    }
+    // 获取当前数据，过滤掉超出时间窗口的旧数据，然后添加新点
+    const readData = filterDataByTimeWindow(
+      (option.series[0]?.data as Array<[number, number]>) || []
+    )
+    const writeData = filterDataByTimeWindow(
+      (option.series[1]?.data as Array<[number, number]>) || []
+    )
 
     readData.push([timestamp, readValue])
     writeData.push([timestamp, writeValue])
@@ -403,13 +409,10 @@ const addDataPoint = (dataPoint: {
         break
     }
 
-    // 获取当前数据并添加新点
-    const currentData = (option.series[0]?.data as Array<[number, number]>) || []
-
-    // 限制数据点数量
-    if (currentData.length >= 500) {
-      currentData.shift()
-    }
+    // 获取当前数据，过滤掉超出时间窗口的旧数据，然后添加新点
+    const currentData = filterDataByTimeWindow(
+      (option.series[0]?.data as Array<[number, number]>) || []
+    )
 
     currentData.push([timestamp, value])
 

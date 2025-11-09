@@ -291,20 +291,29 @@ const addRealtimeDataPoint = (
     cpu_usage?: number
     memory_usage?: number
     disk_usage?: number
+    disk_read?: number
+    disk_write?: number
     network_upload?: number
     network_download?: number
   },
 ) => {
   if (chartRefs.value[serverId]) {
+    // CPU图表
     if (dataPoint.cpu_usage !== undefined && chartRefs.value[serverId].cpu) {
       chartRefs.value[serverId].cpu?.addDataPoint(dataPoint)
     }
+    // 内存图表
     if (dataPoint.memory_usage !== undefined && chartRefs.value[serverId].memory) {
       chartRefs.value[serverId].memory?.addDataPoint(dataPoint)
     }
-    if (dataPoint.disk_usage !== undefined && chartRefs.value[serverId].disk) {
+    // 磁盘图表
+    if (
+      (dataPoint.disk_read !== undefined || dataPoint.disk_write !== undefined) &&
+      chartRefs.value[serverId].disk
+    ) {
       chartRefs.value[serverId].disk?.addDataPoint(dataPoint)
     }
+    // 网络图表
     if (
       (dataPoint.network_upload !== undefined || dataPoint.network_download !== undefined) &&
       chartRefs.value[serverId].network

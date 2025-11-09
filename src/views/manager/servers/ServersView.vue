@@ -74,6 +74,20 @@ const websocket = useWebSocket({
       if (data.uptime !== undefined) server.uptime = data.uptime
     }
   },
+  onMetricsRealtime: (data) => {
+    if (serverTableRef.value) {
+      serverTableRef.value.addRealtimeDataPoint(data.server_id, {
+        timestamp: data.timestamp,
+        cpu_usage: data.cpu_usage,
+        memory_usage: data.memory_usage,
+        disk_usage: data.disk_usage,
+        disk_read: data.disk_read,
+        disk_write: data.disk_write,
+        network_upload: data.network_upload,
+        network_download: data.network_download,
+      })
+    }
+  },
   onSystemInfoUpdate: (data) => {
     const server = servers.value.find((s) => s.id === data.server_id)
     if (server && data.data) {
