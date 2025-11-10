@@ -4,6 +4,7 @@ import type { MetricsData } from '@/types/manager/servers'
 import { initChart, getThemeColors, type ECOption } from '@/utils/echarts'
 import type { LineSeriesOption } from 'echarts/charts'
 import type { YAXisOption } from 'echarts/types/dist/shared'
+import type { CallbackDataParams } from 'echarts/types/dist/shared'
 import { formatSpeed } from '../utils'
 import { useLayout } from '@/composables/useLayout'
 
@@ -12,6 +13,13 @@ interface Props {
   chartType: 'cpu' | 'memory' | 'disk' | 'network'
   data: MetricsData[]
   timeRange: number // 小时数
+}
+
+interface TooltipParam extends CallbackDataParams {
+  axisValueLabel?: string
+  value: [number, number] | number | string
+  seriesName?: string
+  color?: string
 }
 
 const props = defineProps<Props>()
@@ -100,7 +108,6 @@ const createChartOption = (): ECOption => {
           color: '#3b82f6',
           width: 2,
         },
-        stack: 'network',
         symbol: 'none',
       },
       {
@@ -125,7 +132,6 @@ const createChartOption = (): ECOption => {
           color: '#10b981',
           width: 2,
         },
-        stack: 'network',
         symbol: 'none',
       },
     ]
@@ -163,7 +169,6 @@ const createChartOption = (): ECOption => {
           color: '#3b82f6',
           width: 2,
         },
-        stack: 'disk',
         symbol: 'none',
       },
       {
@@ -188,7 +193,6 @@ const createChartOption = (): ECOption => {
           color: '#10b981',
           width: 2,
         },
-        stack: 'disk',
         symbol: 'none',
       },
     ]
@@ -245,6 +249,39 @@ const createChartOption = (): ECOption => {
     yAxisConfig.max = 100
   }
 
+  const tooltipFormatter = (params: CallbackDataParams | CallbackDataParams[]): string => {
+    const paramsArray: TooltipParam[] = Array.isArray(params)
+      ? (params as TooltipParam[])
+      : [params as TooltipParam]
+    const firstParam = paramsArray[0]
+    const axisValueLabel = 'axisValueLabel' in firstParam ? firstParam.axisValueLabel : ''
+    let result = `<div style="margin-bottom: 4px;">${axisValueLabel || ''}</div>`
+
+    paramsArray.forEach((param) => {
+      const valueArray =
+        Array.isArray(param.value) && param.value.length === 2
+          ? (param.value as [number, number])
+          : null
+
+      if (!valueArray) return
+
+      const value = valueArray[1]
+      let formattedValue = ''
+      if (props.chartType === 'network' || props.chartType === 'disk') {
+        formattedValue = formatSpeed(value * 1024)
+      } else {
+        formattedValue = `${Math.floor(value * 100) / 100}%`
+      }
+      const seriesName = param.seriesName || ''
+      const color = param.color || '#3b82f6'
+      result += `<div style="margin-top: 2px;">
+        <span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:${color};"></span>
+        ${seriesName}: <span style="font-weight:bold;">${formattedValue}</span>
+      </div>`
+    })
+    return result
+  }
+
   return {
     tooltip: {
       trigger: 'axis',
@@ -256,6 +293,7 @@ const createChartOption = (): ECOption => {
       axisPointer: {
         type: 'cross',
       },
+      formatter: tooltipFormatter,
     },
     legend: {
       data: series.map((s) => s.name).filter((name): name is string => name !== undefined),
@@ -276,7 +314,7 @@ const createChartOption = (): ECOption => {
       boundaryGap: [0, 0],
       axisLabel: {
         color: theme.textColor,
-        formatter: '{MM}:{dd} {HH}:{mm}',
+        formatter: '{HH}:{mm}',
         hideOverlap: true,
         rotate: 0,
       },
@@ -348,10 +386,10 @@ const addDataPoint = (dataPoint: {
 
     // 获取当前数据，过滤掉超出时间窗口的旧数据，然后添加新点
     const uploadData = filterDataByTimeWindow(
-      (option.series[0]?.data as Array<[number, number]>) || []
+      (option.series[0]?.data as Array<[number, number]>) || [],
     )
     const downloadData = filterDataByTimeWindow(
-      (option.series[1]?.data as Array<[number, number]>) || []
+      (option.series[1]?.data as Array<[number, number]>) || [],
     )
 
     uploadData.push([timestamp, uploadValue])
@@ -360,8 +398,8 @@ const addDataPoint = (dataPoint: {
     chartInstance.setOption(
       {
         series: [
-          { data: uploadData, stack: 'network' },
-          { data: downloadData, stack: 'network' },
+          { data: uploadData },
+          { data: downloadData },
         ],
       },
       { notMerge: false },
@@ -373,10 +411,10 @@ const addDataPoint = (dataPoint: {
 
     // 获取当前数据，过滤掉超出时间窗口的旧数据，然后添加新点
     const readData = filterDataByTimeWindow(
-      (option.series[0]?.data as Array<[number, number]>) || []
+      (option.series[0]?.data as Array<[number, number]>) || [],
     )
     const writeData = filterDataByTimeWindow(
-      (option.series[1]?.data as Array<[number, number]>) || []
+      (option.series[1]?.data as Array<[number, number]>) || [],
     )
 
     readData.push([timestamp, readValue])
@@ -385,8 +423,8 @@ const addDataPoint = (dataPoint: {
     chartInstance.setOption(
       {
         series: [
-          { data: readData, stack: 'disk' },
-          { data: writeData, stack: 'disk' },
+          { data: readData },
+          { data: writeData },
         ],
       },
       { notMerge: false },
@@ -405,7 +443,7 @@ const addDataPoint = (dataPoint: {
 
     // 获取当前数据，过滤掉超出时间窗口的旧数据，然后添加新点
     const currentData = filterDataByTimeWindow(
-      (option.series[0]?.data as Array<[number, number]>) || []
+      (option.series[0]?.data as Array<[number, number]>) || [],
     )
 
     currentData.push([timestamp, value])
