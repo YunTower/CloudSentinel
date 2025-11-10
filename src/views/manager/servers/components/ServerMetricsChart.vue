@@ -5,6 +5,7 @@ import { initChart, getThemeColors, type ECOption } from '@/utils/echarts'
 import type { LineSeriesOption } from 'echarts/charts'
 import type { YAXisOption } from 'echarts/types/dist/shared'
 import { formatSpeed } from '../utils'
+import { useLayout } from '@/composables/useLayout'
 
 interface Props {
   serverId: string
@@ -90,20 +91,20 @@ const createChartOption = (): ECOption => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
-              { offset: 1, color: 'rgba(16, 185, 129, 0.05)' },
+              { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
+              { offset: 1, color: 'rgba(59, 130, 246, 0.05)' },
             ],
           },
         },
         lineStyle: {
-          color: '#10b981',
+          color: '#3b82f6',
           width: 2,
         },
         stack: 'network',
         symbol: 'none',
       },
       {
-        name: '速度',
+        name: '下载',
         type: 'line',
         data: downloadData,
         smooth: true,
@@ -115,13 +116,13 @@ const createChartOption = (): ECOption => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
-              { offset: 1, color: 'rgba(59, 130, 246, 0.05)' },
+              { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
+              { offset: 1, color: 'rgba(16, 185, 129, 0.05)' },
             ],
           },
         },
         lineStyle: {
-          color: '#3b82f6',
+          color: '#10b981',
           width: 2,
         },
         stack: 'network',
@@ -153,13 +154,13 @@ const createChartOption = (): ECOption => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(249, 115, 22, 0.3)' },
-              { offset: 1, color: 'rgba(249, 115, 22, 0.05)' },
+              { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
+              { offset: 1, color: 'rgba(59, 130, 246, 0.05)' },
             ],
           },
         },
         lineStyle: {
-          color: '#f97316',
+          color: '#3b82f6',
           width: 2,
         },
         stack: 'disk',
@@ -178,13 +179,13 @@ const createChartOption = (): ECOption => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(168, 85, 247, 0.3)' },
-              { offset: 1, color: 'rgba(168, 85, 247, 0.05)' },
+              { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
+              { offset: 1, color: 'rgba(16, 185, 129, 0.05)' },
             ],
           },
         },
         lineStyle: {
-          color: '#a855f7',
+          color: '#10b981',
           width: 2,
         },
         stack: 'disk',
@@ -194,28 +195,21 @@ const createChartOption = (): ECOption => {
     // yAxisConfig.name = '速度'
   } else {
     let valueKey: 'cpu_usage' | 'memory_usage' = 'cpu_usage'
-    let color = '#ef4444'
-    let colorStops: Array<{ offset: number; color: string }> = []
+    const color = '#3b82f6' // 统一使用蓝色
+    const colorStops: Array<{ offset: number; color: string }> = [
+      { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
+      { offset: 1, color: 'rgba(59, 130, 246, 0.05)' },
+    ]
     let seriesName = ''
 
     switch (props.chartType) {
       case 'cpu':
         valueKey = 'cpu_usage'
-        color = '#ef4444'
         seriesName = '使用率'
-        colorStops = [
-          { offset: 0, color: 'rgba(239, 68, 68, 0.3)' },
-          { offset: 1, color: 'rgba(239, 68, 68, 0.05)' },
-        ]
         break
       case 'memory':
         valueKey = 'memory_usage'
-        color = '#3b82f6'
         seriesName = '使用率'
-        colorStops = [
-          { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
-          { offset: 1, color: 'rgba(59, 130, 246, 0.05)' },
-        ]
         break
     }
 
@@ -443,8 +437,9 @@ watch(
 )
 
 // 监听主题变化
+const { isDarkMode } = useLayout()
 watch(
-  () => document.documentElement.classList.contains('p-dark'),
+  () => isDarkMode.value,
   () => {
     updateChart()
   },

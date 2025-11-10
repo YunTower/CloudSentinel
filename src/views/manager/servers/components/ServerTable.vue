@@ -332,22 +332,22 @@ defineExpose({
 <template>
   <div>
     <Card class="shadow-lg border border-surface-200 dark:border-surface-700">
-      <template #content>
-        <DataTable
-          :value="servers"
-          :paginator="true"
-          :rows="10"
-          :rowsPerPageOptions="[5, 10, 20, 50]"
-          :loading="loading"
-          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-          currentPageReportTemplate="显示第 {first} 到 {last} 条，共 {totalRecords} 条"
-          class="w-full"
-          stripedRows
-          hover
-          v-model:expandedRows="expandedRows"
-          dataKey="id"
-          scrollable
-          @row-expand="onRowExpand"
+    <template #content>
+      <DataTable
+        :value="servers"
+        :paginator="true"
+        :rows="10"
+        :rowsPerPageOptions="[5, 10, 20, 50]"
+        :loading="loading"
+        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+        currentPageReportTemplate="显示第 {first} 到 {last} 条，共 {totalRecords} 条"
+        class="w-full"
+        stripedRows
+        hover
+        v-model:expandedRows="expandedRows"
+        dataKey="id"
+        scrollable
+        @row-expand="onRowExpand"
           :pt="{
             root: { class: 'rounded-lg' },
             header: { class: 'bg-surface-50 dark:bg-surface-800' },
@@ -369,94 +369,94 @@ defineExpose({
             </div>
           </template>
 
-          <!-- 展开列 -->
-          <Column expander style="width: 3rem" />
+        <!-- 展开列 -->
+        <Column expander style="width: 3rem" />
 
-          <!-- 服务器名称列 -->
-          <Column field="name" header="服务器名称" sortable class="w-fil">
-            <template #body="{ data }">
-              <div class="flex items-center gap-3">
+        <!-- 服务器名称列 -->
+        <Column field="name" header="服务器名称" sortable class="w-fil">
+          <template #body="{ data }">
+            <div class="flex items-center gap-3">
                 <p class="flex-1 min-w-0 space-x-1">
                   <span class="font-medium text-color truncate">{{ data.name }}</span>
                   <span class="text-muted-color truncate"> ({{ data.ip }}) </span>
                 </p>
-              </div>
-            </template>
-          </Column>
+            </div>
+          </template>
+        </Column>
 
-          <!-- 状态列 -->
-          <Column field="status" header="状态" sortable class="w-24">
-            <template #body="{ data }">
-              <Tag
-                :value="getStatusText(data.status)"
-                :severity="getStatusSeverity(data.status)"
-                class="text-xs"
-              />
-            </template>
-          </Column>
+        <!-- 状态列 -->
+        <Column field="status" header="状态" sortable class="w-24">
+          <template #body="{ data }">
+            <Tag
+              :value="getStatusText(data.status)"
+              :severity="getStatusSeverity(data.status)"
+              class="text-xs"
+            />
+          </template>
+        </Column>
 
-          <!-- 位置列 -->
-          <Column field="location" header="位置" sortable class="w-32">
-            <template #body="{ data }">
-              <div class="flex items-center gap-2">
+        <!-- 位置列 -->
+        <Column field="location" header="位置" sortable class="w-32">
+          <template #body="{ data }">
+            <div class="flex items-center gap-2">
                 <i
                   v-if="data.location !== ''"
                   class="pi pi-map-marker text-muted-color text-xs"
                 ></i>
                 <span class="text-sm truncate">{{ data.location || '-' }}</span>
-              </div>
-            </template>
-          </Column>
+            </div>
+          </template>
+        </Column>
 
-          <!-- 系统列 -->
-          <Column field="os" header="系统" sortable class="w-40">
-            <template #body="{ data }">
-              <div class="space-y-1">
+        <!-- 系统列 -->
+        <Column field="os" header="系统" sortable class="w-40">
+          <template #body="{ data }">
+            <div class="space-y-1">
                 <div class="text-sm font-medium text-color">
                   {{ data.os || '-' }} ({{ data.architecture || '-' }})
                 </div>
-              </div>
-            </template>
-          </Column>
+            </div>
+          </template>
+        </Column>
 
-          <!-- 运行时间列 -->
-          <Column field="uptime" header="运行时间" sortable class="w-32">
-            <template #body="{ data }">
-              <div class="text-left">
-                <div class="text-sm font-medium text-color">{{ formatUptime(data.uptime) }}</div>
-              </div>
-            </template>
-          </Column>
+        <!-- 运行时间列 -->
+        <Column field="uptime" header="运行时间" sortable class="w-32">
+          <template #body="{ data }">
+            <div class="text-left">
+              <div class="text-sm font-medium text-color">{{ formatUptime(data.uptime) }}</div>
+            </div>
+          </template>
+        </Column>
 
-          <!-- 操作列 -->
-          <Column header="操作" class="w-24">
-            <template #body="{ data }">
-              <div class="flex items-center gap-1">
-                <Button
-                  icon="pi pi-trash"
-                  size="small"
-                  text
-                  severity="danger"
-                  @click="confirmDelete($event, data)"
-                  v-tooltip.top="'删除'"
-                  :loading="props.deletingServerId === data.id"
-                  class="hover:bg-red-50"
-                />
-              </div>
-            </template>
-          </Column>
+        <!-- 操作列 -->
+        <Column header="操作" class="w-24">
+          <template #body="{ data }">
+            <div class="flex items-center gap-1">
+              <Button
+                icon="pi pi-trash"
+                size="small"
+                text
+                severity="danger"
+                @click="confirmDelete($event, data)"
+                v-tooltip.top="'删除'"
+                :loading="props.deletingServerId === data.id"
+                class="hover:bg-red-50"
+              />
+            </div>
+          </template>
+        </Column>
 
-          <!-- 展开行内容 -->
-          <template #expansion="{ data }">
+        <!-- 展开行内容 -->
+        <template #expansion="{ data }">
+          <div
+            class="p-6 bg-surface-50 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700"
+          >
             <div
-              class="p-6 bg-surface-50 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700"
-            >
-              <div
                 v-if="props.expandingServerId === data.id && !data._detailLoaded"
-                class="flex items-center justify-center py-8"
-              >
-                <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
-              </div>
+              class="flex items-center justify-center py-8"
+            >
+              <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
+            </div>
               <div
                 v-else
                 class="columns-1 sm:columns-1 md:columns-2 lg:columns-2 xl:columns-3 gap-2"
@@ -464,17 +464,17 @@ defineExpose({
                 <!-- 基本信息卡片 -->
                 <div class="break-inside-avoid mb-2 w-full inline-block">
                   <ServerBasicInfo :server="data" />
-                </div>
+                  </div>
 
                 <!-- CPU 资源卡片 -->
                 <div class="break-inside-avoid mb-2 w-full inline-block">
                   <ServerCpuCard :cpu="data.cpu" />
-                </div>
+                  </div>
 
                 <!-- 内存资源卡片 -->
                 <div class="break-inside-avoid mb-2 w-full inline-block">
                   <ServerMemoryCard :memory="data.memory" :memory-info="data.memoryInfo" />
-                </div>
+                  </div>
 
                 <!-- 磁盘资源卡片 -->
                 <div class="break-inside-avoid mb-2 w-full inline-block">
@@ -484,7 +484,7 @@ defineExpose({
                 <!-- 网络资源卡片 -->
                 <div class="break-inside-avoid mb-2 w-full inline-block">
                   <ServerNetworkCard :networkIO="data.networkIO" :traffic="data.traffic" />
-                </div>
+              </div>
 
                 <!-- CPU负载图表 -->
                 <div class="break-inside-avoid mb-2 w-full inline-block md:[column-span:all]">
@@ -504,8 +504,8 @@ defineExpose({
                     :data="metricsData[data.id]?.cpu || []"
                     :time-range="chartTimeRange[data.id]?.cpu || 1"
                     @update:time-range="(value) => updateChartTimeRange(data.id, 'cpu', value)"
-                  />
-                </div>
+                    />
+                  </div>
 
                 <!-- 内存负载图表 -->
                 <div class="break-inside-avoid mb-2 w-full inline-block md:[column-span:all]">
@@ -525,8 +525,8 @@ defineExpose({
                     :data="metricsData[data.id]?.memory || []"
                     :time-range="chartTimeRange[data.id]?.memory || 1"
                     @update:time-range="(value) => updateChartTimeRange(data.id, 'memory', value)"
-                  />
-                </div>
+                    />
+                  </div>
 
                 <!-- 磁盘读写负载图表 -->
                 <div class="break-inside-avoid mb-2 w-full inline-block md:[column-span:all]">
@@ -546,8 +546,8 @@ defineExpose({
                     :data="metricsData[data.id]?.disk || []"
                     :time-range="chartTimeRange[data.id]?.disk || 1"
                     @update:time-range="(value) => updateChartTimeRange(data.id, 'disk', value)"
-                  />
-                </div>
+                    />
+                  </div>
 
                 <!-- 网络IO负载图表 -->
                 <div class="break-inside-avoid mb-2 w-full inline-block md:[column-span:all]">
@@ -568,13 +568,13 @@ defineExpose({
                     :time-range="chartTimeRange[data.id]?.network || 1"
                     @update:time-range="(value) => updateChartTimeRange(data.id, 'network', value)"
                   />
-                </div>
               </div>
+            </div>
 
-              <!-- 操作按钮 -->
-              <div
-                class="mt-6 pt-6 border-t border-surface-200 dark:border-surface-700 flex justify-end gap-3"
-              >
+            <!-- 操作按钮 -->
+            <div
+              class="mt-6 pt-6 border-t border-surface-200 dark:border-surface-700 flex justify-end gap-3"
+            >
                 <Button
                   label="查看安装信息"
                   icon="pi pi-info-circle"
@@ -582,27 +582,27 @@ defineExpose({
                   @click="$emit('view-install-info', data)"
                   class="shadow-sm"
                 />
-                <Button
-                  label="重启服务"
-                  icon="pi pi-refresh"
-                  text
-                  severity="warn"
-                  @click="confirmRestart($event, data)"
-                  :loading="props.restartingServerId === data.id"
-                  class="shadow-sm"
-                />
-                <Button
-                  label="编辑服务器"
-                  icon="pi pi-pencil"
-                  @click="$emit('edit-server', data)"
-                  class="shadow-sm"
-                />
-              </div>
+              <Button
+                label="重启服务"
+                icon="pi pi-refresh"
+                text
+                severity="warn"
+                @click="confirmRestart($event, data)"
+                :loading="props.restartingServerId === data.id"
+                class="shadow-sm"
+              />
+              <Button
+                label="编辑服务器"
+                icon="pi pi-pencil"
+                @click="$emit('edit-server', data)"
+                class="shadow-sm"
+              />
             </div>
-          </template>
-        </DataTable>
-      </template>
-    </Card>
-    <ConfirmPopup />
+          </div>
+        </template>
+      </DataTable>
+    </template>
+  </Card>
+  <ConfirmPopup />
   </div>
 </template>
