@@ -376,8 +376,8 @@ defineExpose({
             <template #body="{ data }">
               <div class="flex items-center gap-3">
                 <p class="flex-1 min-w-0 space-x-1">
-                  <span class="font-medium text-color truncate">{{ data.name }}</span>
-                  <span class="text-muted-color truncate"> ({{ data.ip }}) </span>
+                  <span class="font-medium text-color truncate">{{ data.name || '-' }}</span>
+                  <span class="text-muted-color truncate"> ({{ data.ip || '-' }}) </span>
                 </p>
               </div>
             </template>

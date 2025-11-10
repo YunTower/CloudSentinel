@@ -23,13 +23,13 @@ defineProps<Props>()
         class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
       >
         <span class="text-muted-color">服务器名称</span>
-        <span class="font-medium">{{ server.name }}</span>
+        <span class="font-medium">{{ server.name || '-' }}</span>
       </div>
       <div
         class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
       >
         <span class="text-muted-color">IP地址</span>
-        <span class="font-mono text-sm">{{ server.ip }}</span>
+        <span class="font-mono text-sm">{{ server.ip || '-' }}</span>
       </div>
       <div
         class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
@@ -41,13 +41,13 @@ defineProps<Props>()
         class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
       >
         <span class="text-muted-color">位置</span>
-        <span>{{ server.location == '' ? '-' : server.location }}</span>
+        <span>{{ server.location || '-' }}</span>
       </div>
       <div
         class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
       >
         <span class="text-muted-color">操作系统</span>
-        <span>{{ server.os }}</span>
+        <span>{{ server.os || '-' }}</span>
       </div>
       <div
         class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
@@ -65,13 +65,13 @@ defineProps<Props>()
         class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
       >
         <span class="text-muted-color">内核版本</span>
-        <span>{{ server.kernel || '5.15.0' }}</span>
+        <span>{{ server.kernel || '-' }}</span>
       </div>
       <div
         class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
       >
         <span class="text-muted-color">主机名</span>
-        <span>{{ server.hostname || 'unknown' }}</span>
+        <span>{{ server.hostname || '-' }}</span>
       </div>
     </div>
   </div>
