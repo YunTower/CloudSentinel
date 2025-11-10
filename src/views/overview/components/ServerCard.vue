@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import ProgressBar from 'primevue/progressbar'
 import type { ServerItem } from '@/types/server'
-import { getProgressTextColor } from '@/views/manager/servers/utils.ts'
+import { getProgressBarColor, getProgressTextColor } from '@/views/manager/servers/utils.ts'
 
 const props = defineProps<ServerItem>()
 
@@ -32,19 +32,6 @@ const statusText = computed(() => {
   }
 })
 
-// 根据使用率获取文本颜色类
-const getCpuTextColorClass = (usage: number) => {
-  if (usage >= 80) return 'text-red-500 dark:text-red-400'
-  if (usage >= 60) return 'text-orange-500 dark:text-orange-400'
-  return 'text-primary'
-}
-
-const getDiskBgColorClass = (usage: number) => {
-  if (usage >= 90) return 'bg-red-500 dark:bg-red-400'
-  if (usage >= 75) return 'bg-orange-500 dark:bg-orange-400'
-  return 'bg-blue-600 dark:bg-blue-400'
-}
-
 // 格式化网络速度
 const formatSpeed = (speedKBps: number) => {
   if (speedKBps >= 1024 * 1024) {
@@ -65,16 +52,6 @@ const formatOS = (os: string) => {
   if (os.includes('RHEL')) return 'RHEL'
   return os.split(' ')[0] // 取第一个单词
 }
-
-// 根据网络流量获取颜色类
-const getNetworkColorClass = (speedKBps: number) => {
-  if (speedKBps === 0) return 'text-muted-color'
-  if (speedKBps >= 1024 * 1024) return 'text-red-500 dark:text-red-400' // >= 1GB/s 红色
-  if (speedKBps >= 1024 * 100) return 'text-orange-500 dark:text-orange-400' // >= 100MB/s 橙色
-  if (speedKBps >= 1024 * 10) return 'text-blue-600 dark:text-blue-400' // >= 10MB/s 蓝色
-  if (speedKBps >= 1024) return 'text-green-600 dark:text-green-400' // >= 1MB/s 绿色
-  return 'text-primary' // < 1MB/s 主题色
-}
 </script>
 <template>
   <Card class="h-full">
@@ -85,7 +62,10 @@ const getNetworkColorClass = (speedKBps: number) => {
         </div>
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <div :class="statusClass" class="w-2 h-2 rounded-full shadow-sm animate-pulse-slow"></div>
+            <div
+              :class="statusClass"
+              class="w-2 h-2 rounded-full shadow-sm animate-pulse-slow"
+            ></div>
             <span class="text-xs font-medium text-color-emphasis">{{ statusText }}</span>
           </div>
           <div class="flex items-center gap-2">
@@ -94,7 +74,6 @@ const getNetworkColorClass = (speedKBps: number) => {
           </div>
         </div>
       </div>
-
     </template>
 
     <template #content>
@@ -102,10 +81,10 @@ const getNetworkColorClass = (speedKBps: number) => {
         <!-- CPU 和内存监控 -->
         <div class="grid grid-cols-2 gap-4">
           <div class="text-center p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
-            <div class="text-2xl font-bold mb-1" :class="getCpuTextColorClass(cpuUsage)">
+            <div class="text-2xl font-bold mb-1" :class="getProgressTextColor(cpuUsage)">
               {{ cpuUsage }}%
             </div>
-            <div class="text-xs font-medium text-muted-color">CPU </div>
+            <div class="text-xs font-medium text-muted-color">CPU</div>
           </div>
 
           <div class="text-center p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
@@ -152,7 +131,7 @@ const getNetworkColorClass = (speedKBps: number) => {
                 <i class="pi pi-arrow-up text-xs text-green-600 dark:text-green-400"></i>
                 <span class="text-xs text-muted-color">上传</span>
               </div>
-              <div class="text-base font-bold" :class="getNetworkColorClass(networkIO.upload)">
+              <div class="text-base font-bold">
                 {{ formatSpeed(networkIO.upload) }}
               </div>
             </div>
@@ -161,7 +140,7 @@ const getNetworkColorClass = (speedKBps: number) => {
                 <i class="pi pi-arrow-down text-xs text-blue-600 dark:text-blue-400"></i>
                 <span class="text-xs text-muted-color">下载</span>
               </div>
-              <div class="text-base font-bold" :class="getNetworkColorClass(networkIO.download)">
+              <div class="text-base font-bold">
                 {{ formatSpeed(networkIO.download) }}
               </div>
             </div>
@@ -185,7 +164,7 @@ const getNetworkColorClass = (speedKBps: number) => {
             class="h-2"
             :pt="{
               value: {
-                class: getDiskBgColorClass(diskUsage) + ' transition-all duration-500',
+                class: getProgressBarColor(diskUsage) + ' transition-all duration-500',
               },
             }"
           />

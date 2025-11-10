@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getCpuTextColorClass, getProgressBarColor } from '../utils'
+import { getProgressTextColor, getProgressBarColor } from '../utils'
 
 interface Props {
   cpu: number
@@ -17,7 +17,7 @@ defineProps<Props>()
         <i class="pi pi-microchip text-primary"></i>
         <span class="font-medium">CPU 使用率</span>
       </div>
-      <span class="text-2xl font-bold" :class="getCpuTextColorClass(cpu)">
+      <span class="text-2xl font-bold" :class="getProgressTextColor(cpu)">
         {{ cpu.toFixed(2) }}%
       </span>
     </div>
