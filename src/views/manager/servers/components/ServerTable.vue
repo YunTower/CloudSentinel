@@ -577,7 +577,6 @@ defineExpose({
             >
                 <Button
                   label="查看安装信息"
-                  icon="pi pi-info-circle"
                   text
                   @click="$emit('view-install-info', data)"
                   class="shadow-sm"

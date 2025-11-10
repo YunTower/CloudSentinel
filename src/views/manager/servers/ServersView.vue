@@ -601,7 +601,7 @@ onMounted(async () => {
                 服务器已成功添加！请保存以下Agent Key：
               </p>
               <div
-                class="bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm break-all"
+                class="bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all"
               >
                 {{ generatedAgentKey }}
               </div>
@@ -618,12 +618,9 @@ onMounted(async () => {
         </div>
 
         <!-- 安装命令 -->
-        <div
-          class="p-4 bg-surface-50 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700"
-        >
+        <div>
           <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <i class="pi pi-terminal text-primary"></i>
+            <div class="flex items-center">
               <h4 class="text-lg font-semibold text-color">Linux 安装命令</h4>
             </div>
             <Button
@@ -635,7 +632,7 @@ onMounted(async () => {
             />
           </div>
           <code
-            class="block bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
+            class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
           >
             {{ installCommand }}
           </code>
@@ -686,7 +683,7 @@ onMounted(async () => {
             <div class="flex items-center gap-2 flex-1 min-w-0">
               <span class="font-medium text-color whitespace-nowrap">连接密钥 (Agent Key):</span>
               <code
-                class="block bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-1 rounded font-mono text-sm break-all whitespace-pre-wrap"
+                class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-1 rounded font-mono text-sm break-all whitespace-pre-wrap"
                 >{{ selectedServerForInstall.agent_key || '未设置' }}</code
               >
             </div>
@@ -702,12 +699,9 @@ onMounted(async () => {
         </div>
 
         <!-- 安装命令 -->
-        <div
-          class="p-4 bg-surface-50 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700"
-        >
+        <div>
           <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <i class="pi pi-terminal text-primary"></i>
+            <div class="flex items-center">
               <h4 class="text-lg font-semibold text-color">Linux 安装命令</h4>
             </div>
             <Button
@@ -720,7 +714,7 @@ onMounted(async () => {
           </div>
           <div class="space-y-3">
             <code
-              class="block bg-surface-900 dark:bg-surface-100 text-green-400 dark:text-green-600 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
+              class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
             >
               {{ installCommand || '无法生成安装命令：缺少Agent Key' }}
             </code>
