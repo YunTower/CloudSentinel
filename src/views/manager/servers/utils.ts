@@ -50,14 +50,3 @@ export const formatBytes = (bytes: number) => {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
-
-// 格式化运行时间
-export const formatUptime = (uptime: string) => {
-  if (!uptime) return '0天0时0分'
-  const uptimeParts = uptime.split('天')
-  const days = uptimeParts[0]
-  const timeParts = uptimeParts[1]?.split('时') || ['0', '0分']
-  const hours = timeParts[0]
-  const minutes = timeParts[1]?.replace('分', '') || '0'
-  return `${days}天${hours}时${minutes}分`
-}

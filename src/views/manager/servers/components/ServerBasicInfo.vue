@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Server } from '@/types/manager/servers'
-import { getStatusText, getStatusSeverity, formatUptime } from '../utils'
+import { getStatusText, getStatusSeverity } from '../utils'
 
 interface Props {
   server: Server
@@ -59,7 +59,7 @@ defineProps<Props>()
         class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
       >
         <span class="text-muted-color">运行时间</span>
-        <span>{{ formatUptime(server.uptime || '') }}</span>
+        <span>{{ server.uptime || '' }}</span>
       </div>
       <div
         class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
@@ -76,5 +76,3 @@ defineProps<Props>()
     </div>
   </div>
 </template>
-
-
