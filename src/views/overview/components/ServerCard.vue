@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import ProgressBar from 'primevue/progressbar'
 import type { ServerItem } from '@/types/server'
+import { getProgressTextColor } from '@/views/manager/servers/utils.ts'
 
 const props = defineProps<ServerItem>()
 
@@ -36,18 +37,6 @@ const getCpuTextColorClass = (usage: number) => {
   if (usage >= 80) return 'text-red-500 dark:text-red-400'
   if (usage >= 60) return 'text-orange-500 dark:text-orange-400'
   return 'text-primary'
-}
-
-const getMemoryTextColorClass = (usage: number) => {
-  if (usage >= 85) return 'text-red-500 dark:text-red-400'
-  if (usage >= 70) return 'text-orange-500 dark:text-orange-400'
-  return 'text-green-600 dark:text-green-400'
-}
-
-const getDiskTextColorClass = (usage: number) => {
-  if (usage >= 90) return 'text-red-500 dark:text-red-400'
-  if (usage >= 75) return 'text-orange-500 dark:text-orange-400'
-  return 'text-blue-600 dark:text-blue-400'
 }
 
 const getDiskBgColorClass = (usage: number) => {
@@ -120,7 +109,7 @@ const getNetworkColorClass = (speedKBps: number) => {
           </div>
 
           <div class="text-center p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
-            <div class="text-2xl font-bold mb-1" :class="getMemoryTextColorClass(memoryUsage)">
+            <div class="text-2xl font-bold mb-1" :class="getProgressTextColor(memoryUsage)">
               {{ memoryUsage }}%
             </div>
             <div class="text-xs font-medium text-muted-color">内存</div>
@@ -187,7 +176,7 @@ const getNetworkColorClass = (speedKBps: number) => {
               <span class="text-sm font-medium text-color">存储</span>
               <span class="text-xs text-muted-color">({{ totalStorage }})</span>
             </div>
-            <span class="text-sm font-bold" :class="getDiskTextColorClass(diskUsage)">
+            <span class="text-sm font-bold" :class="getProgressTextColor(diskUsage)">
               {{ diskUsage }}%
             </span>
           </div>

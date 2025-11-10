@@ -19,36 +19,18 @@ export const getStatusSeverity = (status: string) => {
   return severities[status as keyof typeof severities] || 'secondary'
 }
 
-// 统一的进度条颜色函数
+// 进度条颜色
 export const getProgressBarColor = (value: number): string => {
   if (value >= 90) return '#ef4444'
   if (value >= 70) return '#f97316'
-  if (value >= 50) return '#fbbf24'
-  return '#10b981'
+  return 'var(--p-primary-color)'
 }
 
-// CPU 文本颜色类
-export const getCpuTextColorClass = (cpu: number) => {
+// 进度条文字颜色
+export const getProgressTextColor = (cpu: number) => {
   if (cpu >= 90) return 'text-red-600 dark:text-red-400'
   if (cpu >= 70) return 'text-orange-600 dark:text-orange-400'
-  if (cpu >= 50) return 'text-amber-600 dark:text-amber-400'
-  return 'text-emerald-600 dark:text-emerald-400'
-}
-
-// 内存文本颜色类
-export const getMemoryTextColorClass = (memory: number) => {
-  if (memory >= 90) return 'text-red-600 dark:text-red-400'
-  if (memory >= 70) return 'text-orange-600 dark:text-orange-400'
-  if (memory >= 50) return 'text-amber-600 dark:text-amber-400'
-  return 'text-emerald-600 dark:text-emerald-400'
-}
-
-// 磁盘文本颜色类
-export const getDiskTextColorClass = (disk: number) => {
-  if (disk >= 90) return 'text-red-600 dark:text-red-400'
-  if (disk >= 70) return 'text-orange-600 dark:text-orange-400'
-  if (disk >= 50) return 'text-amber-600 dark:text-amber-400'
-  return 'text-emerald-600 dark:text-emerald-400'
+  return 'text-[var(--p-primary-color)]'
 }
 
 // 格式化速度
@@ -79,5 +61,3 @@ export const formatUptime = (uptime: string) => {
   const minutes = timeParts[1]?.replace('分', '') || '0'
   return `${days}天${hours}时${minutes}分`
 }
-
-

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DiskInfo } from '@/types/manager/servers'
-import { getDiskTextColorClass, getProgressBarColor, formatBytes } from '../utils'
+import { getProgressTextColor, getProgressBarColor, formatBytes } from '../utils'
 
 interface Props {
   disks?: DiskInfo[]
@@ -26,7 +26,7 @@ defineProps<Props>()
             <span class="font-medium text-color">{{ disk.mount_point || disk.disk_name }}</span>
             <span class="text-xs text-muted-color">({{ disk.disk_name }})</span>
           </div>
-          <span :class="getDiskTextColorClass(disk.usage_percent)" class="font-medium">
+          <span :class="getProgressTextColor(disk.usage_percent)" class="font-medium">
             {{ disk.usage_percent.toFixed(2) }}%
           </span>
         </div>

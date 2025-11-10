@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MemoryInfo } from '@/types/manager/servers'
-import { getMemoryTextColorClass, getProgressBarColor, formatBytes } from '../utils'
+import { getProgressTextColor, getProgressBarColor, formatBytes } from '../utils'
 
 interface Props {
   memory: number
@@ -19,7 +19,7 @@ defineProps<Props>()
         <i class="pi pi-history text-primary"></i>
         <span class="font-medium">内存使用率</span>
       </div>
-      <span class="text-2xl font-bold" :class="getMemoryTextColorClass(memory)">
+      <span class="text-2xl font-bold" :class="getProgressTextColor(memory)">
         {{ memory.toFixed(2) }}%
       </span>
     </div>
