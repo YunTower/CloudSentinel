@@ -1,5 +1,6 @@
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import websocketManager from '@/services/websocket-manager'
 
 export interface WebSocketMessage {
   type: string
@@ -36,146 +37,51 @@ export interface WebSocketCallbacks {
       hostname?: string
     }
   }) => void
-  onError?: (error: Event) => void
+  onError?: (error: Event | Error) => void
   onOpen?: () => void
   onClose?: () => void
 }
 
 export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
   const authStore = useAuthStore()
-  const ws = ref<WebSocket | null>(null)
-  const isConnected = ref(false)
-  const reconnectTimer = ref<ReturnType<typeof setTimeout> | null>(null)
-  const heartbeatInterval = ref<ReturnType<typeof setInterval> | null>(null)
-  const reconnectDelay = 3000 // 3秒重连延迟
-  const heartbeatIntervalTime = 30000 // 30秒心跳间隔
+  const instanceId = ref(`ws-${Date.now()}-${Math.random()}`)
+  let unregisterCallbacks: (() => void) | null = null
+  let unregisterMessageHandler: (() => void) | null = null
 
   const connect = () => {
     const token = authStore.getToken()
     if (!token) {
-      console.warn('无法建立WebSocket连接：缺少认证token')
+      console.warn('[useWebSocket] 无法建立WebSocket连接：缺少认证token')
       return
     }
 
-    // 构建WebSocket URL
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.host
-    const wsUrl = `${protocol}//${host}/api/ws/frontend?token=${encodeURIComponent(token)}`
+    // 注册回调到全局管理器
+    unregisterCallbacks = websocketManager.registerCallbacks(instanceId.value, callbacks)
 
-    try {
-      console.log('正在建立WebSocket连接:', wsUrl)
-      const websocket = new WebSocket(wsUrl)
-      ws.value = websocket
+    // 注册消息处理器
+    unregisterMessageHandler = websocketManager.registerMessageHandler((message: WebSocketMessage) => {
+      handleMessage(message)
+    })
 
-      // 设置连接超时
-      const connectTimeout = setTimeout(() => {
-        if (websocket.readyState === WebSocket.CONNECTING) {
-          console.error('WebSocket连接超时')
-          websocket.close()
-        }
-      }, 10000) // 10秒超时
-
-      websocket.onopen = () => {
-        clearTimeout(connectTimeout)
-        console.log('WebSocket连接已建立')
-        isConnected.value = true
-        callbacks.onOpen?.()
-
-        // 启动心跳
-        heartbeatInterval.value = setInterval(() => {
-          if (websocket && websocket.readyState === WebSocket.OPEN) {
-            websocket.send(JSON.stringify({ type: 'ping' }))
-          } else {
-            if (heartbeatInterval.value) {
-              clearInterval(heartbeatInterval.value)
-              heartbeatInterval.value = null
-            }
-          }
-        }, heartbeatIntervalTime)
-      }
-
-      websocket.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data) as WebSocketMessage
-          handleMessage(message)
-        } catch (error) {
-          console.error('解析WebSocket消息失败:', error)
-        }
-      }
-
-      websocket.onerror = (error) => {
-        console.error('WebSocket错误:', error)
-        callbacks.onError?.(error)
-        // 错误时也尝试重连
-        if (reconnectTimer.value) {
-          clearTimeout(reconnectTimer.value)
-        }
-        reconnectTimer.value = setTimeout(() => {
-          connect()
-        }, reconnectDelay)
-      }
-
-      websocket.onclose = (event) => {
-        clearTimeout(connectTimeout)
-        console.log(
-          'WebSocket连接已关闭',
-          'code:',
-          event.code,
-          'reason:',
-          event.reason,
-          'wasClean:',
-          event.wasClean,
-        )
-        isConnected.value = false
-        ws.value = null
-        callbacks.onClose?.()
-
-        // 清理心跳
-        if (heartbeatInterval.value) {
-          clearInterval(heartbeatInterval.value)
-          heartbeatInterval.value = null
-        }
-
-        // 如果不是正常关闭（code 1000），尝试重连
-        if (event.code !== 1000) {
-          console.log(
-            `WebSocket异常关闭 (code: ${event.code})，${reconnectDelay / 1000}秒后尝试重连...`,
-          )
-          // 尝试重连
-          if (reconnectTimer.value) {
-            clearTimeout(reconnectTimer.value)
-          }
-          reconnectTimer.value = setTimeout(() => {
-            connect()
-          }, reconnectDelay)
-        }
-      }
-    } catch (error) {
-      console.error('建立WebSocket连接失败:', error)
-      callbacks.onError?.(error as Event)
-    }
+    // 连接到全局WebSocket
+    websocketManager.connect(token)
   }
 
   const disconnect = () => {
-    // 清理重连定时器
-    if (reconnectTimer.value) {
-      clearTimeout(reconnectTimer.value)
-      reconnectTimer.value = null
+    // 注销回调
+    if (unregisterCallbacks) {
+      unregisterCallbacks()
+      unregisterCallbacks = null
     }
 
-    // 清理心跳定时器
-    if (heartbeatInterval.value) {
-      clearInterval(heartbeatInterval.value)
-      heartbeatInterval.value = null
-    }
-
-    // 关闭WebSocket连接
-    if (ws.value) {
-      ws.value.close()
-      ws.value = null
-      isConnected.value = false
+    // 注销消息处理器
+    if (unregisterMessageHandler) {
+      unregisterMessageHandler()
+      unregisterMessageHandler = null
     }
   }
+
+  const isConnected = computed(() => websocketManager.getIsConnected().value)
 
   const handleMessage = (message: WebSocketMessage) => {
     if (message.type === 'pong') {
