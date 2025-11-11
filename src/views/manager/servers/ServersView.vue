@@ -582,37 +582,33 @@ onMounted(async () => {
     />
 
     <!-- Agent Key和安装命令显示对话框 -->
-    <Dialog
-      v-model:visible="agentKeyDialog"
-      header="服务器添加成功"
-      modal
-      :closable="true"
-      class="w-3xl"
-    >
+    <Dialog v-model:visible="agentKeyDialog" modal :closable="true" class="w-3xl">
+      <template #header>
+        <div class="flex items-center gap-3">
+          <i class="pi pi-check-circle text-green-600 dark:text-green-400 text-2xl mt-0.5"></i>
+          <h4 class="font-medium text-green-700 dark:text-green-300">添加成功</h4>
+        </div>
+      </template>
       <div class="space-y-4">
         <!-- Agent Key -->
-        <div
-          class="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg"
-        >
-          <div class="flex items-start gap-3">
-            <i class="pi pi-check-circle text-green-600 dark:text-green-400 text-2xl mt-0.5"></i>
-            <div class="flex-1">
-              <p class="font-medium text-green-700 dark:text-green-300 mb-2">
-                服务器已成功添加！请保存以下Agent Key：
-              </p>
-              <div
-                class="bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all"
-              >
-                {{ generatedAgentKey }}
-              </div>
+
+        <div class="flex items-start gap-3">
+          <div class="flex-1">
+            <div class="flex justify-between mb-2">
+              <p class="font-medium">服务器已成功添加！请保存以下Agent Key：</p>
               <Button
                 icon="pi pi-copy"
-                label="复制Agent Key"
                 text
                 size="small"
                 class="mt-2"
+                v-tooltip.top="'复制 Key'"
                 @click="copyAgentKey"
               />
+            </div>
+            <div
+              class="bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all"
+            >
+              {{ generatedAgentKey }}
             </div>
           </div>
         </div>
@@ -636,19 +632,18 @@ onMounted(async () => {
           >
             {{ installCommand }}
           </code>
-
-          <div
-            class="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg"
-          >
+          <div class="mt-4 p-3 border rounded-lg">
             <div class="flex items-start gap-2">
-              <i class="pi pi-info-circle text-blue-600 dark:text-blue-400 mt-0.5"></i>
-              <div class="text-sm text-blue-700 dark:text-blue-300">
-                <p class="font-medium mb-1">安装说明</p>
-                <ul class="text-xs text-blue-600 dark:text-blue-400 space-y-1">
+              <div>
+                <p class="font-medium mb-1 gap-2">
+                  <i class="pi pi-info-circle mt-0.5"></i>
+                  <span class="font-bold">安装说明</span>
+                </p>
+                <ul class="space-y-1">
                   <li>• 在目标Linux服务器上执行上述安装命令</li>
                   <li>• 安装完成后，探针会自动连接到控制中心</li>
                   <li>• 系统信息（位置、操作系统等）将自动获取</li>
-                  <li>• 请妥善保管Agent Key，用于服务器身份验证</li>
+                  <li>• 请妥善保管Agent Key避免泄露，此Agent Key用于服务器之间身份验证</li>
                 </ul>
               </div>
             </div>
