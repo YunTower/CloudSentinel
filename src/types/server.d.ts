@@ -1,7 +1,7 @@
 export interface ServerItem {
-  id: number
+  id: string 
   name: string
-  status: 'online' | 'offline' | 'maintenance'
+  status: 'online' | 'offline' | 'maintenance' | 'error'
   cpuUsage: number
   memoryUsage: number
   diskUsage: number // 综合磁盘使用率

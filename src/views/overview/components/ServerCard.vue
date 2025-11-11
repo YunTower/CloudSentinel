@@ -14,6 +14,8 @@ const statusClass = computed(() => {
       return 'bg-red-500 dark:bg-red-400'
     case 'maintenance':
       return 'bg-yellow-500 dark:bg-yellow-400'
+    case 'error':
+      return 'bg-red-600 dark:bg-red-500'
     default:
       return 'bg-surface-400'
   }
@@ -27,6 +29,8 @@ const statusText = computed(() => {
       return '离线'
     case 'maintenance':
       return '维护中'
+    case 'error':
+      return '错误'
     default:
       return '未知'
   }
@@ -153,7 +157,7 @@ const formatOS = (os: string) => {
             <div class="flex items-center gap-2">
               <i class="pi pi-database text-sm text-muted-color"></i>
               <span class="text-sm font-medium text-color">存储</span>
-              <span class="text-xs text-muted-color">({{ totalStorage }})</span>
+              <span v-if="totalStorage" class="text-xs text-muted-color">({{ totalStorage }})</span>
             </div>
             <span class="text-sm font-bold" :class="getProgressTextColor(diskUsage)">
               {{ diskUsage }}%
