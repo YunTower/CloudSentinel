@@ -84,8 +84,27 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
   const isConnected = computed(() => websocketManager.getIsConnected().value)
 
   const handleMessage = (message: WebSocketMessage) => {
+    console.log('[useWebSocket] 处理消息:', message.type, message)
+
     if (message.type === 'pong') {
       // 心跳响应，无需处理
+      return
+    }
+
+    if (message.type === 'auth_success') {
+      // 认证成功消息
+      console.log('[useWebSocket] WebSocket 认证成功，连接已建立')
+      callbacks.onOpen?.()
+      return
+    }
+
+    if (message.type === 'connection_status' && message.data) {
+      // 连接状态消息
+      const data = message.data as { agent_count?: number }
+      console.log(`[useWebSocket] 连接状态: agent 连接数 = ${data.agent_count || 0}`)
+      if (data.agent_count === 0) {
+        console.warn('[useWebSocket] 警告: 当前没有 agent 连接，无法接收数据推送')
+      }
       return
     }
 

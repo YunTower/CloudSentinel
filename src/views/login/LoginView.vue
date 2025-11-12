@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
+import websocketManager from '@/services/websocket-manager'
 import Toast from 'primevue/toast'
 
 const toast = useToast()
@@ -92,6 +93,8 @@ const handleLogin = async () => {
         life: 3000,
       })
     }
+
+    websocketManager.resetTokenInvalid()
 
     // 登录成功后重定向
     const redirectUri = router.currentRoute.value.query.redirect_uri as string

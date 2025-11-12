@@ -38,21 +38,21 @@ export function setupRouteGuards(router: Router) {
     if (!authStore.initialized && authStore.getToken()) {
       try {
         await authStore.checkLoginStatus()
+        // 验证成功后，检查是否已认证
       } catch (error) {
         console.error('Failed to check login status:', error)
-        // 验证失败，清除token并跳转登录页
+        // 验证失败，清除token
         authStore.logout()
-        try {
-          sessionStorage.setItem('intended_path', to.fullPath)
-          authStore.setRedirect(to.fullPath)
-        } catch {}
-        next({ name: 'login', query: { redirect_uri: to.fullPath } })
-        return
       }
     }
 
     // 如果没有roles配置或roles不是['*']，则需要登录验证
     if (!authStore.isAuthenticated) {
+      // 如果当前已经在登录页，直接允许访问，避免循环跳转
+      if (to.name === 'login') {
+        next()
+        return
+      }
       try {
         // 记录用户意图访问的受保护路径
         sessionStorage.setItem('intended_path', to.fullPath)

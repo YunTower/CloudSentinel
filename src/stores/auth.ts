@@ -304,16 +304,6 @@ export const useAuthStore = defineStore('auth', () => {
         }
 
         setCurrentUser(userSession)
-
-        // 若当前在登录页或被重定向到其他页，校验后跳回刷新前页面
-        try {
-          const intended = sessionStorage.getItem('intended_path')
-          const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
-          if (intended && intended !== current) {
-            // 避免死循环，替换当前历史记录
-            window.location.replace(intended)
-          }
-        } catch {}
       } else {
         // 登录状态无效，清除认证状态
         logout()
