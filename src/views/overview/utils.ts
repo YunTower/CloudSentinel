@@ -7,11 +7,13 @@ import type { ServerListItemData } from '@/types/manager/servers'
 export function mapServerListItemToServerItem(server: ServerListItemData): ServerItem {
   // 扩展 ServerListItemData 类型以包含指标字段
   interface ExtendedServerListItemData extends ServerListItemData {
-    cpu_usage?: number
-    memory_usage?: number
-    disk_usage?: number
-    network_upload?: number
-    network_download?: number
+    metrics?: {
+      cpu_usage?: number
+      memory_usage?: number
+      disk_usage?: number
+      network_upload?: number
+      network_download?: number
+    }
     total_storage?: string
     cores?: number
   }
@@ -27,12 +29,12 @@ export function mapServerListItemToServerItem(server: ServerListItemData): Serve
     status = server.status
   }
 
-  // 从后端返回的数据中获取指标（如果存在）
-  const cpuUsage = typeof extendedServer.cpu_usage === 'number' ? extendedServer.cpu_usage : 0
-  const memoryUsage = typeof extendedServer.memory_usage === 'number' ? extendedServer.memory_usage : 0
-  const diskUsage = typeof extendedServer.disk_usage === 'number' ? extendedServer.disk_usage : 0
-  const networkUpload = typeof extendedServer.network_upload === 'number' ? extendedServer.network_upload : 0
-  const networkDownload = typeof extendedServer.network_download === 'number' ? extendedServer.network_download : 0
+  const metrics = extendedServer.metrics || {}
+  const cpuUsage = typeof metrics.cpu_usage === 'number' ? metrics.cpu_usage : 0
+  const memoryUsage = typeof metrics.memory_usage === 'number' ? metrics.memory_usage : 0
+  const diskUsage = typeof metrics.disk_usage === 'number' ? metrics.disk_usage : 0
+  const networkUpload = typeof metrics.network_upload === 'number' ? metrics.network_upload : 0
+  const networkDownload = typeof metrics.network_download === 'number' ? metrics.network_download : 0
   const totalStorage = typeof extendedServer.total_storage === 'string' ? extendedServer.total_storage : ''
 
   return {

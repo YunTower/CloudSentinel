@@ -111,22 +111,24 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
     if (message.type === 'metrics_update' && message.data) {
       const data = message.data as {
         server_id?: string
-        cpu_usage?: number
-        memory_usage?: number
-        disk_usage?: number
-        network_upload?: number
-        network_download?: number
+        metrics?: {
+          cpu_usage?: number
+          memory_usage?: number
+          disk_usage?: number
+          network_upload?: number
+          network_download?: number
+        }
         uptime?: string
       }
-      if (data.server_id) {
+      if (data.server_id && data.metrics) {
         callbacks.onMetricsUpdate?.({
           server_id: data.server_id,
-          cpu_usage: typeof data.cpu_usage === 'number' ? data.cpu_usage : undefined,
-          memory_usage: typeof data.memory_usage === 'number' ? data.memory_usage : undefined,
-          disk_usage: typeof data.disk_usage === 'number' ? data.disk_usage : undefined,
-          network_upload: typeof data.network_upload === 'number' ? data.network_upload : undefined,
+          cpu_usage: typeof data.metrics.cpu_usage === 'number' ? data.metrics.cpu_usage : undefined,
+          memory_usage: typeof data.metrics.memory_usage === 'number' ? data.metrics.memory_usage : undefined,
+          disk_usage: typeof data.metrics.disk_usage === 'number' ? data.metrics.disk_usage : undefined,
+          network_upload: typeof data.metrics.network_upload === 'number' ? data.metrics.network_upload : undefined,
           network_download:
-            typeof data.network_download === 'number' ? data.network_download : undefined,
+            typeof data.metrics.network_download === 'number' ? data.metrics.network_download : undefined,
           uptime: typeof data.uptime === 'string' ? data.uptime : undefined,
         })
       }
@@ -134,26 +136,28 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
       const data = message.data as {
         server_id?: string
         timestamp?: number
-        cpu_usage?: number
-        memory_usage?: number
-        disk_usage?: number
-        disk_read?: number
-        disk_write?: number
-        network_upload?: number
-        network_download?: number
+        metrics?: {
+          cpu_usage?: number
+          memory_usage?: number
+          disk_usage?: number
+          disk_read?: number
+          disk_write?: number
+          network_upload?: number
+          network_download?: number
+        }
       }
-      if (data.server_id && data.timestamp) {
+      if (data.server_id && data.timestamp && data.metrics) {
         callbacks.onMetricsRealtime?.({
           server_id: data.server_id,
           timestamp: data.timestamp,
-          cpu_usage: typeof data.cpu_usage === 'number' ? data.cpu_usage : undefined,
-          memory_usage: typeof data.memory_usage === 'number' ? data.memory_usage : undefined,
-          disk_usage: typeof data.disk_usage === 'number' ? data.disk_usage : undefined,
-          disk_read: typeof data.disk_read === 'number' ? data.disk_read : undefined,
-          disk_write: typeof data.disk_write === 'number' ? data.disk_write : undefined,
-          network_upload: typeof data.network_upload === 'number' ? data.network_upload : undefined,
+          cpu_usage: typeof data.metrics.cpu_usage === 'number' ? data.metrics.cpu_usage : undefined,
+          memory_usage: typeof data.metrics.memory_usage === 'number' ? data.metrics.memory_usage : undefined,
+          disk_usage: typeof data.metrics.disk_usage === 'number' ? data.metrics.disk_usage : undefined,
+          disk_read: typeof data.metrics.disk_read === 'number' ? data.metrics.disk_read : undefined,
+          disk_write: typeof data.metrics.disk_write === 'number' ? data.metrics.disk_write : undefined,
+          network_upload: typeof data.metrics.network_upload === 'number' ? data.metrics.network_upload : undefined,
           network_download:
-            typeof data.network_download === 'number' ? data.network_download : undefined,
+            typeof data.metrics.network_download === 'number' ? data.metrics.network_download : undefined,
         })
       }
     } else if (message.type === 'system_info_update' && message.data) {

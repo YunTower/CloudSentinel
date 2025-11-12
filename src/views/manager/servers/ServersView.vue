@@ -15,6 +15,7 @@ import type {
   DeleteServerResponse,
   UpdateServerResponse,
   RestartServerResponse,
+  ServerListItemData,
 } from '@/types/manager/servers'
 
 const loading = ref(false)
@@ -254,27 +255,46 @@ const loadServers = async () => {
     const response = (await serversApi.getServers()) as GetServersResponse
 
     if (response.status && response.data) {
-      servers.value = response.data.map((server) => ({
-        id: server.id,
-        name: server.name,
-        ip: server.ip,
-        port: server.port || 22,
-        status: server.status || 'offline',
-        location: server.location || '',
-        os: server.os || '',
-        architecture: server.architecture || '',
-        kernel: '',
-        hostname: '',
-        uptime: server.uptime || '0天0时0分',
-        cpu: 0,
-        memory: 0,
-        disk: 0,
-        networkIO: { upload: 0, download: 0 },
-        agent_key: server.agent_key,
-        createdAt: server.created_at || '',
-        updatedAt: server.updated_at || '',
-        _detailLoaded: false, // 标记详细信息是否已加载
-      }))
+      servers.value = response.data.map((server) => {
+        interface ServerWithMetrics extends ServerListItemData {
+          metrics?: {
+            cpu_usage?: number
+            memory_usage?: number
+            disk_usage?: number
+            network_upload?: number
+            network_download?: number
+          }
+        }
+        const serverWithMetrics = server as ServerWithMetrics
+        const metrics = serverWithMetrics.metrics || {}
+        const cpu = typeof metrics.cpu_usage === 'number' ? metrics.cpu_usage : 0
+        const memory = typeof metrics.memory_usage === 'number' ? metrics.memory_usage : 0
+        const disk = typeof metrics.disk_usage === 'number' ? metrics.disk_usage : 0
+        const networkUpload = typeof metrics.network_upload === 'number' ? metrics.network_upload : 0
+        const networkDownload = typeof metrics.network_download === 'number' ? metrics.network_download : 0
+
+        return {
+          id: server.id,
+          name: server.name,
+          ip: server.ip,
+          port: server.port || 22,
+          status: server.status || 'offline',
+          location: server.location || '',
+          os: server.os || '',
+          architecture: server.architecture || '',
+          kernel: '',
+          hostname: '',
+          uptime: server.uptime || '0天0时0分',
+          cpu,
+          memory,
+          disk,
+          networkIO: { upload: networkUpload, download: networkDownload },
+          agent_key: server.agent_key,
+          createdAt: server.created_at || '',
+          updatedAt: server.updated_at || '',
+          _detailLoaded: false, // 标记详细信息是否已加载
+        }
+      })
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '获取服务器列表失败'
