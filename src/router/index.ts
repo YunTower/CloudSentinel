@@ -6,13 +6,13 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: () => import('@/views/home/HomeView.vue'),
+      name: 'overview',
+      component: () => import('@/views/overview/OverviewView.vue'),
       meta: {
-        title: '首页',
+        title: '总览',
         icon: 'pi pi-home',
-        roles: ['guest', 'admin']
-      }
+        roles: ['guest', 'admin'],
+      },
     },
     {
       path: '/login',
@@ -22,47 +22,27 @@ const router = createRouter({
         title: '登录',
         icon: 'pi pi-sign-in',
         showToMenu: false,
-        public: true
-      }
+        roles: ['*'],
+      },
     },
     {
-      path: '/manager',
+      path: '/servers',
       name: 'manager',
+      component: () => import('@/views/manager/servers/ServersView.vue'),
       meta: {
         title: '服务器',
         icon: 'pi pi-server',
-        roles: ['admin']
+        roles: ['admin'],
       },
-      children: [
-        {
-          path: '/manager/servers',
-          name: 'servers',
-          component: () => import('@/views/manager/servers/ServersView.vue'),
-          meta: {
-            title: '服务器列表',
-            icon: 'pi pi-server',
-            roles: ['admin']
-          }
-        },
-        {
-          path: '/manager/monitor',
-          name: 'monitor',
-          component: () => import('@/views/manager/monitor/MonitorView.vue'),
-          meta: {
-            title: '监控面板',
-            icon: 'pi pi-chart-line',
-            roles: ['guest', 'admin']
-          }
-        }
-      ]
     },
+    // 监控面板已移除
     {
       path: '/settings',
       name: 'settings',
       meta: {
         title: '设置',
         icon: 'pi pi-cog',
-        roles: ['admin']
+        roles: ['admin'],
       },
       children: [
         {
@@ -73,7 +53,7 @@ const router = createRouter({
             title: '面板设置',
             icon: 'pi pi-cog',
             roles: ['admin'],
-          }
+          },
         },
         {
           path: '/settings/permissions',
@@ -83,7 +63,7 @@ const router = createRouter({
             title: '权限配置',
             icon: 'pi pi-shield',
             roles: ['admin'],
-          }
+          },
         },
         {
           path: '/settings/alerts',
@@ -93,10 +73,10 @@ const router = createRouter({
             title: '告警设置',
             icon: 'pi pi-bell',
             roles: ['admin'],
-          }
-        }
-      ]
-    }
+          },
+        },
+      ],
+    },
   ],
 })
 

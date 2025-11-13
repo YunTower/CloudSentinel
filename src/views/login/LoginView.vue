@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
+import websocketManager from '@/services/websocket-manager'
 import Toast from 'primevue/toast'
 
 const toast = useToast()
@@ -93,12 +94,14 @@ const handleLogin = async () => {
       })
     }
 
+    websocketManager.resetTokenInvalid()
+
     // 登录成功后重定向
     const redirectUri = router.currentRoute.value.query.redirect_uri as string
     const intendedPath = sessionStorage.getItem('intended_path')
 
     // 确保状态更新完成后再进行路由跳转
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await new Promise((resolve) => setTimeout(resolve, 100))
 
     if (redirectUri) {
       await router.replace(redirectUri)
@@ -165,6 +168,10 @@ onMounted(async () => {
 
   // 检查登录状态
   checkLoginStatus()
+
+  if (!permissions.value.allowGuest) {
+    switchTab('1')
+  }
 })
 </script>
 

@@ -304,16 +304,6 @@ export const useAuthStore = defineStore('auth', () => {
         }
 
         setCurrentUser(userSession)
-
-        // 若当前在登录页或被重定向到其他页，校验后跳回刷新前页面
-        try {
-          const intended = sessionStorage.getItem('intended_path')
-          const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
-          if (intended && intended !== current) {
-            // 避免死循环，替换当前历史记录
-            window.location.replace(intended)
-          }
-        } catch {}
       } else {
         // 登录状态无效，清除认证状态
         logout()
@@ -373,10 +363,16 @@ export const useAuthStore = defineStore('auth', () => {
   // 初始化
   const bootstrap = async () => {
     // 记录当前意图路径，用于刷新后跳回
+    // 只有在没有已存在的intended_path时才设置当前路径
     try {
-      const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
-      sessionStorage.setItem('intended_path', currentPath)
-      redirectUri.value = currentPath
+      const existingIntended = sessionStorage.getItem('intended_path')
+      if (!existingIntended) {
+        const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+        sessionStorage.setItem('intended_path', currentPath)
+        redirectUri.value = currentPath
+      } else {
+        redirectUri.value = existingIntended
+      }
     } catch {}
 
     const token = getToken()
