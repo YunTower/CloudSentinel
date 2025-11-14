@@ -37,6 +37,15 @@ export interface WebSocketCallbacks {
       hostname?: string
     }
   }) => void
+  onSwapInfoUpdate?: (data: {
+    server_id: string
+    swap?: {
+      swap_total?: number
+      swap_used?: number
+      swap_free?: number
+      swap_usage_percent?: number
+    }
+  }) => void
   onError?: (error: Event | Error) => void
   onOpen?: () => void
   onClose?: () => void
@@ -174,6 +183,22 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
         callbacks.onSystemInfoUpdate?.({
           server_id: data.server_id,
           data: data.data,
+        })
+      }
+    } else if (message.type === 'swap_info_update' && message.data) {
+      const data = message.data as {
+        server_id?: string
+        swap?: {
+          swap_total?: number
+          swap_used?: number
+          swap_free?: number
+          swap_usage_percent?: number
+        }
+      }
+      if (data.server_id && data.swap) {
+        callbacks.onSwapInfoUpdate?.({
+          server_id: data.server_id,
+          swap: data.swap,
         })
       }
     }
