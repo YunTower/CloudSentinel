@@ -96,6 +96,7 @@ export interface Server {
   disks?: DiskInfo[]
   cpus?: CPUInfo[]
   memoryInfo?: MemoryInfo
+  swapInfo?: SwapInfo
   traffic?: TrafficInfo
   agent_key?: string
   createdAt: string
@@ -148,6 +149,15 @@ export interface MemoryInfo {
   timestamp?: number
 }
 
+// Swap信息接口
+export interface SwapInfo {
+  swap_total: number
+  swap_used: number
+  swap_free: number
+  swap_usage_percent: number
+  timestamp?: number
+}
+
 // 流量信息接口
 export interface TrafficInfo {
   upload_bytes: number
@@ -175,5 +185,6 @@ export interface ExtendedServerDetailData extends ServerDetailData {
   disks?: DiskInfo[]
   cpus?: CPUInfo[]
   memory?: MemoryInfo
+  swap?: SwapInfo
   traffic?: TrafficInfo
 }

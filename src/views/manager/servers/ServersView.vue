@@ -344,6 +344,9 @@ const loadServerDetail = async (serverId: string) => {
   if (detailWithUptime.memory) {
     server.memoryInfo = detailWithUptime.memory
   }
+  if (detailWithUptime.swap) {
+    server.swapInfo = detailWithUptime.swap
+  }
   if (detailWithUptime.traffic) {
     server.traffic = detailWithUptime.traffic
   }
