@@ -12,6 +12,7 @@ import type {
 } from '@/types/auth'
 import panelApi from '@/apis/settings/panel'
 import authApi from '@/apis/auth'
+import websocketManager from '@/services/websocket-manager'
 
 export const useAuthStore = defineStore('auth', () => {
   // 状态
@@ -168,10 +169,6 @@ export const useAuthStore = defineStore('auth', () => {
     return config.allowGuest && config.enablePassword
   }
 
-  const validateGuestPassword = (password: string): boolean => {
-    const config = getGuestAccessConfig()
-    return config.guestPassword === password
-  }
 
   // 公开设置
   const loadPublicSettings = async (): Promise<GuestAccessConfig> => {
@@ -344,11 +341,91 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 登出
   const logout = (): void => {
+    websocketManager.disconnect()
     clearTokens()
     isLoggedIn.value = false
     currentUserSession.value = null
     user.value = null
     initialized.value = false
+  }
+
+  // 登录结果
+  interface LoginResult {
+    success: boolean
+    userSession?: UserSession
+    error?: string
+  }
+
+  // 处理管理员登录
+  const handleAdminLogin = async (
+    username: string,
+    password: string,
+    rememberMe: boolean = false,
+  ): Promise<LoginResult> => {
+    // 验证输入
+    if (!username || !password) {
+      return {
+        success: false,
+        error: '请输入用户名和密码',
+      }
+    }
+
+    try {
+      const userSession = await login(username, password, rememberMe)
+      websocketManager.resetTokenInvalid()
+
+      return {
+        success: true,
+        userSession,
+      }
+    } catch (error) {
+      console.error('Admin login failed:', error)
+      return {
+        success: false,
+        error: (error as { message: string }).message || '登录过程中发生错误',
+      }
+    }
+  }
+
+  // 处理访客登录
+  const handleGuestLogin = async (
+    password: string,
+    rememberMe: boolean = false,
+    permissions?: GuestAccessConfig,
+  ): Promise<LoginResult> => {
+    const config = permissions || getGuestAccessConfig()
+
+    // 验证访客访问是否允许
+    if (!config.allowGuest) {
+      return {
+        success: false,
+        error: '访客访问功能已被禁用',
+      }
+    }
+
+    // 验证密码（如果启用了密码访问）
+    if (config.enablePassword && !password) {
+      return {
+        success: false,
+        error: '请输入访客访问密码',
+      }
+    }
+
+    try {
+      const userSession = await guestLogin(password, rememberMe)
+      websocketManager.resetTokenInvalid()
+
+      return {
+        success: true,
+        userSession,
+      }
+    } catch (error) {
+      console.error('Guest login failed:', error)
+      return {
+        success: false,
+        error: (error as { message: string }).message || '登录过程中发生错误',
+      }
+    }
   }
 
   // 重定向管理
@@ -416,7 +493,6 @@ export const useAuthStore = defineStore('auth', () => {
     saveGuestAccessConfig,
     canGuestAccess,
     guestRequiresPassword,
-    validateGuestPassword,
 
     // 公开设置
     loadPublicSettings,
@@ -426,5 +502,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     guestLogin,
     checkLoginStatus,
+    handleAdminLogin,
+    handleGuestLogin,
   }
 })

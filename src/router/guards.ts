@@ -53,6 +53,26 @@ export function setupRouteGuards(router: Router) {
         next()
         return
       }
+
+      // 检查是否允许访客访问，如果允许则自动签发访客token
+      try {
+        const publicSettings = await authStore.loadPublicSettings()
+        if (publicSettings.allowGuest) {
+          // 允许访客访问，尝试自动登录（仅当不需要密码时）
+          if (!publicSettings.enablePassword) {
+            const result = await authStore.handleGuestLogin('', false, publicSettings)
+            if (result.success) {
+              next()
+              return
+            } else {
+              console.error('自动访客登录失败:', result.error)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('加载公开设置失败:', error)
+      }
+
       try {
         // 记录用户意图访问的受保护路径
         sessionStorage.setItem('intended_path', to.fullPath)

@@ -33,6 +33,7 @@ export interface GetPermissionsSettingsData {
   allowGuest: boolean
   enablePassword: boolean
   guestPassword: string
+  hasPassword?: boolean // 是否已设置访客密码
   hideSensitiveInfo: boolean
   sessionTimeout: number
   maxLoginAttempts: number
