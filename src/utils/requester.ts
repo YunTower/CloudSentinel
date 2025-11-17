@@ -15,7 +15,7 @@ const { onResponseRefreshToken } = createServerTokenAuthentication({
         console.error('Token refresh failed:', error)
         const authStore = useAuthStore()
         authStore.logout()
-        window.location.href = '/login'
+        window.location.href = '/'
       }
     },
   },
