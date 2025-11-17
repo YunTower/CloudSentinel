@@ -88,6 +88,19 @@ const websocket = useWebSocket({
       }
     }
   },
+  onServerStatusUpdate: (data) => {
+    // 更新服务器在线状态
+    const serverIndex = servers.value.findIndex((s) => s.id === data.server_id)
+    if (serverIndex !== -1 && data.status) {
+      const server = servers.value[serverIndex]
+      servers.value[serverIndex] = {
+        ...server,
+        status: data.status,
+      }
+    } else {
+      console.warn('未找到服务器:', data.server_id)
+    }
+  },
   onError: (err) => {
     console.error('WebSocket错误:', err)
   },
@@ -118,15 +131,14 @@ onUnmounted(() => {
     </div>
 
     <!-- 错误状态 -->
-    <div v-else-if="error" class="flex flex-col items-center justify-center py-12">
-      <i class="pi pi-exclamation-triangle text-4xl text-red-500 mb-4"></i>
-      <p class="text-lg text-color">{{ error }}</p>
-      <button
+    <div v-else-if="error" class="flex flex-col items-center justify-center py-12 space-y-4">
+      <p class="text-2xl text-color">{{ error }}</p>
+      <Button
+        size="small"
         @click="loadServers"
-        class="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
       >
         重试
-      </button>
+      </Button>
     </div>
 
     <!-- 空数据状态 -->

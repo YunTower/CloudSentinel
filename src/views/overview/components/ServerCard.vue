@@ -156,7 +156,7 @@ const formatOS = (os: string) => {
           <div class="flex justify-between items-center mb-2">
             <div class="flex items-center gap-2">
               <i class="pi pi-database text-sm text-muted-color"></i>
-              <span class="text-sm font-medium text-color">存储</span>
+              <span class="text-sm font-medium text-color">磁盘</span>
               <span v-if="totalStorage" class="text-xs text-muted-color">({{ totalStorage }})</span>
             </div>
             <span class="text-sm font-bold" :class="getProgressTextColor(diskUsage)">

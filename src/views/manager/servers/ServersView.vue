@@ -107,6 +107,12 @@ const websocket = useWebSocket({
       }
     }
   },
+  onServerStatusUpdate: (data) => {
+    const server = servers.value.find((s) => s.id === data.server_id)
+    if (server && data.status) {
+      server.status = data.status
+    }
+  },
 })
 
 // 过滤后的服务器

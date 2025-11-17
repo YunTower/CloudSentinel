@@ -46,6 +46,10 @@ export interface WebSocketCallbacks {
       swap_usage_percent?: number
     }
   }) => void
+  onServerStatusUpdate?: (data: {
+    server_id: string
+    status: 'online' | 'offline' | 'maintenance' | 'error'
+  }) => void
   onError?: (error: Event | Error) => void
   onOpen?: () => void
   onClose?: () => void
@@ -199,6 +203,17 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
         callbacks.onSwapInfoUpdate?.({
           server_id: data.server_id,
           swap: data.swap,
+        })
+      }
+    } else if (message.type === 'server_status_update' && message.data) {
+      const data = message.data as {
+        server_id?: string
+        status?: 'online' | 'offline' | 'maintenance' | 'error'
+      }
+      if (data.server_id && data.status) {
+        callbacks.onServerStatusUpdate?.({
+          server_id: data.server_id,
+          status: data.status,
         })
       }
     }
