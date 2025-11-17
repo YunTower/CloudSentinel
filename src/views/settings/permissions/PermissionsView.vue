@@ -9,6 +9,7 @@ const permissions = ref<PermissionSettings>({
   allowGuest: true,
   enablePassword: false,
   guestPassword: '',
+  hasPassword: false, // 是否已设置密码
   hideSensitiveInfo: true,
   sessionTimeout: 60,
   maxLoginAttempts: 5,
@@ -29,9 +30,62 @@ const saving = ref(false)
 const updatingUsername = ref(false)
 const updatingPassword = ref(false)
 
+// 访客密码显示值
+const guestPasswordDisplay = ref('')
+// 标记用户是否正在编辑密码
+const isEditingPassword = ref(false)
+
+// 处理访客密码输入
+const handleGuestPasswordInput = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const value = target.value
+
+  // 如果用户输入了内容，且不是星号，标记为正在编辑并更新实际密码值
+  if (value && value !== '••••••••') {
+    isEditingPassword.value = true
+    permissions.value.guestPassword = value
+    guestPasswordDisplay.value = value
+  } else if (value === '') {
+    // 如果清空了输入框
+    if (isEditingPassword.value) {
+      // 如果之前正在编辑，清空所有内容
+      isEditingPassword.value = false
+      guestPasswordDisplay.value = ''
+      permissions.value.guestPassword = ''
+    } else if (permissions.value.hasPassword) {
+      // 如果之前没有编辑（显示的是星号），恢复星号显示
+      guestPasswordDisplay.value = '••••••••'
+      permissions.value.guestPassword = '' // 清空实际密码值，表示保持现有密码
+    } else {
+      // 如果没有设置过密码，保持清空
+      guestPasswordDisplay.value = ''
+      permissions.value.guestPassword = ''
+    }
+  }
+}
+
+// 处理密码输入框获得焦点
+const handlePasswordFocus = () => {
+  // 如果显示的是星号，清空显示让用户输入
+  if (guestPasswordDisplay.value === '••••••••') {
+    guestPasswordDisplay.value = ''
+    isEditingPassword.value = false // 重置编辑状态，等待用户实际输入
+  }
+}
+
+// 处理密码输入框失去焦点
+const handlePasswordBlur = () => {
+  // 如果失去焦点时输入框为空且已设置过密码且没有实际输入新密码，恢复星号显示
+  if (guestPasswordDisplay.value === '' && permissions.value.hasPassword && !permissions.value.guestPassword) {
+    guestPasswordDisplay.value = '••••••••'
+    isEditingPassword.value = false
+  }
+}
+
 // 保存权限设置
 const savePermissions = async () => {
-  if (permissions.value.enablePassword && !permissions.value.guestPassword) {
+  // 如果启用了密码访问，但没有设置过密码且没有提供新密码，则提示错误
+  if (permissions.value.enablePassword && !permissions.value.hasPassword && !permissions.value.guestPassword) {
     toast.add({ severity: 'error', summary: '保存失败', detail: '请设置访客访问密码', life: 4000 })
     return
   }
@@ -141,7 +195,11 @@ const loadPermissions = async () => {
     if (data) {
       permissions.value.allowGuest = !!data.allowGuest
       permissions.value.enablePassword = !!data.enablePassword
-      permissions.value.guestPassword = ''
+      permissions.value.guestPassword = '' // 不显示实际密码
+      permissions.value.hasPassword = !!data.hasPassword // 记录是否已设置密码
+      // 如果已设置密码，用星号填充显示
+      guestPasswordDisplay.value = permissions.value.hasPassword ? '••••••••' : ''
+      isEditingPassword.value = false // 重置编辑状态
       permissions.value.hideSensitiveInfo = !!data.hideSensitiveInfo
       permissions.value.sessionTimeout = Number(data.sessionTimeout) || permissions.value.sessionTimeout
       permissions.value.maxLoginAttempts = Number(data.maxLoginAttempts) || permissions.value.maxLoginAttempts
@@ -206,11 +264,14 @@ onMounted(() => {
                   <label for="guestPassword" class="text-sm font-medium text-color">访问密码</label>
                   <Password
                     id="guestPassword"
-                    v-model="permissions.guestPassword"
-                    placeholder="请设置访问密码"
+                    v-model="guestPasswordDisplay"
+                    :placeholder="permissions.hasPassword ? '已设置密码，输入新密码可修改' : '请设置访问密码'"
                     toggleMask
                     :feedback="false"
                     class="w-full"
+                    @input="handleGuestPasswordInput"
+                    @focus="handlePasswordFocus"
+                    @blur="handlePasswordBlur"
                   />
                 </div>
               </div>
