@@ -55,20 +55,26 @@ const loadAlertSettings = async () => {
     if (data?.rules) {
       alertRules.value.cpu.enabled = !!data.rules.cpu?.enabled
       alertRules.value.cpu.warning = Number(data.rules.cpu?.warning) || alertRules.value.cpu.warning
-      alertRules.value.cpu.critical = Number(data.rules.cpu?.critical) || alertRules.value.cpu.critical
+      alertRules.value.cpu.critical =
+        Number(data.rules.cpu?.critical) || alertRules.value.cpu.critical
 
       alertRules.value.memory.enabled = !!data.rules.memory?.enabled
-      alertRules.value.memory.warning = Number(data.rules.memory?.warning) || alertRules.value.memory.warning
-      alertRules.value.memory.critical = Number(data.rules.memory?.critical) || alertRules.value.memory.critical
+      alertRules.value.memory.warning =
+        Number(data.rules.memory?.warning) || alertRules.value.memory.warning
+      alertRules.value.memory.critical =
+        Number(data.rules.memory?.critical) || alertRules.value.memory.critical
 
       alertRules.value.disk.enabled = !!data.rules.disk?.enabled
-      alertRules.value.disk.warning = Number(data.rules.disk?.warning) || alertRules.value.disk.warning
-      alertRules.value.disk.critical = Number(data.rules.disk?.critical) || alertRules.value.disk.critical
+      alertRules.value.disk.warning =
+        Number(data.rules.disk?.warning) || alertRules.value.disk.warning
+      alertRules.value.disk.critical =
+        Number(data.rules.disk?.critical) || alertRules.value.disk.critical
     }
     if (data?.notifications) {
       notifications.value.email.enabled = !!data.notifications.email?.enabled
       notifications.value.email.smtp = String(data.notifications.email?.smtp || '')
-      notifications.value.email.port = Number(data.notifications.email?.port) || notifications.value.email.port
+      notifications.value.email.port =
+        Number(data.notifications.email?.port) || notifications.value.email.port
       notifications.value.email.security = String(data.notifications.email?.security || 'STARTTLS')
       notifications.value.email.from = String(data.notifications.email?.from || '')
       notifications.value.email.to = String(data.notifications.email?.to || '')
@@ -108,9 +114,21 @@ onMounted(() => {
 </script>
 <template>
   <div class="alerts-view">
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-color mb-2">告警设置</h1>
-      <p class="text-muted-color">配置系统监控告警规则和通知方式</p>
+    <div class="mb-6 flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-color mb-2">告警设置</h1>
+        <p class="text-muted-color">配置系统监控告警规则和通知方式</p>
+      </div>
+      <div>
+        <Button
+          size="small"
+          class="px-6"
+          label="保存设置"
+          icon="pi pi-save"
+          @click="saveAlertSettings"
+          :loading="saving"
+        />
+      </div>
     </div>
 
     <div class="space-y-6">
@@ -310,17 +328,6 @@ onMounted(() => {
           </div>
         </template>
       </Card>
-    </div>
-
-    <!-- 保存按钮 -->
-    <div class="flex justify-end mt-6">
-      <Button
-        label="保存设置"
-        icon="pi pi-save"
-        @click="saveAlertSettings"
-        :loading="saving"
-        class="px-6"
-      />
     </div>
   </div>
 </template>

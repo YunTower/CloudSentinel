@@ -130,9 +130,21 @@ onMounted(() => {
 </script>
 <template>
   <div class="panel-view">
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-color mb-2">面板设置</h1>
-      <p class="text-muted-color">配置面板的基本信息和外观设置</p>
+    <div class="mb-6 flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-color mb-2">面板设置</h1>
+        <p class="text-muted-color">配置面板的基本信息和外观设置</p>
+      </div>
+      <div>
+        <Button
+          size="small"
+          class="px-6"
+          label="保存设置"
+          icon="pi pi-save"
+          @click="savePanelSettings"
+          :loading="saving"
+        />
+      </div>
     </div>
 
     <div class="grid grid-cols-1">
@@ -328,17 +340,6 @@ onMounted(() => {
           </div>
         </template>
       </Card>
-    </div>
-
-    <!-- 保存按钮 -->
-    <div class="flex justify-end mt-6">
-      <Button
-        label="保存设置"
-        icon="pi pi-save"
-        @click="savePanelSettings"
-        :loading="saving"
-        class="px-6"
-      />
     </div>
   </div>
 </template>
