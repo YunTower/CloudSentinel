@@ -33,12 +33,14 @@ export interface GetPermissionsSettingsData {
   allowGuest: boolean
   enablePassword: boolean
   guestPassword: string
+  hasPassword?: boolean // 是否已设置访客密码
   hideSensitiveInfo: boolean
   sessionTimeout: number
   maxLoginAttempts: number
   lockoutDuration: number
   jwtSecret: string
   jwtExpiration: number
+  adminUsername?: string
 }
 
 export type GetPermissionsSettingsResponse = ApiResponse<GetPermissionsSettingsData>
@@ -53,6 +55,10 @@ export interface SavePermissionsSettingsBody {
   lockoutDuration: number
   jwtSecret: string
   jwtExpiration: number
+  newUsername?: string
+  newPassword?: string
+  confirmPassword?: string
+  currentPassword?: string
 }
 
 // Alerts

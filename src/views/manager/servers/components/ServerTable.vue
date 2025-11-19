@@ -6,6 +6,7 @@ import serversApi from '@/apis/servers'
 import ServerBasicInfo from './ServerBasicInfo.vue'
 import ServerCpuCard from './ServerCpuCard.vue'
 import ServerMemoryCard from './ServerMemoryCard.vue'
+import ServerSwapCard from './ServerSwapCard.vue'
 import ServerDiskCard from './ServerDiskCard.vue'
 import ServerNetworkCard from './ServerNetworkCard.vue'
 import ServerMetricsChart from './ServerMetricsChart.vue'
@@ -473,6 +474,11 @@ defineExpose({
                 <!-- 内存资源卡片 -->
                 <div class="break-inside-avoid mb-2 w-full inline-block">
                   <ServerMemoryCard :memory="data.memory" :memory-info="data.memoryInfo" />
+                </div>
+
+                <!-- Swap资源卡片 -->
+                <div class="break-inside-avoid mb-2 w-full inline-block">
+                  <ServerSwapCard :swap-info="data.swapInfo" />
                 </div>
 
                 <!-- 磁盘资源卡片 -->

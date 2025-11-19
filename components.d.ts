@@ -8,6 +8,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AdminLoginDialog: typeof import('./src/components/Layout/AdminLoginDialog.vue')['default']
     Badge: typeof import('primevue/badge')['default']
     Button: typeof import('primevue/button')['default']
     Card: typeof import('primevue/card')['default']
@@ -16,6 +17,7 @@ declare module 'vue' {
     ConfirmPopup: typeof import('primevue/confirmpopup')['default']
     DataTable: typeof import('primevue/datatable')['default']
     Dialog: typeof import('primevue/dialog')['default']
+    Divider: typeof import('primevue/divider')['default']
     Dropdown: typeof import('primevue/dropdown')['default']
     FileUpload: typeof import('primevue/fileupload')['default']
     InputNumber: typeof import('primevue/inputnumber')['default']
@@ -24,6 +26,7 @@ declare module 'vue' {
     Loading: typeof import('./src/components/Loading/Loading.vue')['default']
     Menu: typeof import('./src/components/Layout/Menu.vue')['default']
     Menubar: typeof import('primevue/menubar')['default']
+    Message: typeof import('primevue/message')['default']
     Password: typeof import('primevue/password')['default']
     ProgressBar: typeof import('primevue/progressbar')['default']
     ProgressSpinner: typeof import('primevue/progressspinner')['default']

@@ -96,6 +96,23 @@ const websocket = useWebSocket({
       if (data.data.hostname !== undefined) server.hostname = data.data.hostname
     }
   },
+  onSwapInfoUpdate: (data) => {
+    const server = servers.value.find((s) => s.id === data.server_id)
+    if (server && data.swap) {
+      server.swapInfo = {
+        swap_total: data.swap.swap_total ?? 0,
+        swap_used: data.swap.swap_used ?? 0,
+        swap_free: data.swap.swap_free ?? 0,
+        swap_usage_percent: data.swap.swap_usage_percent ?? 0,
+      }
+    }
+  },
+  onServerStatusUpdate: (data) => {
+    const server = servers.value.find((s) => s.id === data.server_id)
+    if (server && data.status) {
+      server.status = data.status
+    }
+  },
 })
 
 // 过滤后的服务器
@@ -343,6 +360,9 @@ const loadServerDetail = async (serverId: string) => {
   }
   if (detailWithUptime.memory) {
     server.memoryInfo = detailWithUptime.memory
+  }
+  if (detailWithUptime.swap) {
+    server.swapInfo = detailWithUptime.swap
   }
   if (detailWithUptime.traffic) {
     server.traffic = detailWithUptime.traffic

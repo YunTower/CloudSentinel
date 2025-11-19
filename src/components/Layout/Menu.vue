@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLayout } from '@/composables/useLayout'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'primevue/usetoast'
+import websocketManager from '@/services/websocket-manager'
+import AdminLoginDialog from './AdminLoginDialog.vue'
 
 interface MenuItem {
   label: string
@@ -18,7 +20,10 @@ const router = useRouter()
 const authStore = useAuthStore()
 const { isDarkMode, toggleDarkMode, initializeTheme, setupThemeListener } = useLayout()
 
-// 用户状态 - 确保响应性
+// 管理员登录对话框
+const showAdminLoginDialog = ref(false)
+
+// 用户状态
 const currentUser = computed(() => {
   return authStore.user
 })
@@ -133,6 +138,7 @@ const filteredMenuItems = computed(() => {
 
 // 处理退出登录
 const handleLogout = () => {
+  websocketManager.disconnect()
   authStore.logout()
 
   toast.add({
@@ -142,7 +148,7 @@ const handleLogout = () => {
     life: 3000,
   })
 
-  router.push('/login')
+  router.push({ name: 'overview' })
 }
 
 onMounted(() => {
@@ -196,8 +202,24 @@ onMounted(() => {
 
           <!-- 用户信息 -->
           <div class="flex items-center gap-2">
+            <!-- 访客用户显示管理员登录按钮 -->
             <Button
-              v-if="isAuthenticated"
+              v-if="isAuthenticated && currentUser?.role === 'guest'"
+              class="h-[35px]"
+              type="button"
+              @click="showAdminLoginDialog = true"
+              text
+              rounded
+              severity="secondary"
+              size="small"
+              v-tooltip.bottom="'管理员登录'"
+            >
+              <i class="pi pi-user" />
+            </Button>
+
+            <!-- 管理员用户显示退出登录按钮 -->
+            <Button
+              v-if="isAuthenticated && currentUser?.role === 'admin'"
               class="h-[35px] w-[35px]"
               type="button"
               @click="handleLogout"
@@ -213,6 +235,9 @@ onMounted(() => {
         </div>
       </template>
     </Menubar>
+
+    <!-- 管理员登录对话框 -->
+    <AdminLoginDialog v-model:visible="showAdminLoginDialog" />
   </div>
 </template>
 <style scoped>

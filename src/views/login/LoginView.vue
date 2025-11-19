@@ -3,7 +3,6 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
-import websocketManager from '@/services/websocket-manager'
 import Toast from 'primevue/toast'
 
 const toast = useToast()
@@ -24,77 +23,47 @@ const loginForm = ref({
 const handleLogin = async () => {
   const { type, username, password, rememberMe } = loginForm.value
 
-  // 访客登录验证
-  if (type === 'guest') {
-    if (!permissions.value.allowGuest) {
-      toast.add({
-        severity: 'error',
-        summary: '访问被拒绝',
-        detail: '访客访问功能已被禁用',
-        life: 5000,
-      })
-      return
-    }
-
-    if (permissions.value.enablePassword && !password) {
-      toast.add({
-        severity: 'error',
-        summary: '密码必填',
-        detail: '请输入访客访问密码',
-        life: 3000,
-      })
-      return
-    }
-
-    if (permissions.value.enablePassword && !authStore.validateGuestPassword(password)) {
-      toast.add({
-        severity: 'error',
-        summary: '密码错误',
-        detail: '访客访问密码不正确',
-        life: 3000,
-      })
-      return
-    }
-  }
-
-  // 管理员登录验证
-  if (type === 'admin') {
-    if (!username || !password) {
-      toast.add({
-        severity: 'error',
-        summary: '信息不完整',
-        detail: '请输入用户名和密码',
-        life: 3000,
-      })
-      return
-    }
-  }
-
   isLoading.value = true
   try {
+    let result
+
     if (type === 'guest') {
-      // 游客登录
-      await authStore.guestLogin(password, rememberMe)
-
-      toast.add({
-        severity: 'success',
-        summary: '登录成功',
-        detail: '欢迎访客用户',
-        life: 3000,
-      })
+      result = await authStore.handleGuestLogin(password, rememberMe, permissions.value)
+      if (result.success && result.userSession) {
+        toast.add({
+          severity: 'success',
+          summary: '登录成功',
+          detail: '欢迎访客用户',
+          life: 3000,
+        })
+      } else {
+        toast.add({
+          severity: 'error',
+          summary: '登录失败',
+          detail: result.error || '登录过程中发生错误',
+          life: 5000,
+        })
+        return
+      }
     } else {
-      // 管理员登录
-      const userSession = await authStore.login(username, password, rememberMe)
-
-      toast.add({
-        severity: 'success',
-        summary: '登录成功',
-        detail: `欢迎回来，${userSession.username}`,
-        life: 3000,
-      })
+      result = await authStore.handleAdminLogin(username, password, rememberMe)
+      if (result.success && result.userSession) {
+        toast.add({
+          severity: 'success',
+          summary: '登录成功',
+          detail: `欢迎回来，${result.userSession.username}`,
+          life: 3000,
+        })
+      } else {
+        toast.add({
+          severity: 'error',
+          summary: '登录失败',
+          detail: result.error || '登录过程中发生错误',
+          life: 5000,
+        })
+        return
+      }
     }
-
-    websocketManager.resetTokenInvalid()
 
     // 登录成功后重定向
     const redirectUri = router.currentRoute.value.query.redirect_uri as string
@@ -225,19 +194,19 @@ onMounted(async () => {
                             input: { class: 'w-full py-3 px-4 text-base' },
                           }"
                         />
-                        <div class="flex items-center gap-3">
-                          <Checkbox
-                            id="guestRememberMe"
-                            v-model="loginForm.rememberMe"
-                            :binary="true"
-                            class="w-5 h-5"
-                          />
-                          <label
-                            for="guestRememberMe"
-                            class="text-sm text-muted-color cursor-pointer"
-                            >记住登录状态</label
-                          >
                         </div>
+                      <div class="flex items-center gap-3">
+                        <Checkbox
+                          id="guestRememberMe"
+                          v-model="loginForm.rememberMe"
+                          :binary="true"
+                          class="w-5 h-5"
+                        />
+                        <label
+                          for="guestRememberMe"
+                          class="text-sm text-muted-color cursor-pointer"
+                        >记住登录状态</label
+                        >
                       </div>
 
                       <Button

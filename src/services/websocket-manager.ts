@@ -74,9 +74,7 @@ class WebSocketManager {
 
     // 如果超过最大重连次数，停止重连
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error(
-        `[WebSocketManager] 重连次数已达上限 (${this.maxReconnectAttempts})，停止重连`,
-      )
+      console.error(`[WebSocketManager] 重连次数已达上限 (${this.maxReconnectAttempts})，停止重连`)
       this.shouldReconnect = false
       this.broadcastError(new Error('WebSocket重连次数已达上限'))
       return
@@ -148,7 +146,12 @@ class WebSocketManager {
           // 检查是否是错误消息（token 无效）
           if (message.type === 'error' && message.status === 'error') {
             const errorMessage = message.message || ''
-            if (errorMessage.includes('Token无效') || errorMessage.includes('Token过期') || errorMessage.includes('token') || errorMessage.includes('Token')) {
+            if (
+              errorMessage.includes('Token无效') ||
+              errorMessage.includes('Token过期') ||
+              errorMessage.includes('token') ||
+              errorMessage.includes('Token')
+            ) {
               console.error('[WebSocketManager] Token 无效或已过期，停止重连:', errorMessage)
               this.tokenInvalid = true
               this.shouldReconnect = false
@@ -161,7 +164,10 @@ class WebSocketManager {
 
           // 检查是否有注册的消息处理器
           if (this.messageHandlers.length === 0) {
-            console.warn('[WebSocketManager] 收到消息但没有注册的消息处理器，消息类型:', message.type)
+            console.warn(
+              '[WebSocketManager] 收到消息但没有注册的消息处理器，消息类型:',
+              message.type,
+            )
           } else {
             console.log(`[WebSocketManager] 广播消息给 ${this.messageHandlers.length} 个处理器`)
           }
@@ -169,7 +175,9 @@ class WebSocketManager {
           // 广播给所有监听器
           this.messageHandlers.forEach((handler, index) => {
             try {
-              console.log(`[WebSocketManager] 调用处理器 ${index + 1}/${this.messageHandlers.length}`)
+              console.log(
+                `[WebSocketManager] 调用处理器 ${index + 1}/${this.messageHandlers.length}`,
+              )
               handler(message)
             } catch (error) {
               console.error('[WebSocketManager] 消息处理错误:', error)
@@ -248,9 +256,7 @@ class WebSocketManager {
             )
             this.shouldReconnect = false
             this.broadcastError(
-              new Error(
-                'WebSocket连接失败：已达最大重连次数，请检查网络连接或联系管理员',
-              ),
+              new Error('WebSocket连接失败：已达最大重连次数，请检查网络连接或联系管理员'),
             )
           }
         } else {
@@ -342,4 +348,3 @@ class WebSocketManager {
 }
 
 export default WebSocketManager.getInstance()
-
