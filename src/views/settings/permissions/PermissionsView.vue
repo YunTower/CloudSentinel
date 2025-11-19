@@ -76,7 +76,11 @@ const handlePasswordFocus = () => {
 // 处理密码输入框失去焦点
 const handlePasswordBlur = () => {
   // 如果失去焦点时输入框为空且已设置过密码且没有实际输入新密码，恢复星号显示
-  if (guestPasswordDisplay.value === '' && permissions.value.hasPassword && !permissions.value.guestPassword) {
+  if (
+    guestPasswordDisplay.value === '' &&
+    permissions.value.hasPassword &&
+    !permissions.value.guestPassword
+  ) {
     guestPasswordDisplay.value = '••••••••'
     isEditingPassword.value = false
   }
@@ -85,7 +89,11 @@ const handlePasswordBlur = () => {
 // 保存权限设置
 const savePermissions = async () => {
   // 如果启用了密码访问，但没有设置过密码且没有提供新密码，则提示错误
-  if (permissions.value.enablePassword && !permissions.value.hasPassword && !permissions.value.guestPassword) {
+  if (
+    permissions.value.enablePassword &&
+    !permissions.value.hasPassword &&
+    !permissions.value.guestPassword
+  ) {
     toast.add({ severity: 'error', summary: '保存失败', detail: '请设置访客访问密码', life: 4000 })
     return
   }
@@ -113,6 +121,16 @@ const savePermissions = async () => {
 
 // 修改用户名
 const updateUsername = async () => {
+  if (!adminAccount.value.newUsername || !adminAccount.value.currentPassword) {
+    toast.add({
+      severity: 'warn',
+      summary: '输入不完整',
+      detail: '请填写新用户名和当前密码',
+      life: 3000,
+    })
+    return
+  }
+
   if (adminAccount.value.newUsername === adminAccount.value.username) {
     toast.add({
       severity: 'warn',
@@ -125,8 +143,19 @@ const updateUsername = async () => {
 
   updatingUsername.value = true
   try {
-    // 实际项目中这里会调用 API 修改用户名
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    await settingsApi.savePermissionsSettings({
+      allowGuest: permissions.value.allowGuest,
+      enablePassword: permissions.value.enablePassword,
+      guestPassword: permissions.value.guestPassword,
+      hideSensitiveInfo: permissions.value.hideSensitiveInfo,
+      sessionTimeout: permissions.value.sessionTimeout,
+      maxLoginAttempts: permissions.value.maxLoginAttempts,
+      lockoutDuration: permissions.value.lockoutDuration,
+      jwtSecret: permissions.value.jwtSecret,
+      jwtExpiration: permissions.value.jwtExpiration,
+      newUsername: adminAccount.value.newUsername,
+      currentPassword: adminAccount.value.currentPassword,
+    })
     adminAccount.value.username = adminAccount.value.newUsername
     adminAccount.value.newUsername = ''
     adminAccount.value.currentPassword = ''
@@ -137,11 +166,17 @@ const updateUsername = async () => {
       detail: '用户名已更新',
       life: 3000,
     })
-  } catch {
+  } catch (error: unknown) {
+    const errorMessage =
+      (error && typeof error === 'object' && 'response' in error
+        ? (error.response as { data?: { message?: string } })?.data?.message
+        : null) ||
+      (error instanceof Error ? error.message : null) ||
+      '请稍后重试'
     toast.add({
       severity: 'error',
       summary: '修改失败',
-      detail: '请稍后重试',
+      detail: errorMessage,
       life: 5000,
     })
   } finally {
@@ -151,6 +186,20 @@ const updateUsername = async () => {
 
 // 修改密码
 const updatePassword = async () => {
+  if (
+    !adminAccount.value.newPassword ||
+    !adminAccount.value.confirmPassword ||
+    !adminAccount.value.currentPassword
+  ) {
+    toast.add({
+      severity: 'warn',
+      summary: '输入不完整',
+      detail: '请填写所有密码字段',
+      life: 3000,
+    })
+    return
+  }
+
   if (adminAccount.value.newPassword !== adminAccount.value.confirmPassword) {
     toast.add({
       severity: 'error',
@@ -161,10 +210,32 @@ const updatePassword = async () => {
     return
   }
 
+  if (adminAccount.value.newPassword.length < 6) {
+    toast.add({
+      severity: 'error',
+      summary: '密码长度不足',
+      detail: '新密码长度至少为6位',
+      life: 5000,
+    })
+    return
+  }
+
   updatingPassword.value = true
   try {
-    // 实际项目中这里会调用 API 修改密码
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    await settingsApi.savePermissionsSettings({
+      allowGuest: permissions.value.allowGuest,
+      enablePassword: permissions.value.enablePassword,
+      guestPassword: permissions.value.guestPassword,
+      hideSensitiveInfo: permissions.value.hideSensitiveInfo,
+      sessionTimeout: permissions.value.sessionTimeout,
+      maxLoginAttempts: permissions.value.maxLoginAttempts,
+      lockoutDuration: permissions.value.lockoutDuration,
+      jwtSecret: permissions.value.jwtSecret,
+      jwtExpiration: permissions.value.jwtExpiration,
+      newPassword: adminAccount.value.newPassword,
+      confirmPassword: adminAccount.value.confirmPassword,
+      currentPassword: adminAccount.value.currentPassword,
+    })
     adminAccount.value.currentPassword = ''
     adminAccount.value.newPassword = ''
     adminAccount.value.confirmPassword = ''
@@ -175,11 +246,17 @@ const updatePassword = async () => {
       detail: '密码已更新',
       life: 3000,
     })
-  } catch {
+  } catch (error: unknown) {
+    const errorMessage =
+      (error && typeof error === 'object' && 'response' in error
+        ? (error.response as { data?: { message?: string } })?.data?.message
+        : null) ||
+      (error instanceof Error ? error.message : null) ||
+      '请稍后重试'
     toast.add({
       severity: 'error',
       summary: '修改失败',
-      detail: '请稍后重试',
+      detail: errorMessage,
       life: 5000,
     })
   } finally {
@@ -201,11 +278,19 @@ const loadPermissions = async () => {
       guestPasswordDisplay.value = permissions.value.hasPassword ? '••••••••' : ''
       isEditingPassword.value = false // 重置编辑状态
       permissions.value.hideSensitiveInfo = !!data.hideSensitiveInfo
-      permissions.value.sessionTimeout = Number(data.sessionTimeout) || permissions.value.sessionTimeout
-      permissions.value.maxLoginAttempts = Number(data.maxLoginAttempts) || permissions.value.maxLoginAttempts
-      permissions.value.lockoutDuration = Number(data.lockoutDuration) || permissions.value.lockoutDuration
+      permissions.value.sessionTimeout =
+        Number(data.sessionTimeout) || permissions.value.sessionTimeout
+      permissions.value.maxLoginAttempts =
+        Number(data.maxLoginAttempts) || permissions.value.maxLoginAttempts
+      permissions.value.lockoutDuration =
+        Number(data.lockoutDuration) || permissions.value.lockoutDuration
       permissions.value.jwtSecret = String(data.jwtSecret || '')
-      permissions.value.jwtExpiration = Number(data.jwtExpiration) || permissions.value.jwtExpiration
+      permissions.value.jwtExpiration =
+        Number(data.jwtExpiration) || permissions.value.jwtExpiration
+      // 加载当前管理员用户名
+      if (data.adminUsername) {
+        adminAccount.value.username = data.adminUsername
+      }
     }
   } catch (error) {
     console.error('加载权限设置失败:', error)
@@ -219,9 +304,21 @@ onMounted(() => {
 </script>
 <template>
   <div class="permissions-view">
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-color mb-2">权限设置</h1>
-      <p class="text-muted-color">管理访问权限、用户认证和安全设置</p>
+    <div class="mb-6 flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-color mb-2">权限设置</h1>
+        <p class="text-muted-color">管理访问权限、用户认证和安全设置</p>
+      </div>
+      <div>
+        <Button
+          size="small"
+          class="px-6"
+          label="保存设置"
+          icon="pi pi-save"
+          @click="savePermissions"
+          :loading="saving"
+        />
+      </div>
     </div>
 
     <div class="masonry-container">
@@ -265,7 +362,9 @@ onMounted(() => {
                   <Password
                     id="guestPassword"
                     v-model="guestPasswordDisplay"
-                    :placeholder="permissions.hasPassword ? '已设置密码，输入新密码可修改' : '请设置访问密码'"
+                    :placeholder="
+                      permissions.hasPassword ? '已设置密码，输入新密码可修改' : '请设置访问密码'
+                    "
                     toggleMask
                     :feedback="false"
                     class="w-full"
@@ -295,100 +394,141 @@ onMounted(() => {
       <Card class="masonry-item">
         <template #title>
           <div class="flex items-center gap-2">
-            <i class="pi pi-user-cog text-primary"></i>
+            <i class="pi pi-user text-primary"></i>
             <span>管理员账户</span>
           </div>
         </template>
         <template #content>
           <div class="space-y-4">
-            <!-- 当前用户名 -->
-            <div class="flex flex-col gap-2">
-              <label for="currentUsername" class="text-sm font-medium text-color">当前用户名</label>
-              <InputText
-                id="currentUsername"
-                :value="adminAccount.username"
-                disabled
-                class="w-full"
-              />
+            <div>
+              <Divider align="left" type="solid">
+                <b>修改用户名</b>
+              </Divider>
+              <!-- 当前用户名 -->
+              <div class="flex flex-col gap-2">
+                <label for="currentUsername" class="text-sm font-medium text-color"
+                  >当前用户名</label
+                >
+                <InputText
+                  id="currentUsername"
+                  :value="adminAccount.username"
+                  disabled
+                  class="w-full"
+                />
+              </div>
+
+              <!-- 修改用户名区域 -->
+              <div class="space-y-4">
+                <!-- 新用户名 -->
+                <div class="flex flex-col gap-2">
+                  <label for="newUsername" class="text-sm font-medium text-color">新用户名</label>
+                  <InputText
+                    id="newUsername"
+                    v-model="adminAccount.newUsername"
+                    placeholder="请输入新用户名"
+                    class="w-full"
+                  />
+                </div>
+
+                <!-- 当前密码（用于修改用户名） -->
+                <div class="flex flex-col gap-2">
+                  <label for="currentPasswordForUsername" class="text-sm font-medium text-color"
+                    >当前密码</label
+                  >
+                  <Password
+                    id="currentPasswordForUsername"
+                    v-model="adminAccount.currentPassword"
+                    placeholder="请输入当前密码以验证身份"
+                    toggleMask
+                    :feedback="false"
+                    class="w-full"
+                  />
+                </div>
+
+                <!-- 修改用户名按钮 -->
+                <div class="mt-4">
+                  <Button
+                    label="修改用户名"
+                    icon="pi pi-user-edit"
+                    @click="updateUsername"
+                    :loading="updatingUsername"
+                    :disabled="!adminAccount.newUsername || !adminAccount.currentPassword"
+                    severity="secondary"
+                    outlined
+                    class="w-full"
+                  />
+                </div>
+              </div>
             </div>
 
-            <!-- 修改用户名 -->
-            <div class="flex flex-col gap-2">
-              <label for="newUsername" class="text-sm font-medium text-color">新用户名</label>
-              <InputText
-                id="newUsername"
-                v-model="adminAccount.newUsername"
-                placeholder="请输入新用户名"
-                class="w-full"
-              />
-            </div>
+            <!-- 修改密码 -->
+            <div>
+              <Divider align="left" type="solid">
+                <b>修改密码</b>
+              </Divider>
+              <div class="space-y-4">
+                <!-- 当前密码（用于修改密码） -->
+                <div class="flex flex-col gap-2">
+                  <label for="currentPasswordForPassword" class="text-sm font-medium text-color"
+                    >当前密码</label
+                  >
+                  <Password
+                    id="currentPasswordForPassword"
+                    v-model="adminAccount.currentPassword"
+                    placeholder="请输入当前密码以验证身份"
+                    toggleMask
+                    :feedback="false"
+                    class="w-full"
+                  />
+                </div>
 
-            <!-- 当前密码 -->
-            <div class="flex flex-col gap-2">
-              <label for="currentPassword" class="text-sm font-medium text-color">当前密码</label>
-              <Password
-                id="currentPassword"
-                v-model="adminAccount.currentPassword"
-                placeholder="请输入当前密码"
-                toggleMask
-                :feedback="false"
-                class="w-full"
-              />
-            </div>
+                <!-- 新密码 -->
+                <div class="flex flex-col gap-2">
+                  <label for="newPassword" class="text-sm font-medium text-color">新密码</label>
+                  <Password
+                    id="newPassword"
+                    v-model="adminAccount.newPassword"
+                    placeholder="请输入新密码（至少6位）"
+                    toggleMask
+                    :promptLabel="'请输入密码'"
+                    :weakLabel="'弱'"
+                    :mediumLabel="'中'"
+                    :strongLabel="'强'"
+                    class="w-full"
+                  />
+                </div>
 
-            <!-- 新密码 -->
-            <div class="flex flex-col gap-2">
-              <label for="newPassword" class="text-sm font-medium text-color">新密码</label>
-              <Password
-                id="newPassword"
-                v-model="adminAccount.newPassword"
-                placeholder="请输入新密码"
-                toggleMask
-                :promptLabel="'请输入密码'"
-                :weakLabel="'弱'"
-                :mediumLabel="'中'"
-                :strongLabel="'强'"
-                class="w-full"
-              />
-            </div>
+                <!-- 确认新密码 -->
+                <div class="flex flex-col gap-2">
+                  <label for="confirmPassword" class="text-sm font-medium text-color"
+                    >确认新密码</label
+                  >
+                  <Password
+                    id="confirmPassword"
+                    v-model="adminAccount.confirmPassword"
+                    placeholder="请再次输入新密码"
+                    toggleMask
+                    :feedback="false"
+                    class="w-full"
+                  />
+                </div>
 
-            <!-- 确认新密码 -->
-            <div class="flex flex-col gap-2">
-              <label for="confirmPassword" class="text-sm font-medium text-color">确认新密码</label>
-              <Password
-                id="confirmPassword"
-                v-model="adminAccount.confirmPassword"
-                placeholder="请再次输入新密码"
-                toggleMask
-                :feedback="false"
-                class="w-full"
-              />
-            </div>
-
-            <!-- 修改按钮 -->
-            <div class="flex gap-3 mt-6">
-              <Button
-                label="修改用户名"
-                icon="pi pi-user-edit"
-                @click="updateUsername"
-                :loading="updatingUsername"
-                :disabled="!adminAccount.newUsername || !adminAccount.currentPassword"
-                severity="secondary"
-                outlined
-                class="flex-1"
-              />
-              <Button
-                label="修改密码"
-                icon="pi pi-key"
-                @click="updatePassword"
-                :loading="updatingPassword"
-                :disabled="
-                  !adminAccount.newPassword ||
-                  !adminAccount.confirmPassword ||
-                  !adminAccount.currentPassword
-                "
-                class="flex-1"
-              />
+                <!-- 修改密码按钮 -->
+                <div class="mt-4">
+                  <Button
+                    label="修改密码"
+                    icon="pi pi-key"
+                    @click="updatePassword"
+                    :loading="updatingPassword"
+                    :disabled="
+                      !adminAccount.newPassword ||
+                      !adminAccount.confirmPassword ||
+                      !adminAccount.currentPassword
+                    "
+                    class="w-full"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </template>
@@ -437,31 +577,21 @@ onMounted(() => {
             <!-- 锁定时间 -->
             <div class="flex flex-col gap-2">
               <label for="lockoutDuration" class="text-sm font-medium text-color"
-                >锁定时间（分钟）</label
+                >异常登录锁定时间（分钟）</label
               >
               <InputNumber
                 id="lockoutDuration"
                 v-model="permissions.lockoutDuration"
-                :min="1"
+                :min="0"
                 :max="60"
                 suffix=" 分钟"
                 class="w-full"
               />
+              <Message size="small" severity="secondary" variant="simple">游客/管理员使用密码登录失败达到 <b>{{permissions.maxLoginAttempts}}</b> 次后锁定IP的时间</Message>
             </div>
           </div>
         </template>
       </Card>
-    </div>
-
-    <!-- 保存按钮 -->
-    <div class="flex justify-end mt-6">
-      <Button
-        label="保存设置"
-        icon="pi pi-save"
-        @click="savePermissions"
-        :loading="saving"
-        class="px-6"
-      />
     </div>
   </div>
 </template>

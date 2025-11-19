@@ -40,6 +40,7 @@ export interface GetPermissionsSettingsData {
   lockoutDuration: number
   jwtSecret: string
   jwtExpiration: number
+  adminUsername?: string
 }
 
 export type GetPermissionsSettingsResponse = ApiResponse<GetPermissionsSettingsData>
@@ -54,6 +55,10 @@ export interface SavePermissionsSettingsBody {
   lockoutDuration: number
   jwtSecret: string
   jwtExpiration: number
+  newUsername?: string
+  newPassword?: string
+  confirmPassword?: string
+  currentPassword?: string
 }
 
 // Alerts
