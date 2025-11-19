@@ -404,21 +404,21 @@ onMounted(() => {
               <Divider align="left" type="solid">
                 <b>修改用户名</b>
               </Divider>
-              <!-- 当前用户名 -->
-              <div class="flex flex-col gap-2">
-                <label for="currentUsername" class="text-sm font-medium text-color"
-                  >当前用户名</label
-                >
-                <InputText
-                  id="currentUsername"
-                  :value="adminAccount.username"
-                  disabled
-                  class="w-full"
-                />
-              </div>
-
               <!-- 修改用户名区域 -->
               <div class="space-y-4">
+                <!-- 当前用户名 -->
+                <div class="flex flex-col gap-2">
+                  <label for="currentUsername" class="text-sm font-medium text-color"
+                    >当前用户名</label
+                  >
+                  <InputText
+                    id="currentUsername"
+                    :value="adminAccount.username"
+                    disabled
+                    class="w-full"
+                  />
+                </div>
+
                 <!-- 新用户名 -->
                 <div class="flex flex-col gap-2">
                   <label for="newUsername" class="text-sm font-medium text-color">新用户名</label>
@@ -428,35 +428,35 @@ onMounted(() => {
                     placeholder="请输入新用户名"
                     class="w-full"
                   />
-                </div>
 
-                <!-- 当前密码（用于修改用户名） -->
-                <div class="flex flex-col gap-2">
-                  <label for="currentPasswordForUsername" class="text-sm font-medium text-color"
-                    >当前密码</label
-                  >
-                  <Password
-                    id="currentPasswordForUsername"
-                    v-model="adminAccount.currentPassword"
-                    placeholder="请输入当前密码以验证身份"
-                    toggleMask
-                    :feedback="false"
-                    class="w-full"
-                  />
-                </div>
+                  <!-- 当前密码（用于修改用户名） -->
+                  <div class="flex flex-col gap-2">
+                    <label for="currentPasswordForUsername" class="text-sm font-medium text-color"
+                      >当前密码</label
+                    >
+                    <Password
+                      id="currentPasswordForUsername"
+                      v-model="adminAccount.currentPassword"
+                      placeholder="请输入当前密码以验证身份"
+                      toggleMask
+                      :feedback="false"
+                      class="w-full"
+                    />
+                  </div>
 
-                <!-- 修改用户名按钮 -->
-                <div class="mt-4">
-                  <Button
-                    label="修改用户名"
-                    icon="pi pi-user-edit"
-                    @click="updateUsername"
-                    :loading="updatingUsername"
-                    :disabled="!adminAccount.newUsername || !adminAccount.currentPassword"
-                    severity="secondary"
-                    outlined
-                    class="w-full"
-                  />
+                  <!-- 修改用户名按钮 -->
+                  <div class="mt-4">
+                    <Button
+                      label="修改用户名"
+                      icon="pi pi-user-edit"
+                      @click="updateUsername"
+                      :loading="updatingUsername"
+                      :disabled="!adminAccount.newUsername || !adminAccount.currentPassword"
+                      severity="secondary"
+                      outlined
+                      class="w-full"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -587,7 +587,10 @@ onMounted(() => {
                 suffix=" 分钟"
                 class="w-full"
               />
-              <Message size="small" severity="secondary" variant="simple">游客/管理员使用密码登录失败达到 <b>{{permissions.maxLoginAttempts}}</b> 次后锁定IP的时间</Message>
+              <Message size="small" severity="secondary" variant="simple"
+                >游客/管理员使用密码登录失败达到
+                <b>{{ permissions.maxLoginAttempts }}</b> 次后锁定IP的时间</Message
+              >
             </div>
           </div>
         </template>
