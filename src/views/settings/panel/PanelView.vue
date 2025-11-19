@@ -45,7 +45,7 @@ const checkForUpdate = async () => {
     if (!response?.status) {
       toast.add({
         severity: 'warn',
-        summary: '失败了哦',
+        summary: '检查更新失败',
         detail: response?.message || '无法获取版本信息',
         life: 3000,
       })

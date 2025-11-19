@@ -287,8 +287,10 @@ const loadServers = async () => {
         const cpu = typeof metrics.cpu_usage === 'number' ? metrics.cpu_usage : 0
         const memory = typeof metrics.memory_usage === 'number' ? metrics.memory_usage : 0
         const disk = typeof metrics.disk_usage === 'number' ? metrics.disk_usage : 0
-        const networkUpload = typeof metrics.network_upload === 'number' ? metrics.network_upload : 0
-        const networkDownload = typeof metrics.network_download === 'number' ? metrics.network_download : 0
+        const networkUpload =
+          typeof metrics.network_upload === 'number' ? metrics.network_upload : 0
+        const networkDownload =
+          typeof metrics.network_download === 'number' ? metrics.network_download : 0
 
         return {
           id: server.id,
@@ -307,6 +309,7 @@ const loadServers = async () => {
           disk,
           networkIO: { upload: networkUpload, download: networkDownload },
           agent_key: server.agent_key,
+          agent_version: server.agent_version || '',
           createdAt: server.created_at || '',
           updatedAt: server.updated_at || '',
           _detailLoaded: false, // 标记详细信息是否已加载

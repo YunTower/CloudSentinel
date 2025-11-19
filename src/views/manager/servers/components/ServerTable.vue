@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, computed } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
+import { useAuthStore } from '@/stores/auth'
 import type { Server, MetricsData } from '@/types/manager/servers'
 import serversApi from '@/apis/servers'
 import ServerBasicInfo from './ServerBasicInfo.vue'
@@ -11,6 +12,9 @@ import ServerDiskCard from './ServerDiskCard.vue'
 import ServerNetworkCard from './ServerNetworkCard.vue'
 import ServerMetricsChart from './ServerMetricsChart.vue'
 import { getStatusText, getStatusSeverity } from '../utils'
+
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.role === 'admin')
 
 interface Props {
   servers: Server[]
@@ -135,7 +139,7 @@ const confirmDelete = (event: Event, server: Server) => {
 const confirmRestart = (event: Event, server: Server) => {
   confirm.require({
     target: event.currentTarget as HTMLElement,
-    message: `确定要重启服务器 "${server.name}" 吗？`,
+    message: `确定要重启服务器 "${server.name}" 的Agent服务吗？`,
     header: '重启确认',
     rejectProps: {
       label: '取消',
@@ -415,6 +419,25 @@ defineExpose({
                 <div class="text-sm font-medium text-color">
                   {{ data.os || '-' }} ({{ data.architecture || '-' }})
                 </div>
+              </div>
+            </template>
+          </Column>
+
+          <!-- Agent版本列 -->
+          <Column v-if="isAdmin" field="agent_version" header="Agent版本" sortable class="w-36">
+            <template #body="{ data }">
+              <div class="text-left flex gap-2">
+                <div class="text-sm font-medium text-color">{{ data.agent_version || '-' }}</div>
+                <Tag
+                  v-tooltip.top="'升级Agent版本'"
+                  class="cursor-pointer"
+                  icon="pi pi-arrow-circle-up"
+                  size="small"
+                  severity="info"
+                  rounded
+                  variant="outlined"
+                  aria-label="User"
+                />
               </div>
             </template>
           </Column>
