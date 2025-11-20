@@ -60,6 +60,7 @@ export interface ServerListItemData {
   os?: string
   architecture?: string
   agent_key?: string
+  agent_version?: string // Agent版本（仅管理员可见）
   uptime?: string
   created_at?: string
   updated_at?: string
@@ -68,7 +69,7 @@ export interface ServerListItemData {
 // 获取服务器列表响应类型
 export type GetServersResponse = ApiResponse<ServerListItemData[]>
 
-// 删除/更新/重启服务器响应类型
+// 删除/更新/重启服务响应类型
 export type DeleteServerResponse = ApiResponse<null>
 export type UpdateServerResponse = ApiResponse<null>
 export type RestartServerResponse = ApiResponse<null>
@@ -99,6 +100,7 @@ export interface Server {
   swapInfo?: SwapInfo
   traffic?: TrafficInfo
   agent_key?: string
+  agent_version?: string // Agent版本（仅管理员可见）
   createdAt: string
   updatedAt: string
   _detailLoaded?: boolean // 标记详细信息是否已加载

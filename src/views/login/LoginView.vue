@@ -153,7 +153,7 @@ onMounted(async () => {
       <div class="w-full max-w-md">
         <div class="text-center mb-8">
           <h1 class="text-4xl font-bold text-color mb-3">{{ panelTitle }}</h1>
-          <p class="text-lg text-muted-color">登录云哨务器监控探针系统</p>
+          <p class="text-lg text-muted-color">登录云哨服务器状态监测系统</p>
         </div>
 
         <Card class="shadow-2xl border-0">
@@ -194,7 +194,7 @@ onMounted(async () => {
                             input: { class: 'w-full py-3 px-4 text-base' },
                           }"
                         />
-                        </div>
+                      </div>
                       <div class="flex items-center gap-3">
                         <Checkbox
                           id="guestRememberMe"
@@ -202,10 +202,8 @@ onMounted(async () => {
                           :binary="true"
                           class="w-5 h-5"
                         />
-                        <label
-                          for="guestRememberMe"
-                          class="text-sm text-muted-color cursor-pointer"
-                        >记住登录状态</label
+                        <label for="guestRememberMe" class="text-sm text-muted-color cursor-pointer"
+                          >记住登录状态</label
                         >
                       </div>
 
@@ -282,7 +280,7 @@ onMounted(async () => {
         </Card>
 
         <div class="text-center mt-8">
-          <p class="text-sm text-muted-color">© 2024 CloudSentinel. 服务器监控探针系统</p>
+          <p class="text-sm text-muted-color">© 2024 CloudSentinel. 服务器状态监测系统</p>
         </div>
       </div>
     </div>

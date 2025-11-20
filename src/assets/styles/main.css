@@ -1,6 +1,7 @@
 @config "@/../tailwind.config.ts";
 @import "tailwindcss";
 @import "tailwindcss-primeui";
+@plugin "@tailwindcss/typography";
 
 :root {
   font-synthesis: none;

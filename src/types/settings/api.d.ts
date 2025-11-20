@@ -14,10 +14,12 @@ export interface GetPanelSettingsData {
 }
 
 export type GetCheckUpdateResponse = ApiResponse<GetUpdateData>
-
+export type VersionType = 'dev' | 'alpha' | 'beta' | 'rc' | 'release'
 export interface GetUpdateData {
   latest_version: string
+  latest_version_type: VersionType
   current_version: string
+  current_version_type: VersionType
   publish_time: string
   change_log: string
 }
