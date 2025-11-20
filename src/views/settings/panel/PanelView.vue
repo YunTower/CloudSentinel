@@ -1,14 +1,100 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import type { PanelSettings, UpdateSource } from '@/types/settings/panel'
+import { marked } from 'marked'
 import panelApi from '@/apis/settings/panel'
-import type { GetUpdateData } from '@/types/settings/api'
+import type { PanelSettings, UpdateSource } from '@/types/settings/panel'
+import type { GetUpdateData, VersionType } from '@/types/settings/api'
 
 export interface VersionInfo extends GetUpdateData {
   has_update: boolean
 }
 
+// 版本类型优先级：dev < alpha < beta < rc < release
+const VERSION_TYPE_PRIORITY: Record<VersionType, number> = {
+  dev: 0,
+  alpha: 1,
+  beta: 2,
+  rc: 3,
+  release: 4,
+}
+
+// 版本类型标签配置
+const VERSION_TYPE_CONFIG: Record<
+  VersionType,
+  { label: string; severity: 'danger' | 'warn' | 'info' | 'success' }
+> = {
+  dev: { label: '开发版', severity: 'danger' },
+  alpha: { label: 'Alpha', severity: 'warn' },
+  beta: { label: 'Beta', severity: 'info' },
+  rc: { label: 'RC', severity: 'success' },
+  release: { label: '正式版', severity: 'success' },
+}
+
+/**
+ * 获取版本类型标签配置
+ */
+const getVersionTypeConfig = (type: VersionType) => {
+  return VERSION_TYPE_CONFIG[type] || VERSION_TYPE_CONFIG.release
+}
+
+/**
+ * 比较两个版本号
+ * @param version1 版本号1 (如 "1.0.0")
+ * @param version2 版本号2 (如 "1.0.1")
+ * @returns 1: version1 > version2, 0: version1 === version2, -1: version1 < version2
+ */
+const compareVersions = (version1: string, version2: string): number => {
+  const v1Parts = version1.split('.').map(Number)
+  const v2Parts = version2.split('.').map(Number)
+  const maxLength = Math.max(v1Parts.length, v2Parts.length)
+
+  for (let i = 0; i < maxLength; i++) {
+    const v1Part = v1Parts[i] || 0
+    const v2Part = v2Parts[i] || 0
+
+    if (v1Part > v2Part) return 1
+    if (v1Part < v2Part) return -1
+  }
+
+  return 0
+}
+
+/**
+ * 判断是否需要更新
+ * 规则：
+ * 1. 如果最新版本号 > 当前版本号，需要更新
+ * 2. 如果版本号相同，但最新版本类型优先级 > 当前版本类型优先级，需要更新
+ */
+const hasUpdate = computed(() => {
+  if (!versionInfo.value) return false
+
+  const { latest_version, latest_version_type, current_version, current_version_type } =
+    versionInfo.value
+
+  if (!latest_version || !current_version) return false
+
+  // 比较版本号
+  const versionCompare = compareVersions(latest_version, current_version)
+
+  if (versionCompare > 0) {
+    // 最新版本号更大，需要更新
+    return true
+  }
+
+  if (versionCompare === 0) {
+    // 版本号相同，比较版本类型优先级
+    const latestPriority = VERSION_TYPE_PRIORITY[latest_version_type] ?? 0
+    const currentPriority = VERSION_TYPE_PRIORITY[current_version_type] ?? 0
+
+    if (latestPriority > currentPriority) {
+      // 最新版本类型优先级更高，需要更新
+      return true
+    }
+  }
+
+  return false
+})
 const toast = useToast()
 const panelSettings = ref<PanelSettings>({
   title: 'CloudSentinel',
@@ -23,12 +109,12 @@ const updateSources = ref<UpdateSource[]>([
   {
     label: 'GitHub',
     value: 'github',
-    description: '官方源，更新及时，国外访问较快',
+    description: '官方源，更新及时，国外服务器访问较快',
   },
   {
     label: 'Gitee',
     value: 'gitee',
-    description: '国内镜像源，国内访问较快',
+    description: '国内镜像源，国内服务器访问较快',
   },
 ])
 
@@ -51,8 +137,7 @@ const checkForUpdate = async () => {
       })
       return
     }
-    const hasUpdate = false
-    versionInfo.value = { ...response?.data, has_update: hasUpdate }
+    versionInfo.value = { ...response?.data, has_update: false }
     hasCheckedUpdate.value = true
 
     toast.add({
@@ -254,7 +339,7 @@ onMounted(() => {
             <!-- 更新状态展示 - 只有在检查更新后才显示 -->
             <div v-if="hasCheckedUpdate && versionInfo" class="space-y-4">
               <!-- 可用更新 -->
-              <div v-if="versionInfo.has_update" class="space-y-4">
+              <div v-if="hasUpdate" class="space-y-4">
                 <div
                   class="flex items-center justify-between p-4 rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20"
                 >
@@ -267,13 +352,14 @@ onMounted(() => {
                       </div>
                     </div>
                     <div class="space-y-1">
-                      <div class="flex items-center gap-3">
+                      <div class="flex items-center gap-2">
                         <span class="text-sm font-medium text-color">发现新版本</span>
-                        <span
-                          class="px-2 py-1 text-xs font-medium rounded-md bg-orange-500 text-white"
-                        >
-                          v{{ versionInfo.latest_version }}
-                        </span>
+                        <b class="text-sm"> v{{ versionInfo.latest_version }} </b>
+                        <Tag
+                          :value="getVersionTypeConfig(versionInfo.latest_version_type).label"
+                          :severity="getVersionTypeConfig(versionInfo.latest_version_type).severity"
+                          size="small"
+                        />
                       </div>
                       <p class="text-xs text-muted-color">
                         发布时间：{{ versionInfo.publish_time }}
@@ -317,13 +403,9 @@ onMounted(() => {
                   </h4>
                   <div class="pl-6 space-y-2">
                     <div
-                      v-for="(item, index) in versionInfo.change_log"
-                      :key="index"
-                      class="flex items-start gap-3 text-sm text-color"
-                    >
-                      <span class="w-1.5 h-1.5 rounded-full bg-primary mt-2 flex-shrink-0"></span>
-                      <span>{{ item }}</span>
-                    </div>
+                      v-html="marked.parse(versionInfo.change_log)"
+                      class="flex items-start gap-3 text-sm text-color prose"
+                    ></div>
                   </div>
                 </div>
               </div>
