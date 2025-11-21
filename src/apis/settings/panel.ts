@@ -2,6 +2,7 @@ import { requester } from '@/utils/requester.ts'
 import type {
   CheckReleaseTypes, GetCheckUpdateResponse,
   GetPanelSettingsResponse,
+  GetUpdateStatusResponse,
   SavePanelSettingsBody
 } from '@/types/settings/api'
 
@@ -11,5 +12,6 @@ export default {
   getPanelSettings: () => requester.Get<GetPanelSettingsResponse>('/settings/panel'),
   getPublicSettings: () => requester.Get('/settings/public'),
   checkUpdate: (type: CheckReleaseTypes) => requester.Get<GetCheckUpdateResponse>('/update/check', { params: { type } }),
+  getUpdateStatus: () => requester.Get<GetUpdateStatusResponse>('/update/status'),
   updatePanel: () => requester.Post('/update'),
 }

@@ -24,6 +24,13 @@ export interface GetUpdateData {
   change_log: string
 }
 
+export interface UpdateStatusData {
+  step: string
+  progress: number
+  message: string
+}
+
+export type GetUpdateStatusResponse = ApiResponse<UpdateStatusData>
 export type GetPanelSettingsResponse = ApiResponse<GetPanelSettingsData>
 
 export interface SavePanelSettingsBody {
