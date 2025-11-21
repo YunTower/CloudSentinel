@@ -126,7 +126,15 @@ const updateSources = ref<UpdateSource[]>([
 const selectedUpdateSource = ref<'gitee' | 'github'>('github')
 
 // 版本信息
-const versionInfo = ref<VersionInfo>()
+const versionInfo = ref<VersionInfo>({
+  change_log: '',
+  current_version: '',
+  current_version_type: 'dev',
+  has_update: false,
+  latest_version: '',
+  latest_version_type: 'dev',
+  publish_time: '',
+})
 
 // 检查更新
 const checkForUpdate = async () => {
@@ -215,7 +223,6 @@ const performUpdate = async () => {
         })
       }
     }, 1000)
-
   } catch (error) {
     console.error('Failed to start update:', error)
     updating.value = false
@@ -237,6 +244,7 @@ const loadPanelSettings = async () => {
       panelSettings.value.title = title
       if (versionInfo.value) {
         versionInfo.value.current_version = res?.data?.current_version || ''
+        versionInfo.value.current_version_type = res?.data?.current_version_type || ''
       }
     }
   } catch (error) {
@@ -367,7 +375,7 @@ onMounted(() => {
                 <div class="flex items-center gap-3">
                   <span class="text-sm font-medium text-color">当前版本:</span>
                   <span class="text-xs not-even:rounded-md text-primary font-semibold">
-                    {{ versionInfo?.current_version ? 'v' + versionInfo?.current_version : '未知' }}
+                    {{ versionInfo?.current_version ? 'v' + versionInfo?.current_version : 'unknown' }}
                   </span>
                 </div>
               </div>

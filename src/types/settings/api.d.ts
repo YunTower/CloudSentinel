@@ -11,6 +11,7 @@ export type CheckReleaseTypes = 'gitee' | 'github'
 export interface GetPanelSettingsData {
   panel_title: string
   current_version: string
+  current_version_type: VersionType
 }
 
 export type GetCheckUpdateResponse = ApiResponse<GetUpdateData>
