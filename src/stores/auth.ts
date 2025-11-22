@@ -21,6 +21,10 @@ export const useAuthStore = defineStore('auth', () => {
   const redirectUri = ref<string | null>(null)
   const isLoggedIn = ref(false)
   const currentUserSession = ref<UserSession | null>(null)
+  const publicSettings = ref<PublicSettingsResponse['data'] | null>(null)
+  const loadingPublicSettings = ref(false)
+  const loadingPublicSettingsPromise = ref<Promise<PublicSettingsResponse['data']> | null>(null)
+  const bootstrapPromise = ref<Promise<void> | null>(null)
 
   // 常量
   const TOKEN_KEY = 'auth_token'
@@ -150,7 +154,6 @@ export const useAuthStore = defineStore('auth', () => {
     return {
       allowGuest: true,
       enablePassword: false,
-      guestPassword: '',
       hideSensitiveInfo: true,
     }
   }
@@ -169,50 +172,82 @@ export const useAuthStore = defineStore('auth', () => {
     return config.allowGuest && config.enablePassword
   }
 
-
   // 公开设置
-  const loadPublicSettings = async (): Promise<GuestAccessConfig> => {
-    try {
-      const response = await panelApi.getPublicSettings()
-      console.log(response)
-      const data = response as PublicSettingsResponse
+  const fetchPublicSettings = async (): Promise<PublicSettingsResponse['data']> => {
+    if (publicSettings.value) {
+      if (publicSettings.value.panel_title) {
+        document.title = `${publicSettings.value.panel_title}`
+      }
+      return publicSettings.value
+    }
 
-      if (data.status && data.data) {
-        // 映射API响应到本地配置结构
-        const config: GuestAccessConfig = {
-          allowGuest: data.data.allow_guest_login,
-          enablePassword: data.data.guest_password_enabled,
-          guestPassword: '', // API不返回密码，保持为空
-          hideSensitiveInfo: true, // 默认隐藏敏感信息
+    if (loadingPublicSettingsPromise.value) {
+      return await loadingPublicSettingsPromise.value
+    }
+
+    loadingPublicSettings.value = true
+    const requestPromise = (async (): Promise<PublicSettingsResponse['data']> => {
+      try {
+        const response = await panelApi.getPublicSettings()
+        const data = response as PublicSettingsResponse
+
+        if (data.status && data.data) {
+          publicSettings.value = data.data
+          if (data.data.panel_title) {
+            document.title = `${data.data.panel_title}`
+          }
+
+          const config: GuestAccessConfig = {
+            allowGuest: data.data.allow_guest_login,
+            enablePassword: data.data.guest_password_enabled,
+            hideSensitiveInfo: true, // 默认隐藏敏感信息
+          }
+          saveGuestAccessConfig(config)
+
+          return data.data
         }
 
-        // 保存到本地存储作为缓存
-        saveGuestAccessConfig(config)
-        return config
+        throw new Error(data.message || '获取公开设置失败')
+      } catch (error) {
+        console.error('Failed to load public settings:', error)
+        const defaultData: PublicSettingsResponse['data'] = {
+          allow_guest_login: true,
+          guest_password_enabled: false,
+          panel_title: 'CloudSentinel 云哨',
+        }
+        publicSettings.value = defaultData
+        document.title = `${defaultData.panel_title}`
+        return defaultData
+      } finally {
+        loadingPublicSettings.value = false
+        loadingPublicSettingsPromise.value = null
       }
+    })()
 
-      throw new Error(data.message || '获取公开设置失败')
-    } catch (error) {
-      console.error('Failed to load public settings:', error)
-      // 如果API失败，返回本地配置
-      return getGuestAccessConfig()
+    loadingPublicSettingsPromise.value = requestPromise
+    return await requestPromise
+  }
+
+  const loadPublicSettings = async (): Promise<GuestAccessConfig> => {
+    const data = await fetchPublicSettings()
+
+    const config: GuestAccessConfig = {
+      allowGuest: data.allow_guest_login,
+      enablePassword: data.guest_password_enabled,
+      hideSensitiveInfo: true, // 默认隐藏敏感信息
     }
+
+    saveGuestAccessConfig(config)
+    return config
   }
 
   const getPanelTitle = async (): Promise<string> => {
-    try {
-      const response = await panelApi.getPublicSettings()
-      const data = response as PublicSettingsResponse
+    const data = await fetchPublicSettings()
+    return data.panel_title || 'CloudSentinel 云哨'
+  }
 
-      if (data.status && data.data?.panel_title) {
-        return data.data.panel_title
-      }
-
-      return 'CloudSentinel 云哨' // 默认标题
-    } catch (error) {
-      console.error('Failed to get panel title:', error)
-      return 'CloudSentinel 云哨' // 默认标题
-    }
+  const getPublicSettings = (): PublicSettingsResponse['data'] | null => {
+    return publicSettings.value
   }
 
   // 登录方法
@@ -438,26 +473,41 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // 初始化
-  const bootstrap = async () => {
-    // 记录当前意图路径，用于刷新后跳回
-    // 只有在没有已存在的intended_path时才设置当前路径
-    try {
-      const existingIntended = sessionStorage.getItem('intended_path')
-      if (!existingIntended) {
-        const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
-        sessionStorage.setItem('intended_path', currentPath)
-        redirectUri.value = currentPath
-      } else {
-        redirectUri.value = existingIntended
-      }
-    } catch {}
-
-    const token = getToken()
-    if (token) {
-      await checkLoginStatus()
+  const bootstrap = async (): Promise<void> => {
+    if (bootstrapPromise.value) {
+      return await bootstrapPromise.value
     }
 
-    initialized.value = true
+    const initPromise = (async (): Promise<void> => {
+      // 记录当前意图路径，用于刷新后跳回
+      try {
+        const existingIntended = sessionStorage.getItem('intended_path')
+        if (!existingIntended) {
+          const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+          sessionStorage.setItem('intended_path', currentPath)
+          redirectUri.value = currentPath
+        } else {
+          redirectUri.value = existingIntended
+        }
+      } catch {}
+
+      await fetchPublicSettings()
+
+      // 如果有 token，检查登录状态
+      const token = getToken()
+      if (token) {
+        try {
+          await checkLoginStatus()
+        } catch (error) {
+          console.error('Failed to check login status during bootstrap:', error)
+        }
+      }
+
+      initialized.value = true
+    })()
+
+    bootstrapPromise.value = initPromise
+    return await initPromise
   }
 
   return {
@@ -497,6 +547,7 @@ export const useAuthStore = defineStore('auth', () => {
     // 公开设置
     loadPublicSettings,
     getPanelTitle,
+    getPublicSettings,
 
     // 登录方法
     login,
