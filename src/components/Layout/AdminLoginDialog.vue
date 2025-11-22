@@ -23,7 +23,7 @@ const isLoading = ref(false)
 const loginForm = ref({
   username: '',
   password: '',
-  rememberMe: false,
+  rememberMe: true, // 默认勾选记住登录状态
 })
 
 watch(
@@ -33,7 +33,7 @@ watch(
       loginForm.value = {
         username: '',
         password: '',
-        rememberMe: false,
+        rememberMe: true, // 默认勾选记住登录状态
       }
     }
   },
