@@ -174,7 +174,7 @@ const handleCancel = () => {
             <div class="space-y-3">
               <label class="text-sm font-medium text-color flex items-center gap-2">
                 <i class="pi pi-map-marker text-primary text-xs"></i>
-                位置
+                地域
               </label>
               <InputText
                 v-model="form.location"

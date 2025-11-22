@@ -399,8 +399,8 @@ defineExpose({
             </template>
           </Column>
 
-          <!-- 位置列 -->
-          <Column field="location" header="位置" sortable class="w-32">
+          <!-- 地域列 -->
+          <Column field="location" header="地域" sortable class="w-32">
             <template #body="{ data }">
               <div class="flex items-center gap-2">
                 <i

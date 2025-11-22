@@ -40,7 +40,7 @@ defineProps<Props>()
       <div
         class="flex justify-between items-center py-2 border-b border-surface-100 dark:border-surface-700"
       >
-        <span class="text-muted-color">位置</span>
+        <span class="text-muted-color">地域</span>
         <span>{{ server.location || '-' }}</span>
       </div>
       <div
