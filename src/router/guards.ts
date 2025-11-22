@@ -34,16 +34,8 @@ export function setupRouteGuards(router: Router) {
       return
     }
 
-    // 如果有token但store还未初始化，等待验证完成
     if (!authStore.initialized && authStore.getToken()) {
-      try {
-        await authStore.checkLoginStatus()
-        // 验证成功后，检查是否已认证
-      } catch (error) {
-        console.error('Failed to check login status:', error)
-        // 验证失败，清除token
-        authStore.logout()
-      }
+      await authStore.bootstrap()
     }
 
     // 如果没有roles配置或roles不是['*']，则需要登录验证
@@ -56,16 +48,29 @@ export function setupRouteGuards(router: Router) {
 
       // 检查是否允许访客访问，如果允许则自动签发访客token
       try {
-        const publicSettings = await authStore.loadPublicSettings()
-        if (publicSettings.allowGuest) {
-          // 允许访客访问，尝试自动登录（仅当不需要密码时）
-          if (!publicSettings.enablePassword) {
-            const result = await authStore.handleGuestLogin('', false, publicSettings)
-            if (result.success) {
-              next()
-              return
-            } else {
-              console.error('自动访客登录失败:', result.error)
+        let publicSettingsData = authStore.getPublicSettings()
+        if (!publicSettingsData) {
+          await authStore.loadPublicSettings()
+          publicSettingsData = authStore.getPublicSettings()
+        }
+
+        if (publicSettingsData) {
+          const publicSettings = {
+            allowGuest: publicSettingsData.allow_guest_login,
+            enablePassword: publicSettingsData.guest_password_enabled,
+            hideSensitiveInfo: true,
+          }
+
+          if (publicSettings.allowGuest) {
+            // 允许访客访问，尝试自动登录（仅当不需要密码时）
+            if (!publicSettings.enablePassword) {
+              const result = await authStore.handleGuestLogin('', false, publicSettings)
+              if (result.success) {
+                next()
+                return
+              } else {
+                console.error('自动访客登录失败:', result.error)
+              }
             }
           }
         }

@@ -6,11 +6,12 @@ export interface ApiResponse<T> {
 }
 
 // Panel
-export type CheckReleaseTypes = 'gitee' | 'github'
+export type ReleaseTypes = 'gitee' | 'github'
 
 export interface GetPanelSettingsData {
   panel_title: string
   current_version: string
+  current_version_type: VersionType
 }
 
 export type GetCheckUpdateResponse = ApiResponse<GetUpdateData>
@@ -24,6 +25,13 @@ export interface GetUpdateData {
   change_log: string
 }
 
+export interface UpdateStatusData {
+  step: string
+  progress: number
+  message: string
+}
+
+export type GetUpdateStatusResponse = ApiResponse<UpdateStatusData>
 export type GetPanelSettingsResponse = ApiResponse<GetPanelSettingsData>
 
 export interface SavePanelSettingsBody {
@@ -84,8 +92,9 @@ export interface AlertsNotificationsDto {
     security: string
     from: string
     to: string
+    password?: string
   }
-  wechat: { enabled: boolean; webhook: string; mentioned: string }
+  webhook: { enabled: boolean; webhook: string; mentioned: string }
 }
 
 export interface GetAlertsSettingsData {
@@ -99,3 +108,9 @@ export interface SaveAlertsSettingsBody {
   rules: AlertsRulesDto
   notifications: AlertsNotificationsDto
 }
+
+export interface TestAlertSettingsBody {
+  type: 'email' | 'webhook'
+  config: Record<string, any>
+}
+

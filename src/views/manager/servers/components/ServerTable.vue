@@ -399,8 +399,8 @@ defineExpose({
             </template>
           </Column>
 
-          <!-- 位置列 -->
-          <Column field="location" header="位置" sortable class="w-32">
+          <!-- 地域列 -->
+          <Column field="location" header="地域" sortable class="w-32">
             <template #body="{ data }">
               <div class="flex items-center gap-2">
                 <i
@@ -424,7 +424,7 @@ defineExpose({
           </Column>
 
           <!-- Agent版本列 -->
-          <Column v-if="isAdmin" field="agent_version" header="Agent版本" sortable class="w-36">
+          <Column v-if="isAdmin" field="agent_version" header="版本" sortable class="w-36">
             <template #body="{ data }">
               <div class="text-left flex gap-2">
                 <div class="text-sm font-medium text-color">{{ data.agent_version || '-' }}</div>

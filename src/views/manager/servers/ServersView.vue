@@ -685,7 +685,7 @@ onMounted(async () => {
                 <ul class="space-y-1">
                   <li>• 在目标Linux服务器上执行上述安装命令</li>
                   <li>• 安装完成后，探针会自动连接到控制中心</li>
-                  <li>• 系统信息（位置、操作系统等）将自动获取</li>
+                  <li>• 系统信息（地域、操作系统等）将自动获取</li>
                   <li>• 请妥善保管Agent Key避免泄露，此Agent Key用于服务器之间身份验证</li>
                 </ul>
               </div>

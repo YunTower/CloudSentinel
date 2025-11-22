@@ -23,7 +23,6 @@ export interface CustomJwtPayload {
 export interface GuestAccessConfig {
   allowGuest: boolean
   enablePassword: boolean
-  guestPassword: string
   hideSensitiveInfo: boolean
 }
 

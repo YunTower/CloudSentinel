@@ -17,7 +17,7 @@ const loginForm = ref({
   type: 'guest' as 'guest' | 'admin',
   username: '',
   password: '',
-  rememberMe: false,
+  rememberMe: true,
 })
 
 const handleLogin = async () => {
@@ -101,7 +101,7 @@ const switchTab = (tabIndex: string | number) => {
     type: tabIndex === '0' ? 'guest' : 'admin',
     username: '',
     password: '',
-    rememberMe: false,
+    rememberMe: true,
   }
 }
 
@@ -193,6 +193,7 @@ onMounted(async () => {
                             root: { class: 'w-full' },
                             input: { class: 'w-full py-3 px-4 text-base' },
                           }"
+                          @keyup.enter="handleLogin"
                         />
                       </div>
                       <div class="flex items-center gap-3">
@@ -231,6 +232,7 @@ onMounted(async () => {
                         v-model="loginForm.username"
                         placeholder="请输入用户名"
                         class="w-full py-3 px-4 text-base"
+                        @keyup.enter="handleLogin"
                       />
                     </div>
 
@@ -249,6 +251,7 @@ onMounted(async () => {
                           root: { class: 'w-full' },
                           input: { class: 'w-full py-3 px-4 text-base' },
                         }"
+                        @keyup.enter="handleLogin"
                       />
                     </div>
 

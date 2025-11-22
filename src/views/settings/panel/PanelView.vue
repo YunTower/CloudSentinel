@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
 import { marked } from 'marked'
+import Tag from 'primevue/tag'
+import ProgressBar from 'primevue/progressbar'
+import ConfirmDialog from 'primevue/confirmdialog'
 import panelApi from '@/apis/settings/panel'
 import type { PanelSettings, UpdateSource } from '@/types/settings/panel'
 import type { GetUpdateData, VersionType } from '@/types/settings/api'
@@ -96,6 +100,7 @@ const hasUpdate = computed(() => {
   return false
 })
 const toast = useToast()
+const confirm = useConfirm()
 const panelSettings = ref<PanelSettings>({
   title: 'CloudSentinel',
 })
@@ -103,6 +108,9 @@ const saving = ref(false)
 const checkingUpdate = ref(false)
 const updating = ref(false)
 const hasCheckedUpdate = ref(false)
+const updateProgress = ref(0)
+const updateStep = ref('')
+const currentStep = ref('')
 
 // 更新源配置
 const updateSources = ref<UpdateSource[]>([
@@ -121,7 +129,15 @@ const updateSources = ref<UpdateSource[]>([
 const selectedUpdateSource = ref<'gitee' | 'github'>('github')
 
 // 版本信息
-const versionInfo = ref<VersionInfo>()
+const versionInfo = ref<VersionInfo>({
+  change_log: '',
+  current_version: '',
+  current_version_type: 'dev',
+  has_update: false,
+  latest_version: '',
+  latest_version_type: 'dev',
+  publish_time: '',
+})
 
 // 检查更新
 const checkForUpdate = async () => {
@@ -161,22 +177,82 @@ const checkForUpdate = async () => {
 
 // 执行更新
 const performUpdate = async () => {
+  if (versionInfo.value?.latest_version_type !== 'release') {
+    confirm.require({
+      message: '当前更新版本非正式版（Release），可能存在不稳定因素，是否确认更新？',
+      header: '更新确认',
+      icon: 'pi pi-exclamation-triangle',
+      acceptClass: 'p-button-danger',
+      acceptLabel: '确认继续操作',
+      rejectLabel: '取消',
+      accept: () => {
+        executeUpdate()
+      },
+    })
+  } else {
+    executeUpdate()
+  }
+}
+
+const executeUpdate = async () => {
   updating.value = true
+  updateProgress.value = 0
+  updateStep.value = '正在初始化更新...'
+
   try {
-    // 实际项目中这里会调用 API 执行更新
-    await new Promise((resolve) => setTimeout(resolve, 3000))
+    await panelApi.updatePanel(selectedUpdateSource.value)
 
-    // 更新成功后更新版本信息
-    // versionInfo.value.current = versionInfo.value.latest
-    // versionInfo.value.hasUpdate = false
-    // versionInfo.value.changelog = []
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await panelApi.getUpdateStatus()
+        if (res.status && res.data) {
+          const { step, progress, message } = res.data
+          updateStep.value = message
+          updateProgress.value = progress
 
-    console.log('Update completed successfully')
-    // 可以添加 Toast 提示和页面刷新
+          // 记录当前步骤，用于UI控制
+          currentStep.value = step
+
+          if (step === 'completed') {
+            clearInterval(pollInterval)
+            updating.value = false
+
+            toast.add({
+              severity: 'success',
+              summary: '更新成功',
+              detail: '系统已更新到最新版本，页面即将刷新',
+              life: 3000,
+            })
+
+            setTimeout(() => {
+              window.location.reload()
+            }, 1500)
+          } else if (step === 'error') {
+            clearInterval(pollInterval)
+            throw new Error(message)
+          }
+        }
+      } catch (error) {
+        console.error('Polling update status failed:', error)
+        clearInterval(pollInterval)
+        updating.value = false
+        toast.add({
+          severity: 'error',
+          summary: '更新失败',
+          detail: '获取更新状态失败',
+          life: 5000,
+        })
+      }
+    }, 1000)
   } catch (error) {
-    console.error('Failed to perform update:', error)
-  } finally {
+    console.error('Failed to start update:', error)
     updating.value = false
+    toast.add({
+      severity: 'error',
+      summary: '启动更新失败',
+      detail: '无法启动更新任务',
+      life: 5000,
+    })
   }
 }
 
@@ -189,6 +265,7 @@ const loadPanelSettings = async () => {
       panelSettings.value.title = title
       if (versionInfo.value) {
         versionInfo.value.current_version = res?.data?.current_version || ''
+        versionInfo.value.current_version_type = res?.data?.current_version_type || ''
       }
     }
   } catch (error) {
@@ -215,6 +292,7 @@ onMounted(() => {
 </script>
 <template>
   <div class="panel-view">
+    <ConfirmDialog></ConfirmDialog>
     <div class="mb-6 flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold text-color mb-2">面板设置</h1>
@@ -319,10 +397,9 @@ onMounted(() => {
                 <div class="flex items-center gap-3">
                   <span class="text-sm font-medium text-color">当前版本:</span>
                   <span class="text-xs not-even:rounded-md text-primary font-semibold">
-                    {{ versionInfo?.current_version ? 'v' + versionInfo?.current_version : '未知' }}
+                    {{ versionInfo?.current_version ? 'v' + versionInfo?.current_version : 'unknown' }}
                   </span>
                 </div>
-                <p class="text-xs text-muted-color">系统运行正常</p>
               </div>
 
               <Button
@@ -337,44 +414,48 @@ onMounted(() => {
             </div>
 
             <!-- 更新状态展示 - 只有在检查更新后才显示 -->
-            <div v-if="hasCheckedUpdate && versionInfo" class="space-y-4">
+            <div v-if="hasCheckedUpdate && versionInfo" class="animate-fade-in">
               <!-- 可用更新 -->
-              <div v-if="hasUpdate" class="space-y-4">
-                <div
-                  class="flex items-center justify-between p-4 rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20"
-                >
-                  <div class="flex items-center gap-4">
-                    <div class="flex-shrink-0">
+              <div
+                v-if="hasUpdate"
+                class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 overflow-hidden"
+              >
+                <!-- 头部：版本信息与操作 -->
+                <div class="p-5 flex items-start justify-between gap-4">
+                  <div class="space-y-2">
+                    <div class="flex items-center gap-3">
+                      <span class="text-base font-medium text-color">发现新版本</span>
                       <div
-                        class="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center"
+                        class="flex items-center gap-2 px-2.5 py-1 rounded-md bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-900/30"
                       >
-                        <i class="pi pi-arrow-up text-orange-600 dark:text-orange-400 text-sm"></i>
-                      </div>
-                    </div>
-                    <div class="space-y-1">
-                      <div class="flex items-center gap-2">
-                        <span class="text-sm font-medium text-color">发现新版本</span>
-                        <b class="text-sm"> v{{ versionInfo.latest_version }} </b>
+                        <span class="text-sm font-bold text-primary-700 dark:text-primary-300">
+                          v{{ versionInfo.latest_version }}
+                        </span>
                         <Tag
                           :value="getVersionTypeConfig(versionInfo.latest_version_type).label"
                           :severity="getVersionTypeConfig(versionInfo.latest_version_type).severity"
-                          size="small"
+                          class="!text-[10px] !h-5 !min-w-[auto] !px-1.5"
                         />
                       </div>
-                      <p class="text-xs text-muted-color">
-                        发布时间：{{ versionInfo.publish_time }}
-                      </p>
+                    </div>
+                    <p class="text-xs text-muted-color flex items-center gap-1.5">
+                      发布于 {{ versionInfo.publish_time }}
+                    </p>
+                    <div
+                      v-if="versionInfo.latest_version_type !== 'release'"
+                      class="flex items-center gap-2 text-orange-500 text-sm mt-1"
+                    >
+                      <i class="pi pi-exclamation-triangle"></i>
+                      <span>此版本为非正式版，可能包含实验性功能或大量缺陷，请谨慎更新</span>
                     </div>
                   </div>
-
                   <div class="flex-shrink-0">
                     <Button
                       label="立即更新"
-                      icon="pi pi-download"
+                      icon="pi pi-cloud-download"
                       @click="performUpdate"
                       :loading="updating"
                       size="small"
-                      severity="warning"
                     />
                   </div>
                 </div>
@@ -382,41 +463,63 @@ onMounted(() => {
                 <!-- 更新进行中提示 -->
                 <div
                   v-if="updating"
-                  class="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800"
+                  class="mx-5 mb-5 p-4 rounded-lg bg-surface-50 dark:bg-surface-800/50 border border-surface-200 dark:border-surface-700"
                 >
-                  <div class="flex items-start gap-3">
-                    <i class="pi pi-info-circle text-blue-600 dark:text-blue-400 mt-0.5"></i>
-                    <div class="space-y-1">
-                      <p class="text-sm font-medium text-blue-700 dark:text-blue-300">正在更新</p>
-                      <p class="text-xs text-blue-600 dark:text-blue-400">
-                        更新过程可能需要几分钟时间，期间系统将暂时不可用。请稍候...
-                      </p>
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <i
+                        v-if="currentStep !== 'completed'"
+                        class="pi pi-spin pi-spinner text-primary"
+                      ></i>
+                      <i v-else class="pi pi-check-circle text-green-500"></i>
+                      <span class="text-sm font-medium text-color">{{ updateStep }}</span>
                     </div>
+                    <span
+                      v-if="currentStep === 'downloading'"
+                      class="text-sm text-muted-color font-mono"
+                    >
+                      {{ updateProgress }}%
+                    </span>
                   </div>
+                  <ProgressBar
+                    class="mt-2"
+                    v-if="currentStep === 'downloading'"
+                    :value="updateProgress"
+                    :showValue="false"
+                    style="height: 6px"
+                  ></ProgressBar>
                 </div>
 
+                <!-- 分隔线 -->
+                <div class="h-px bg-surface-100 dark:bg-surface-700 mx-5"></div>
+
                 <!-- 更新内容 -->
-                <div class="space-y-3">
+                <div class="p-5 space-y-3">
                   <h4 class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-list text-primary"></i>
-                    更新内容
+                    <i class="pi pi-align-left text-primary"></i>
+                    <span>更新内容</span>
                   </h4>
-                  <div class="pl-6 space-y-2">
-                    <div
-                      v-html="marked.parse(versionInfo.change_log)"
-                      class="flex items-start gap-3 text-sm text-color prose"
-                    ></div>
-                  </div>
+                  <div
+                    v-html="marked.parse(versionInfo.change_log)"
+                    class="text-sm text-color-secondary prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0"
+                  ></div>
                 </div>
               </div>
 
               <!-- 无更新状态 -->
-              <div v-else class="text-center py-6">
-                <div class="space-y-2">
-                  <i class="pi pi-check-circle text-4xl text-green-500"></i>
-                  <p class="text-sm font-medium text-color">已是最新版本</p>
-                  <p class="text-xs text-muted-color">您的系统已是最新版本，无需更新</p>
+              <div
+                v-else
+                class="flex flex-col items-center justify-center py-10 text-center border border-dashed border-surface-200 dark:border-surface-700 rounded-xl bg-surface-50/50 dark:bg-surface-800/50"
+              >
+                <div
+                  class="w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4"
+                >
+                  <i class="pi pi-check text-4xl text-green-500 dark:text-green-400"></i>
                 </div>
+                <h3 class="text-lg font-medium text-color mb-1">当前已是最新版本</h3>
+                <p class="text-sm text-muted-color">
+                  您的系统版本 v{{ versionInfo.current_version }} 是最新的，无需更新
+                </p>
               </div>
             </div>
           </div>
