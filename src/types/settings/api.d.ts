@@ -92,6 +92,7 @@ export interface AlertsNotificationsDto {
     security: string
     from: string
     to: string
+    password?: string
   }
   webhook: { enabled: boolean; webhook: string; mentioned: string }
 }
@@ -107,3 +108,9 @@ export interface SaveAlertsSettingsBody {
   rules: AlertsRulesDto
   notifications: AlertsNotificationsDto
 }
+
+export interface TestAlertSettingsBody {
+  type: 'email' | 'webhook'
+  config: Record<string, any>
+}
+

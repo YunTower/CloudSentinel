@@ -20,6 +20,7 @@ export interface EmailNotification {
   security: string
   from: string
   to: string
+  password?: string
 }
 
 // Webhook通知

@@ -30,6 +30,7 @@ const notifications = ref<Notifications>({
     security: 'STARTTLS',
     from: '',
     to: '',
+    password: '',
   },
   webhook: {
     enabled: false,
@@ -46,6 +47,10 @@ const securityOptions = [
 
 const saving = ref(false)
 const loading = ref(false)
+const testing = ref({
+  email: false,
+  webhook: false,
+})
 const toast = useToast()
 
 // 检查是否至少配置了一个通知渠道
@@ -128,6 +133,7 @@ const loadAlertSettings = async () => {
           notifications.value.email.security = String(data.notifications.email.security || 'STARTTLS')
           notifications.value.email.from = String(data.notifications.email.from || '')
           notifications.value.email.to = String(data.notifications.email.to || '')
+          notifications.value.email.password = '' // 不从后端加载密码
         }
         if (data.notifications.webhook) {
           notifications.value.webhook.enabled = data.notifications.webhook.enabled
@@ -252,6 +258,72 @@ const validateNotifications = (): boolean => {
   }
 
   return true
+}
+
+// 测试告警设置
+const testAlert = async (type: 'email' | 'webhook') => {
+  // 验证配置
+  if (type === 'email') {
+    if (
+      !notifications.value.email.smtp.trim() ||
+      notifications.value.email.port < 1 ||
+      notifications.value.email.port > 65535 ||
+      !notifications.value.email.from.trim() ||
+      !notifications.value.email.to.trim()
+    ) {
+      toast.add({
+        severity: 'warn',
+        summary: '验证失败',
+        detail: '请填写完整的邮件配置信息',
+        life: 3000,
+      })
+      return
+    }
+  } else {
+    if (!notifications.value.webhook.webhook.trim()) {
+      toast.add({
+        severity: 'warn',
+        summary: '验证失败',
+        detail: '请填写 Webhook URL',
+        life: 3000,
+      })
+      return
+    }
+  }
+
+  testing.value[type] = true
+  try {
+    // 准备配置数据
+    const config = type === 'email' ? notifications.value.email : notifications.value.webhook
+
+    const res = await alertsApi.testAlertSettings({
+      type,
+      config,
+    })
+
+    if (res && typeof res === 'object' && 'status' in res && res.status) {
+      toast.add({
+        severity: 'success',
+        summary: '测试成功',
+        detail: '测试消息已发送',
+        life: 3000,
+      })
+    } else {
+      const errorMsg = res && typeof res === 'object' && 'message' in res ? String(res.message) : '测试失败'
+      throw new Error(errorMsg)
+    }
+  } catch (error: unknown) {
+    console.error(`Failed to test ${type} alert:`, error)
+    const errorMessage = error instanceof Error ? error.message : '测试发送失败，请检查配置'
+    toast.add({
+      severity: 'error',
+      summary: '测试失败',
+      detail: errorMessage,
+      life: 5000,
+    })
+  } finally {
+    testing.value[type] = false
+  }
 }
 
 // 保存告警设置
@@ -520,12 +592,33 @@ onMounted(() => {
                   </div>
                 </div>
                 <div class="flex flex-col gap-2">
+                  <label class="text-sm font-medium text-color">SMTP 密码</label>
+                  <Password
+                    v-model="notifications.email.password"
+                    :feedback="false"
+                    toggleMask
+                    placeholder="留空则不修改"
+                    inputClass="w-full"
+                  />
+                </div>
+                <div class="flex flex-col gap-2">
                   <label class="text-sm font-medium text-color">发件人邮箱</label>
                   <InputText v-model="notifications.email.from" placeholder="alert@example.com" />
                 </div>
                 <div class="flex flex-col gap-2">
                   <label class="text-sm font-medium text-color">收件人邮箱</label>
                   <InputText v-model="notifications.email.to" placeholder="admin@example.com" />
+                </div>
+                <div class="pt-2">
+                  <Button
+                    label="发送测试邮件"
+                    icon="pi pi-send"
+                    severity="secondary"
+                    size="small"
+                    :loading="testing.email"
+                    :disabled="testing.email"
+                    @click="testAlert('email')"
+                  />
                 </div>
               </div>
             </div>
@@ -556,6 +649,17 @@ onMounted(() => {
                   <InputText
                     v-model="notifications.webhook.mentioned"
                     placeholder="@all 或 用户ID"
+                  />
+                </div>
+                <div class="pt-2">
+                  <Button
+                    label="发送测试消息"
+                    icon="pi pi-send"
+                    severity="secondary"
+                    size="small"
+                    :loading="testing.webhook"
+                    :disabled="testing.webhook"
+                    @click="testAlert('webhook')"
                   />
                 </div>
               </div>
