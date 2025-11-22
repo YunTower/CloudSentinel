@@ -1,9 +1,10 @@
 import { requester } from '@/utils/requester.ts'
 import type {
-  CheckReleaseTypes, GetCheckUpdateResponse,
+  ReleaseTypes,
+  GetCheckUpdateResponse,
   GetPanelSettingsResponse,
   GetUpdateStatusResponse,
-  SavePanelSettingsBody
+  SavePanelSettingsBody,
 } from '@/types/settings/api'
 
 // 获取公开设置
@@ -20,7 +21,8 @@ export default {
     requester.Patch('/settings/panel', settings),
   getPanelSettings: () => requester.Get<GetPanelSettingsResponse>('/settings/panel'),
   getPublicSettings: getPublicSettingsMethod,
-  checkUpdate: (type: CheckReleaseTypes) => requester.Get<GetCheckUpdateResponse>('/update/check', { params: { type } }),
+  checkUpdate: (type: ReleaseTypes) =>
+    requester.Get<GetCheckUpdateResponse>('/update/check', { params: { type } }),
   getUpdateStatus: () => requester.Get<GetUpdateStatusResponse>('/update/status'),
-  updatePanel: () => requester.Post('/update'),
+  updatePanel: (type: ReleaseTypes) => requester.Post('/update', { type }),
 }

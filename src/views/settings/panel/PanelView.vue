@@ -179,7 +179,7 @@ const performUpdate = async () => {
   updateStep.value = '正在初始化更新...'
 
   try {
-    await panelApi.updatePanel()
+    await panelApi.updatePanel(selectedUpdateSource.value)
 
     const pollInterval = setInterval(async () => {
       try {
@@ -453,6 +453,7 @@ onMounted(() => {
                     </span>
                   </div>
                   <ProgressBar
+                    class="mt-2"
                     v-if="currentStep === 'downloading'"
                     :value="updateProgress"
                     :showValue="false"
@@ -484,7 +485,7 @@ onMounted(() => {
                 <div
                   class="w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4"
                 >
-                  <i class="pi pi-check text-2xl text-green-500 dark:text-green-400"></i>
+                  <i class="pi pi-check text-4xl text-green-500 dark:text-green-400"></i>
                 </div>
                 <h3 class="text-lg font-medium text-color mb-1">当前已是最新版本</h3>
                 <p class="text-sm text-muted-color">
