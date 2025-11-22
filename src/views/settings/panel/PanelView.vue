@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
 import { marked } from 'marked'
 import Tag from 'primevue/tag'
 import ProgressBar from 'primevue/progressbar'
+import ConfirmDialog from 'primevue/confirmdialog'
 import panelApi from '@/apis/settings/panel'
 import type { PanelSettings, UpdateSource } from '@/types/settings/panel'
 import type { GetUpdateData, VersionType } from '@/types/settings/api'
@@ -98,6 +100,7 @@ const hasUpdate = computed(() => {
   return false
 })
 const toast = useToast()
+const confirm = useConfirm()
 const panelSettings = ref<PanelSettings>({
   title: 'CloudSentinel',
 })
@@ -174,6 +177,24 @@ const checkForUpdate = async () => {
 
 // 执行更新
 const performUpdate = async () => {
+  if (versionInfo.value?.latest_version_type !== 'release') {
+    confirm.require({
+      message: '当前更新版本非正式版（Release），可能存在不稳定因素，是否确认更新？',
+      header: '更新确认',
+      icon: 'pi pi-exclamation-triangle',
+      acceptClass: 'p-button-danger',
+      acceptLabel: '确认继续操作',
+      rejectLabel: '取消',
+      accept: () => {
+        executeUpdate()
+      },
+    })
+  } else {
+    executeUpdate()
+  }
+}
+
+const executeUpdate = async () => {
   updating.value = true
   updateProgress.value = 0
   updateStep.value = '正在初始化更新...'
@@ -271,6 +292,7 @@ onMounted(() => {
 </script>
 <template>
   <div class="panel-view">
+    <ConfirmDialog></ConfirmDialog>
     <div class="mb-6 flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold text-color mb-2">面板设置</h1>
@@ -419,6 +441,13 @@ onMounted(() => {
                     <p class="text-xs text-muted-color flex items-center gap-1.5">
                       发布于 {{ versionInfo.publish_time }}
                     </p>
+                    <div
+                      v-if="versionInfo.latest_version_type !== 'release'"
+                      class="flex items-center gap-2 text-orange-500 text-sm mt-1"
+                    >
+                      <i class="pi pi-exclamation-triangle"></i>
+                      <span>此版本为非正式版，可能包含实验性功能或大量缺陷，请谨慎更新</span>
+                    </div>
                   </div>
                   <div class="flex-shrink-0">
                     <Button
