@@ -22,8 +22,8 @@ export interface EmailNotification {
   to: string
 }
 
-// 企业微信通知
-export interface WechatNotification {
+// Webhook通知
+export interface WebhookNotification {
   enabled: boolean
   webhook: string
   mentioned: string
@@ -32,5 +32,5 @@ export interface WechatNotification {
 // 告警通知设置
 export interface Notifications {
   email: EmailNotification
-  wechat: WechatNotification
+  webhook: WebhookNotification
 }

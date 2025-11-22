@@ -93,7 +93,7 @@ export interface AlertsNotificationsDto {
     from: string
     to: string
   }
-  wechat: { enabled: boolean; webhook: string; mentioned: string }
+  webhook: { enabled: boolean; webhook: string; mentioned: string }
 }
 
 export interface GetAlertsSettingsData {
