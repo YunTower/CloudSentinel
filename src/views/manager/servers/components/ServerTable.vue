@@ -11,10 +11,16 @@ import ServerSwapCard from './ServerSwapCard.vue'
 import ServerDiskCard from './ServerDiskCard.vue'
 import ServerNetworkCard from './ServerNetworkCard.vue'
 import ServerMetricsChart from './ServerMetricsChart.vue'
-import { getStatusText, getStatusSeverity } from '../utils'
+import { getStatusText, getStatusSeverity, hasAgentUpdate, getVersionTypeConfig, parseVersion } from '@/utils/version.ts'
+import { useToast } from 'primevue/usetoast'
+import Tag from 'primevue/tag'
+import Dialog from 'primevue/dialog'
+import Button from 'primevue/button'
+import type { VersionType } from '@/utils/version.ts'
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.role === 'admin')
+const toast = useToast()
 
 interface Props {
   servers: Server[]
@@ -22,6 +28,8 @@ interface Props {
   deletingServerId?: string
   restartingServerId?: string
   expandingServerId?: string
+  latestAgentVersion?: string
+  latestAgentVersionType?: VersionType
 }
 
 const props = defineProps<Props>()
@@ -32,7 +40,56 @@ const emit = defineEmits<{
   'edit-server': [server: Server]
   'restart-server': [server: Server]
   'expand-server': [serverId: string]
+  'update-agent': [server: Server]
 }>()
+
+// 版本更新相关
+const showUpdateDialog = ref(false)
+const selectedServerForUpdate = ref<Server | null>(null)
+const updatingAgentId = ref<string>('')
+
+// 检查是否需要更新
+const needsUpdate = (server: Server): boolean => {
+  if (!props.latestAgentVersion || !server.agent_version) return false
+  return hasAgentUpdate(server.agent_version, props.latestAgentVersion, props.latestAgentVersionType)
+}
+
+// 显示更新对话框
+const showUpdateAgentDialog = (server: Server) => {
+  selectedServerForUpdate.value = server
+  showUpdateDialog.value = true
+}
+
+// 确认更新
+const confirmUpdateAgent = async () => {
+  if (!selectedServerForUpdate.value) return
+
+  const server = selectedServerForUpdate.value
+  updatingAgentId.value = server.id
+
+  try {
+    await serversApi.updateAgent(server.id, 'github')
+    toast.add({
+      severity: 'success',
+      summary: '成功',
+      detail: '更新命令已发送，Agent 将自动更新',
+      life: 3000,
+    })
+    showUpdateDialog.value = false
+    selectedServerForUpdate.value = null
+    emit('update-agent', server)
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '更新失败'
+    toast.add({
+      severity: 'error',
+      summary: '更新失败',
+      detail: errorMessage,
+      life: 5000,
+    })
+  } finally {
+    updatingAgentId.value = ''
+  }
+}
 
 const confirm = useConfirm()
 const expandedRows = ref<{ [key: string]: boolean }>({})
@@ -426,17 +483,19 @@ defineExpose({
           <!-- Agent版本列 -->
           <Column v-if="isAdmin" field="agent_version" header="版本" sortable class="w-36">
             <template #body="{ data }">
-              <div class="text-left flex gap-2">
+              <div class="text-left flex gap-2 items-center">
                 <div class="text-sm font-medium text-color">{{ data.agent_version || '-' }}</div>
                 <Tag
-                  v-tooltip.top="'升级Agent版本'"
+                  v-if="needsUpdate(data)"
+                  v-tooltip.top="'有新版本可用，点击升级'"
                   class="cursor-pointer"
                   icon="pi pi-arrow-circle-up"
                   size="small"
                   severity="info"
                   rounded
                   variant="outlined"
-                  aria-label="User"
+                  @click="showUpdateAgentDialog(data)"
+                  aria-label="升级Agent版本"
                 />
               </div>
             </template>
@@ -631,5 +690,68 @@ defineExpose({
       </template>
     </Card>
     <ConfirmPopup />
+
+    <!-- Agent 更新对话框 -->
+    <Dialog
+      v-model:visible="showUpdateDialog"
+      modal
+      header="更新 Agent"
+      :style="{ width: '500px' }"
+      :draggable="false"
+    >
+      <div v-if="selectedServerForUpdate" class="flex flex-col gap-4">
+        <div>
+          <p class="text-sm text-color-secondary mb-2">服务器信息</p>
+          <p class="font-medium">{{ selectedServerForUpdate.name }} ({{ selectedServerForUpdate.ip }})</p>
+        </div>
+
+        <div>
+          <p class="text-sm text-color-secondary mb-2">当前版本</p>
+          <div class="flex items-center gap-2">
+            <span class="font-medium">{{ selectedServerForUpdate.agent_version || '-' }}</span>
+            <Tag
+              v-if="selectedServerForUpdate.agent_version"
+              :value="getVersionTypeConfig(parseVersion(selectedServerForUpdate.agent_version).versionType).label"
+              :severity="getVersionTypeConfig(parseVersion(selectedServerForUpdate.agent_version).versionType).severity"
+              size="small"
+            />
+          </div>
+        </div>
+
+        <div>
+          <p class="text-sm text-color-secondary mb-2">最新版本</p>
+          <div class="flex items-center gap-2">
+            <span class="font-medium">{{ latestAgentVersion || '-' }}</span>
+            <Tag
+              v-if="latestAgentVersionType"
+              :value="getVersionTypeConfig(latestAgentVersionType).label"
+              :severity="getVersionTypeConfig(latestAgentVersionType).severity"
+              size="small"
+            />
+          </div>
+        </div>
+
+        <div class="mt-2">
+          <p class="text-sm text-color-secondary">
+            确认后，系统将向 Agent 发送更新指令，Agent 将自动下载并安装新版本。
+          </p>
+        </div>
+      </div>
+
+      <template #footer>
+        <Button
+          label="取消"
+          text
+          @click="showUpdateDialog = false"
+          :disabled="updatingAgentId !== ''"
+        />
+        <Button
+          label="确认更新"
+          icon="pi pi-check"
+          @click="confirmUpdateAgent"
+          :loading="updatingAgentId !== ''"
+        />
+      </template>
+    </Dialog>
   </div>
 </template>

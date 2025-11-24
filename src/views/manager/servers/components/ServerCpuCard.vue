@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getProgressTextColor, getProgressBarColor } from '../utils'
+import { getProgressTextColor, getProgressBarColor } from '@/utils/version.ts'
 
 interface Props {
   cpu: number

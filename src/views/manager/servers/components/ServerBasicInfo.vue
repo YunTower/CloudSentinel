@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Server } from '@/types/manager/servers'
-import { getStatusText, getStatusSeverity } from '../utils'
+import { getStatusText, getStatusSeverity } from '@/utils/version.ts'
 
 interface Props {
   server: Server
