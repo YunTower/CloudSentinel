@@ -7,6 +7,7 @@ import Tag from 'primevue/tag'
 import ProgressBar from 'primevue/progressbar'
 import ConfirmDialog from 'primevue/confirmdialog'
 import panelApi from '@/apis/settings/panel'
+import { useAuthStore } from '@/stores/auth'
 import type { PanelSettings, UpdateSource } from '@/types/settings/panel'
 import type { GetUpdateData, VersionType } from '@/types/settings/api'
 
@@ -101,6 +102,7 @@ const hasUpdate = computed(() => {
 })
 const toast = useToast()
 const confirm = useConfirm()
+const authStore = useAuthStore()
 const panelSettings = ref<PanelSettings>({
   title: 'CloudSentinel',
 })
@@ -278,9 +280,24 @@ const savePanelSettings = async () => {
   saving.value = true
   try {
     await panelApi.savePanelSettings({ title: panelSettings.value.title })
+
+    const publicSettings = authStore.getPublicSettings()
+    if (publicSettings) {
+      publicSettings.panel_title = panelSettings.value.title
+      document.title = panelSettings.value.title
+    } else {
+      await authStore.fetchPublicSettings()
+    }
+
     toast.add({ severity: 'success', summary: '保存成功', detail: '面板设置已更新', life: 3000 })
   } catch (error) {
     console.error('Failed to save panel settings:', error)
+    toast.add({
+      severity: 'error',
+      summary: '保存失败',
+      detail: '无法保存面板设置，请稍后重试',
+      life: 3000,
+    })
   } finally {
     saving.value = false
   }
