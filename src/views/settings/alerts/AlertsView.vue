@@ -72,7 +72,10 @@ const hasNotificationChannel = (): boolean => {
   // 检查企业微信通知是否已启用且配置完整
   if (notifications.value.webhook.enabled) {
     const webhook = notifications.value.webhook
-    if (webhook.webhook.trim() && (webhook.webhook.startsWith('http://') || webhook.webhook.startsWith('https://'))) {
+    if (
+      webhook.webhook.trim() &&
+      (webhook.webhook.startsWith('http://') || webhook.webhook.startsWith('https://'))
+    ) {
       return true
     }
   }
@@ -130,7 +133,9 @@ const loadAlertSettings = async () => {
           notifications.value.email.enabled = data.notifications.email.enabled
           notifications.value.email.smtp = String(data.notifications.email.smtp || '')
           notifications.value.email.port = Number(data.notifications.email.port) || 587
-          notifications.value.email.security = String(data.notifications.email.security || 'STARTTLS')
+          notifications.value.email.security = String(
+            data.notifications.email.security || 'STARTTLS',
+          )
           notifications.value.email.from = String(data.notifications.email.from || '')
           notifications.value.email.to = String(data.notifications.email.to || '')
           notifications.value.email.password = '' // 不从后端加载密码
@@ -138,7 +143,9 @@ const loadAlertSettings = async () => {
         if (data.notifications.webhook) {
           notifications.value.webhook.enabled = data.notifications.webhook.enabled
           notifications.value.webhook.webhook = String(data.notifications.webhook.webhook || '')
-          notifications.value.webhook.mentioned = String(data.notifications.webhook.mentioned || '@all')
+          notifications.value.webhook.mentioned = String(
+            data.notifications.webhook.mentioned || '@all',
+          )
         }
       }
     }
@@ -246,7 +253,10 @@ const validateNotifications = (): boolean => {
       })
       return false
     }
-    if (!notifications.value.webhook.webhook.startsWith('http://') && !notifications.value.webhook.webhook.startsWith('https://')) {
+    if (
+      !notifications.value.webhook.webhook.startsWith('http://') &&
+      !notifications.value.webhook.webhook.startsWith('https://')
+    ) {
       toast.add({
         severity: 'warn',
         summary: '验证失败',
@@ -309,7 +319,8 @@ const testAlert = async (type: 'email' | 'webhook') => {
         life: 3000,
       })
     } else {
-      const errorMsg = res && typeof res === 'object' && 'message' in res ? String(res.message) : '测试失败'
+      const errorMsg =
+        res && typeof res === 'object' && 'message' in res ? String(res.message) : '测试失败'
       throw new Error(errorMsg)
     }
   } catch (error: unknown) {
@@ -357,7 +368,8 @@ const saveAlertSettings = async () => {
         life: 3000,
       })
     } else {
-      const errorMsg = res && typeof res === 'object' && 'message' in res ? String(res.message) : '保存失败'
+      const errorMsg =
+        res && typeof res === 'object' && 'message' in res ? String(res.message) : '保存失败'
       throw new Error(errorMsg)
     }
   } catch (error: unknown) {
@@ -418,7 +430,9 @@ onMounted(() => {
               <div class="flex items-center justify-between">
                 <div>
                   <label class="text-sm font-medium text-color">CPU 使用率告警</label>
-                  <p class="text-xs text-muted-color mt-1">监控服务器 CPU 使用率</p>
+                  <Message size="small" severity="secondary" variant="simple"
+                    >监控服务器 CPU 使用率</Message
+                  >
                 </div>
                 <ToggleSwitch
                   v-model="alertRules.cpu.enabled"
@@ -440,7 +454,9 @@ onMounted(() => {
                       suffix="%"
                       :disabled="!alertRules.cpu.enabled"
                     />
-                    <p class="text-xs text-muted-color">当 CPU 使用率超过此值时触发警告</p>
+                    <Message size="small" severity="secondary" variant="simple"
+                      >当 CPU 使用率超过此值时触发警告</Message
+                    >
                   </div>
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-color">严重阈值 (%)</label>
@@ -451,7 +467,9 @@ onMounted(() => {
                       suffix="%"
                       :disabled="!alertRules.cpu.enabled"
                     />
-                    <p class="text-xs text-muted-color">当 CPU 使用率超过此值时触发严重告警</p>
+                    <Message size="small" severity="secondary" variant="simple"
+                      >当 CPU 使用率超过此值时触发严重告警</Message
+                    >
                   </div>
                 </div>
               </div>
@@ -462,7 +480,9 @@ onMounted(() => {
               <div class="flex items-center justify-between">
                 <div>
                   <label class="text-sm font-medium text-color">内存使用率告警</label>
-                  <p class="text-xs text-muted-color mt-1">监控服务器内存使用率</p>
+                  <Message size="small" severity="secondary" variant="simple"
+                    >监控服务器内存使用率</Message
+                  >
                 </div>
                 <ToggleSwitch
                   v-model="alertRules.memory.enabled"
@@ -484,7 +504,9 @@ onMounted(() => {
                       suffix="%"
                       :disabled="!alertRules.memory.enabled"
                     />
-                    <p class="text-xs text-muted-color">当内存使用率超过此值时触发警告</p>
+                    <Message size="small" severity="secondary" variant="simple"
+                      >当内存使用率超过此值时触发警告</Message
+                    >
                   </div>
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-color">严重阈值 (%)</label>
@@ -495,7 +517,9 @@ onMounted(() => {
                       suffix="%"
                       :disabled="!alertRules.memory.enabled"
                     />
-                    <p class="text-xs text-muted-color">当内存使用率超过此值时触发严重告警</p>
+                    <Message size="small" severity="secondary" variant="simple"
+                      >当内存使用率超过此值时触发严重告警</Message
+                    >
                   </div>
                 </div>
               </div>
@@ -506,7 +530,9 @@ onMounted(() => {
               <div class="flex items-center justify-between">
                 <div>
                   <label class="text-sm font-medium text-color">磁盘使用率告警</label>
-                  <p class="text-xs text-muted-color mt-1">监控服务器磁盘使用率</p>
+                  <Message size="small" severity="secondary" variant="simple"
+                    >监控服务器磁盘使用率</Message
+                  >
                 </div>
                 <ToggleSwitch
                   v-model="alertRules.disk.enabled"
@@ -528,7 +554,9 @@ onMounted(() => {
                       suffix="%"
                       :disabled="!alertRules.disk.enabled"
                     />
-                    <p class="text-xs text-muted-color">当磁盘使用率超过此值时触发警告</p>
+                    <Message size="small" severity="secondary" variant="simple"
+                      >当磁盘使用率超过此值时触发警告</Message
+                    >
                   </div>
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium text-color">严重阈值 (%)</label>
@@ -539,7 +567,9 @@ onMounted(() => {
                       suffix="%"
                       :disabled="!alertRules.disk.enabled"
                     />
-                    <p class="text-xs text-muted-color">当磁盘使用率超过此值时触发严重告警</p>
+                    <Message size="small" severity="secondary" variant="simple"
+                      >当磁盘使用率超过此值时触发严重告警</Message
+                    >
                   </div>
                 </div>
               </div>
@@ -563,7 +593,9 @@ onMounted(() => {
               <div class="flex items-center justify-between">
                 <div>
                   <label class="text-sm font-medium text-color">邮件通知</label>
-                  <p class="text-xs text-muted-color mt-1">通过邮件发送告警通知</p>
+                  <Message size="small" severity="secondary" variant="simple"
+                    >通过邮件发送告警通知</Message
+                  >
                 </div>
                 <ToggleSwitch v-model="notifications.email.enabled" />
               </div>
@@ -628,7 +660,9 @@ onMounted(() => {
               <div class="flex items-center justify-between">
                 <div>
                   <label class="text-sm font-medium text-color">Webhook 通知</label>
-                  <p class="text-xs text-muted-color mt-1">通过 Webhook 发送告警通知</p>
+                  <Message size="small" severity="secondary" variant="simple"
+                    >通过 Webhook 发送告警通知</Message
+                  >
                 </div>
                 <ToggleSwitch v-model="notifications.webhook.enabled" />
               </div>
