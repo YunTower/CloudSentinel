@@ -597,7 +597,7 @@ onMounted(() => {
                     v-model="notifications.email.password"
                     :feedback="false"
                     toggleMask
-                    placeholder="留空则不修改"
+                    placeholder="若已设置，留空则不修改"
                     inputClass="w-full"
                   />
                 </div>
