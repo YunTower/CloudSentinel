@@ -729,6 +729,13 @@ defineExpose({
               size="small"
             />
           </div>
+          <div
+            v-if="latestAgentVersionType && latestAgentVersionType !== 'release'"
+            class="flex items-center gap-2 text-orange-500 text-sm mt-1"
+          >
+            <i class="pi pi-exclamation-triangle"></i>
+            <span>此版本为非正式版，可能包含实验性功能或大量缺陷，请谨慎更新</span>
+          </div>
         </div>
 
         <div class="mt-2">

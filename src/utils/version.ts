@@ -69,9 +69,9 @@ export const VERSION_TYPE_CONFIG: Record<
   { label: string; severity: 'danger' | 'warn' | 'info' | 'success' }
 > = {
   dev: { label: '开发版', severity: 'danger' },
-  alpha: { label: 'Alpha', severity: 'warn' },
-  beta: { label: 'Beta', severity: 'info' },
-  rc: { label: 'RC', severity: 'success' },
+  alpha: { label: '内测版', severity: 'warn' },
+  beta: { label: '测试版', severity: 'info' },
+  rc: { label: '预览版', severity: 'success' },
   release: { label: '正式版', severity: 'success' },
 }
 
