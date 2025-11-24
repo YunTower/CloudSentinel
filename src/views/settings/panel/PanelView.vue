@@ -192,7 +192,7 @@ const performUpdate = async () => {
       },
     })
   } else {
-    executeUpdate()
+    await executeUpdate()
   }
 }
 
@@ -241,7 +241,7 @@ const executeUpdate = async () => {
         toast.add({
           severity: 'error',
           summary: '更新失败',
-          detail: '获取更新状态失败',
+          detail: `获取更新状态失败（${error}）`,
           life: 5000,
         })
       }
@@ -252,7 +252,7 @@ const executeUpdate = async () => {
     toast.add({
       severity: 'error',
       summary: '启动更新失败',
-      detail: '无法启动更新任务',
+      detail: `无法启动更新任务（${error}）`,
       life: 5000,
     })
   }
@@ -285,8 +285,6 @@ const savePanelSettings = async () => {
     if (publicSettings) {
       publicSettings.panel_title = panelSettings.value.title
       document.title = panelSettings.value.title
-    } else {
-      await authStore.fetchPublicSettings()
     }
 
     toast.add({ severity: 'success', summary: '保存成功', detail: '面板设置已更新', life: 3000 })
@@ -414,7 +412,9 @@ onMounted(() => {
                 <div class="flex items-center gap-3">
                   <span class="text-sm font-medium text-color">当前版本:</span>
                   <span class="text-xs not-even:rounded-md text-primary font-semibold">
-                    {{ versionInfo?.current_version ? 'v' + versionInfo?.current_version : 'unknown' }}
+                    {{
+                      versionInfo?.current_version ? 'v' + versionInfo?.current_version : 'unknown'
+                    }}
                   </span>
                 </div>
               </div>

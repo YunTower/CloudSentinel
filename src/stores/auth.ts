@@ -182,7 +182,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     if (loadingPublicSettingsPromise.value) {
-      return await loadingPublicSettingsPromise.value
+      return loadingPublicSettingsPromise.value
     }
 
     loadingPublicSettings.value = true
