@@ -9,7 +9,6 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AdminLoginDialog: typeof import('./src/components/Layout/AdminLoginDialog.vue')['default']
-    Badge: typeof import('primevue/badge')['default']
     Button: typeof import('primevue/button')['default']
     Card: typeof import('primevue/card')['default']
     Checkbox: typeof import('primevue/checkbox')['default']
@@ -18,10 +17,7 @@ declare module 'vue' {
     DataTable: typeof import('primevue/datatable')['default']
     Dialog: typeof import('primevue/dialog')['default']
     Divider: typeof import('primevue/divider')['default']
-    Dropdown: typeof import('primevue/dropdown')['default']
-    FileUpload: typeof import('primevue/fileupload')['default']
     InputNumber: typeof import('primevue/inputnumber')['default']
-    InputSwitch: typeof import('primevue/inputswitch')['default']
     InputText: typeof import('primevue/inputtext')['default']
     Loading: typeof import('./src/components/Loading/Loading.vue')['default']
     Menu: typeof import('./src/components/Layout/Menu.vue')['default']
@@ -40,7 +36,6 @@ declare module 'vue' {
     TabPanels: typeof import('primevue/tabpanels')['default']
     Tabs: typeof import('primevue/tabs')['default']
     Tag: typeof import('primevue/tag')['default']
-    Toast: typeof import('primevue/toast')['default']
     ToggleSwitch: typeof import('primevue/toggleswitch')['default']
   }
   export interface GlobalDirectives {
