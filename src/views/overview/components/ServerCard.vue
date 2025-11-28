@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import ProgressBar from 'primevue/progressbar'
 import type { ServerItem } from '@/types/server'
-import { getProgressBarColor, getProgressTextColor } from '@/views/manager/servers/utils.ts'
+import { getProgressBarColor, getProgressTextColor } from '@/utils/version.ts'
 
 const props = defineProps<ServerItem>()
 

@@ -9,60 +9,11 @@ import ConfirmDialog from 'primevue/confirmdialog'
 import panelApi from '@/apis/settings/panel'
 import { useAuthStore } from '@/stores/auth'
 import type { PanelSettings, UpdateSource } from '@/types/settings/panel'
-import type { GetUpdateData, VersionType } from '@/types/settings/api'
+import type { GetUpdateData } from '@/types/settings/api'
+import { hasUpdate as checkHasUpdate, getVersionTypeConfig } from '@/utils/version.ts'
 
 export interface VersionInfo extends GetUpdateData {
   has_update: boolean
-}
-
-// 版本类型优先级：dev < alpha < beta < rc < release
-const VERSION_TYPE_PRIORITY: Record<VersionType, number> = {
-  dev: 0,
-  alpha: 1,
-  beta: 2,
-  rc: 3,
-  release: 4,
-}
-
-// 版本类型标签配置
-const VERSION_TYPE_CONFIG: Record<
-  VersionType,
-  { label: string; severity: 'danger' | 'warn' | 'info' | 'success' }
-> = {
-  dev: { label: '开发版', severity: 'danger' },
-  alpha: { label: 'Alpha', severity: 'warn' },
-  beta: { label: 'Beta', severity: 'info' },
-  rc: { label: 'RC', severity: 'success' },
-  release: { label: '正式版', severity: 'success' },
-}
-
-/**
- * 获取版本类型标签配置
- */
-const getVersionTypeConfig = (type: VersionType) => {
-  return VERSION_TYPE_CONFIG[type] || VERSION_TYPE_CONFIG.release
-}
-
-/**
- * 比较两个版本号
- * @param version1 版本号1 (如 "1.0.0")
- * @param version2 版本号2 (如 "1.0.1")
- * @returns 1: version1 > version2, 0: version1 === version2, -1: version1 < version2
- */
-const compareVersions = (version1: string, version2: string): number => {
-  const v1Parts = version1.split('.').map(Number)
-  const v2Parts = version2.split('.').map(Number)
-  const maxLength = Math.max(v1Parts.length, v2Parts.length)
-
-  for (let i = 0; i < maxLength; i++) {
-    const v1Part = v1Parts[i] || 0
-    const v2Part = v2Parts[i] || 0
-
-    if (v1Part > v2Part) return 1
-    if (v1Part < v2Part) return -1
-  }
-
-  return 0
 }
 
 /**
@@ -77,28 +28,7 @@ const hasUpdate = computed(() => {
   const { latest_version, latest_version_type, current_version, current_version_type } =
     versionInfo.value
 
-  if (!latest_version || !current_version) return false
-
-  // 比较版本号
-  const versionCompare = compareVersions(latest_version, current_version)
-
-  if (versionCompare > 0) {
-    // 最新版本号更大，需要更新
-    return true
-  }
-
-  if (versionCompare === 0) {
-    // 版本号相同，比较版本类型优先级
-    const latestPriority = VERSION_TYPE_PRIORITY[latest_version_type] ?? 0
-    const currentPriority = VERSION_TYPE_PRIORITY[current_version_type] ?? 0
-
-    if (latestPriority > currentPriority) {
-      // 最新版本类型优先级更高，需要更新
-      return true
-    }
-  }
-
-  return false
+  return checkHasUpdate(current_version, latest_version, current_version_type, latest_version_type)
 })
 const toast = useToast()
 const confirm = useConfirm()
@@ -192,7 +122,7 @@ const performUpdate = async () => {
       },
     })
   } else {
-    executeUpdate()
+    await executeUpdate()
   }
 }
 
@@ -241,7 +171,7 @@ const executeUpdate = async () => {
         toast.add({
           severity: 'error',
           summary: '更新失败',
-          detail: '获取更新状态失败',
+          detail: `获取更新状态失败（${error}）`,
           life: 5000,
         })
       }
@@ -252,7 +182,7 @@ const executeUpdate = async () => {
     toast.add({
       severity: 'error',
       summary: '启动更新失败',
-      detail: '无法启动更新任务',
+      detail: `无法启动更新任务（${error}）`,
       life: 5000,
     })
   }
@@ -285,8 +215,6 @@ const savePanelSettings = async () => {
     if (publicSettings) {
       publicSettings.panel_title = panelSettings.value.title
       document.title = panelSettings.value.title
-    } else {
-      await authStore.fetchPublicSettings()
     }
 
     toast.add({ severity: 'success', summary: '保存成功', detail: '面板设置已更新', life: 3000 })
@@ -414,7 +342,9 @@ onMounted(() => {
                 <div class="flex items-center gap-3">
                   <span class="text-sm font-medium text-color">当前版本:</span>
                   <span class="text-xs not-even:rounded-md text-primary font-semibold">
-                    {{ versionInfo?.current_version ? 'v' + versionInfo?.current_version : 'unknown' }}
+                    {{
+                      versionInfo?.current_version ? 'v' + versionInfo?.current_version : 'unknown'
+                    }}
                   </span>
                 </div>
               </div>

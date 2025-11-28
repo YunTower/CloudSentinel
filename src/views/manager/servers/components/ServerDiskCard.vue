@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DiskInfo } from '@/types/manager/servers'
-import { getProgressTextColor, getProgressBarColor, formatBytes } from '../utils'
+import { getProgressTextColor, getProgressBarColor, formatBytes } from '@/utils/version.ts'
 
 interface Props {
   disks?: DiskInfo[]

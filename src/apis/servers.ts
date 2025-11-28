@@ -40,4 +40,9 @@ export default {
     if (params.toString()) url += `?${params.toString()}`
     return requester.Get(url)
   },
+  updateAgent: (id: string, type?: string) => {
+    const url = `/servers/${id}/update-agent`
+    const params = type ? { type } : {}
+    return requester.Post(url, params)
+  },
 }

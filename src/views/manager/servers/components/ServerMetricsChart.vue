@@ -5,7 +5,7 @@ import { initChart, getThemeColors, type ECOption } from '@/utils/echarts'
 import type { LineSeriesOption } from 'echarts/charts'
 import type { YAXisOption } from 'echarts/types/dist/shared'
 import type { CallbackDataParams } from 'echarts/types/dist/shared'
-import { formatSpeed } from '../utils'
+import { formatSpeed } from '@/utils/version.ts'
 import { useLayout } from '@/composables/useLayout'
 
 interface Props {

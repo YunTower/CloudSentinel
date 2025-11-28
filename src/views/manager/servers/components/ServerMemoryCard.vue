@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MemoryInfo } from '@/types/manager/servers'
-import { getProgressTextColor, getProgressBarColor, formatBytes } from '../utils'
+import { getProgressTextColor, getProgressBarColor, formatBytes } from '@/utils/version.ts'
 
 interface Props {
   memory: number

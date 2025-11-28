@@ -4,7 +4,9 @@ import { useToast } from 'primevue/usetoast'
 import ServerTable from './components/ServerTable.vue'
 import ServerDialog from './components/ServerDialog.vue'
 import serversApi from '@/apis/servers'
+import updateApi from '@/apis/update'
 import { useWebSocket } from '@/composables/useWebSocket'
+import type { VersionType } from '@/utils/version.ts'
 import type {
   Server,
   ServerForm,
@@ -55,6 +57,10 @@ const websocketURL = ref('')
 // 查看安装信息对话框
 const showInstallInfoDialog = ref(false)
 const selectedServerForInstall = ref<Server | null>(null)
+
+// Agent 最新版本信息
+const latestAgentVersion = ref<string>('')
+const latestAgentVersionType = ref<VersionType>('release')
 
 // WebSocket连接
 const websocket = useWebSocket({
@@ -568,8 +574,41 @@ const handleExpandServer = async (serverId: string) => {
   }
 }
 
+// 获取 Agent 最新版本信息
+const loadAgentVersion = async () => {
+  try {
+    const response = (await updateApi.checkAgentVersion('github')) as {
+      status: boolean
+      data?: {
+        latest_version?: string
+        latest_version_type?: VersionType
+      }
+    }
+    if (response.status && response.data) {
+      latestAgentVersion.value = response.data.latest_version || ''
+      latestAgentVersionType.value = response.data.latest_version_type || 'release'
+    }
+  } catch (error) {
+    // 静默失败，不影响主功能
+    console.warn('获取 Agent 最新版本信息失败:', error)
+  }
+}
+
+// 处理 Agent 更新
+const handleUpdateAgent = async (server: Server) => {
+  // 更新后可以刷新服务器列表以获取最新版本号
+  // 这里可以选择是否刷新
+  toast.add({
+    severity: 'info',
+    summary: '更新中',
+    detail: `服务器 "${server.name}" 的 Agent 正在更新中...`,
+    life: 3000,
+  })
+}
+
 onMounted(async () => {
   await loadServers()
+  await loadAgentVersion()
   websocket.connect()
 
   const urlParams = new URLSearchParams(window.location.search)
@@ -607,11 +646,14 @@ onMounted(async () => {
         :expanding-server-id="expandingServerId"
         :deleting-server-id="deletingServerId"
         :restarting-server-id="restartingServerId"
+        :latest-agent-version="latestAgentVersion"
+        :latest-agent-version-type="latestAgentVersionType"
         @edit-server="handleEditServer"
         @delete-server="handleDeleteServer"
         @restart-server="handleRestartServer"
         @expand-server="handleExpandServer"
         @view-install-info="handleViewInstallInfo"
+        @update-agent="handleUpdateAgent"
       />
     </div>
 

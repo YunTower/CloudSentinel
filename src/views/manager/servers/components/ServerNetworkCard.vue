@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TrafficInfo } from '@/types/manager/servers'
-import { formatSpeed, formatBytes } from '../utils'
+import { formatSpeed, formatBytes } from '@/utils/version.ts'
 
 interface Props {
   networkIO?: {
