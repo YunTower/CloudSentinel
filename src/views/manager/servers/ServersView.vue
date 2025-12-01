@@ -3,7 +3,10 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import ServerTable from './components/ServerTable.vue'
 import ServerDialog from './components/ServerDialog.vue'
+import ServerGroupDialog from './components/ServerGroupDialog.vue'
+import InstallInfo from './components/InstallInfo.vue'
 import serversApi from '@/apis/servers'
+import type { ServerGroup } from '@/types/manager/servers'
 import updateApi from '@/apis/update'
 import { useWebSocket } from '@/composables/useWebSocket'
 import type { VersionType } from '@/utils/version.ts'
@@ -28,7 +31,12 @@ const deletingServerId = ref<string>('')
 const restartingServerId = ref<string>('')
 const searchQuery = ref('')
 const statusFilter = ref<string>('all')
+const groupFilter = ref<number | null>(null)
 const showAddDialog = ref(false)
+const showGroupDialog = ref(false)
+const editingGroup = ref<ServerGroup | null>(null)
+const groups = ref<ServerGroup[]>([])
+const viewMode = ref<'list' | 'group'>('list')
 const editingServer = ref<Server | null>(null)
 const serverTableRef = ref<InstanceType<typeof ServerTable> | null>(null)
 
@@ -121,6 +129,18 @@ const websocket = useWebSocket({
   },
 })
 
+// 加载分组列表
+const loadGroups = async () => {
+  try {
+    const response = await serversApi.getGroups()
+    if (response.status && response.data) {
+      groups.value = response.data || []
+    }
+  } catch (error) {
+    console.error('加载分组列表失败:', error)
+  }
+}
+
 // 过滤后的服务器
 const filteredServers = computed(() => {
   let filtered = servers.value
@@ -139,7 +159,34 @@ const filteredServers = computed(() => {
   if (statusFilter.value && statusFilter.value !== 'all') {
     filtered = filtered.filter((server) => server.status === statusFilter.value)
   }
+
+  // 分组过滤
+  if (groupFilter.value !== null) {
+    filtered = filtered.filter((server) => server.group_id === groupFilter.value)
+  }
+
   return filtered
+})
+
+// 按分组组织的服务器
+const groupedServers = computed(() => {
+  const grouped: { [key: string]: Server[] } = {
+    '未分组': [],
+  }
+
+  filteredServers.value.forEach((server) => {
+    if (server.group_id && server.group) {
+      const groupName = server.group.name
+      if (!grouped[groupName]) {
+        grouped[groupName] = []
+      }
+      grouped[groupName].push(server)
+    } else {
+      grouped['未分组'].push(server)
+    }
+  })
+
+  return grouped
 })
 
 const handleEditServer = (server: Server) => {
@@ -272,6 +319,69 @@ const handleSaveServer = async (form: ServerForm) => {
   }
 }
 
+// 分组管理
+const handleCreateGroup = () => {
+  editingGroup.value = null
+  showGroupDialog.value = true
+}
+
+const handleEditGroup = (group: ServerGroup) => {
+  editingGroup.value = group
+  showGroupDialog.value = true
+}
+
+const handleDeleteGroup = async (group: ServerGroup) => {
+  try {
+    const response = await serversApi.deleteGroup(group.id)
+    if (response.status) {
+      await loadGroups()
+      await loadServers()
+      toast.add({
+        severity: 'success',
+        summary: '删除成功',
+        detail: '分组已删除',
+        life: 3000,
+      })
+    }
+  } catch (error: unknown) {
+    const errorMessage =
+      error && typeof error === 'object' && 'response' in error
+        ? (error.response as { data?: { message?: string } })?.data?.message || '删除失败'
+        : '删除失败'
+    toast.add({
+      severity: 'error',
+      summary: '删除失败',
+      detail: errorMessage,
+      life: 3000,
+    })
+  }
+}
+
+const handleGroupSuccess = async () => {
+  await loadGroups()
+  await loadServers()
+}
+
+// 计算到期天数
+const getExpireDays = (expireTime?: string): number | null => {
+  if (!expireTime) return null
+  const expire = new Date(expireTime)
+  const now = new Date()
+  const diff = expire.getTime() - now.getTime()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+}
+
+// 获取到期状态颜色
+const getExpireStatus = (expireTime?: string): { severity: string; label: string } | null => {
+  const days = getExpireDays(expireTime)
+  if (days === null) return null
+  if (days < 0) return { severity: 'danger', label: '已过期' }
+  if (days <= 1) return { severity: 'danger', label: '即将过期' }
+  if (days <= 3) return { severity: 'warning', label: '3天内到期' }
+  if (days <= 7) return { severity: 'warning', label: '7天内到期' }
+  return { severity: 'success', label: `${days}天后到期` }
+}
+
 const loadServers = async () => {
   loading.value = true
   try {
@@ -298,7 +408,7 @@ const loadServers = async () => {
         const networkDownload =
           typeof metrics.network_download === 'number' ? metrics.network_download : 0
 
-        return {
+          return {
           id: server.id,
           name: server.name,
           ip: server.ip,
@@ -310,6 +420,17 @@ const loadServers = async () => {
           kernel: '',
           hostname: '',
           uptime: server.uptime || '0天0时0分',
+          group_id: (server as any).group_id,
+          group: (server as any).group,
+          billing_cycle: (server as any).billing_cycle,
+          custom_cycle_days: (server as any).custom_cycle_days,
+          price: (server as any).price,
+          expire_time: (server as any).expire_time,
+          bandwidth_mbps: (server as any).bandwidth_mbps,
+          traffic_limit_type: (server as any).traffic_limit_type,
+          traffic_limit_bytes: (server as any).traffic_limit_bytes,
+          traffic_reset_cycle: (server as any).traffic_reset_cycle,
+          traffic_custom_cycle_days: (server as any).traffic_custom_cycle_days,
           cpu,
           memory,
           disk,
@@ -607,6 +728,7 @@ const handleUpdateAgent = async (server: Server) => {
 }
 
 onMounted(async () => {
+  await loadGroups()
   await loadServers()
   await loadAgentVersion()
   websocket.connect()
@@ -630,16 +752,106 @@ onMounted(async () => {
         <h1 class="text-3xl font-bold text-color mb-2">服务器管理</h1>
         <p class="text-muted-color">管理和监控所有服务器节点</p>
       </div>
-      <Button
-        label="添加服务器"
-        icon="pi pi-plus"
-        @click="showAddDialog = true"
-        class="shadow-sm"
+      <div class="flex gap-2">
+        <Button
+          label="管理分组"
+          icon="pi pi-folder"
+          severity="secondary"
+          @click="handleCreateGroup"
+          class="shadow-sm"
+        />
+        <Button
+          label="添加服务器"
+          icon="pi pi-plus"
+          @click="showAddDialog = true"
+          class="shadow-sm"
+        />
+      </div>
+    </div>
+
+    <!-- 筛选栏 -->
+    <div class="mb-4 flex gap-4 items-center flex-wrap">
+      <div class="flex-1 min-w-[200px]">
+        <span class="p-input-icon-left w-full">
+          <i class="pi pi-search" />
+          <InputText
+            v-model="searchQuery"
+            placeholder="搜索服务器名称、IP或地域..."
+            class="w-full"
+          />
+        </span>
+      </div>
+
+      <Select
+        v-model="statusFilter"
+        :options="[
+          { label: '全部状态', value: 'all' },
+          { label: '在线', value: 'online' },
+          { label: '离线', value: 'offline' },
+          { label: '错误', value: 'error' },
+        ]"
+        option-label="label"
+        option-value="value"
+        placeholder="筛选状态"
+        class="w-[150px]"
       />
+
+      <Select
+        v-model="groupFilter"
+        :options="[
+          { label: '全部分组', value: null },
+          ...groups.map((g) => ({ label: g.name, value: g.id })),
+        ]"
+        option-label="label"
+        option-value="value"
+        placeholder="筛选分组"
+        class="w-[150px]"
+      />
+
+      <div class="flex gap-2">
+        <Button
+          :label="viewMode === 'list' ? '列表视图' : '分组视图'"
+          :icon="viewMode === 'list' ? 'pi pi-list' : 'pi pi-folder'"
+          severity="secondary"
+          @click="viewMode = viewMode === 'list' ? 'group' : 'list'"
+        />
+      </div>
     </div>
 
     <div class="space-y-6">
+      <!-- 分组视图 -->
+      <div v-if="viewMode === 'group'" class="space-y-4">
+        <div
+          v-for="(groupServers, groupName) in groupedServers"
+          :key="groupName"
+          class="border rounded-lg p-4"
+        >
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold">{{ groupName }}</h3>
+            <span class="text-sm text-muted-color">{{ groupServers.length }} 台服务器</span>
+          </div>
+          <ServerTable
+            ref="serverTableRef"
+            :servers="groupServers"
+            :loading="loading || filterLoading"
+            :expanding-server-id="expandingServerId"
+            :deleting-server-id="deletingServerId"
+            :restarting-server-id="restartingServerId"
+            :latest-agent-version="latestAgentVersion"
+            :latest-agent-version-type="latestAgentVersionType"
+            @edit-server="handleEditServer"
+            @delete-server="handleDeleteServer"
+            @restart-server="handleRestartServer"
+            @expand-server="handleExpandServer"
+            @view-install-info="handleViewInstallInfo"
+            @update-agent="handleUpdateAgent"
+          />
+        </div>
+      </div>
+
+      <!-- 列表视图 -->
       <ServerTable
+        v-else
         ref="serverTableRef"
         :servers="filteredServers"
         :loading="loading || filterLoading"
@@ -657,6 +869,13 @@ onMounted(async () => {
       />
     </div>
 
+    <!-- 分组管理对话框 -->
+    <ServerGroupDialog
+      v-model:visible="showGroupDialog"
+      :group="editingGroup"
+      @success="handleGroupSuccess"
+    />
+
     <ServerDialog
       v-model:visible="showAddDialog"
       v-model:form="serverForm"
@@ -664,6 +883,7 @@ onMounted(async () => {
       :saving="saving"
       @save="handleSaveServer"
       @cancel="handleCancelDialog"
+      @restart-server="handleRestartServer"
     />
 
     <!-- Agent Key和安装命令显示对话框 -->
@@ -675,62 +895,25 @@ onMounted(async () => {
         </div>
       </template>
       <div class="space-y-4">
-        <!-- Agent Key -->
-
-        <div class="flex items-start gap-3">
-          <div class="flex-1">
-            <div class="flex justify-between mb-2">
-              <p class="font-medium">服务器已成功添加！请保存以下Agent Key：</p>
-              <Button
-                icon="pi pi-copy"
-                text
-                size="small"
-                class="mt-2"
-                v-tooltip.top="'复制 Key'"
-                @click="copyAgentKey"
-              />
-            </div>
-            <div
-              class="bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all"
-            >
-              {{ generatedAgentKey }}
-            </div>
-          </div>
-        </div>
-
-        <!-- 安装命令 -->
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center">
-              <h4 class="text-lg font-semibold text-color">Linux 安装命令</h4>
-            </div>
-            <Button
-              icon="pi pi-copy"
-              text
-              size="small"
-              @click="copyInstallCommand"
-              v-tooltip.top="'复制命令'"
-            />
-          </div>
-          <code
-            class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
-          >
-            {{ installCommand }}
-          </code>
-          <div class="mt-4 p-3 border rounded-lg">
-            <div class="flex items-start gap-2">
-              <div>
-                <p class="font-medium mb-1 gap-2">
-                  <i class="pi pi-info-circle mt-0.5"></i>
-                  <span class="font-bold">安装说明</span>
-                </p>
-                <ul class="space-y-1">
-                  <li>• 在目标Linux服务器上执行上述安装命令</li>
-                  <li>• 安装完成后，探针会自动连接到控制中心</li>
-                  <li>• 系统信息（地域、操作系统等）将自动获取</li>
-                  <li>• 请妥善保管Agent Key避免泄露，此Agent Key用于服务器之间身份验证</li>
-                </ul>
-              </div>
+        <p class="font-medium mb-4">服务器已成功添加！请保存以下信息：</p>
+        <InstallInfo
+          :agent-key="generatedAgentKey"
+          :server-i-p="serverIP"
+          :websocket-u-r-l="websocketURL"
+        />
+        <div class="mt-4 p-3 border rounded-lg">
+          <div class="flex items-start gap-2">
+            <div>
+              <p class="font-medium mb-1 gap-2">
+                <i class="pi pi-info-circle mt-0.5"></i>
+                <span class="font-bold">安装说明</span>
+              </p>
+              <ul class="space-y-1">
+                <li>• 在目标Linux服务器上执行上述安装命令</li>
+                <li>• 安装完成后，探针会自动连接到控制中心</li>
+                <li>• 系统信息（地域、操作系统等）将自动获取</li>
+                <li>• 请妥善保管Agent Key避免泄露，此Agent Key用于服务器之间身份验证</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -748,60 +931,6 @@ onMounted(async () => {
       </template>
     </Dialog>
 
-    <!-- 查看安装信息对话框 -->
-    <Dialog
-      v-model:visible="showInstallInfoDialog"
-      header="安装信息"
-      modal
-      :closable="true"
-      class="w-3xl"
-    >
-      <div class="space-y-4" v-if="selectedServerForInstall">
-        <!-- 连接密钥 -->
-        <div class="mb-4">
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2 flex-1 min-w-0">
-              <span class="font-medium text-color whitespace-nowrap">连接密钥 (Agent Key):</span>
-              <code
-                class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-1 rounded font-mono text-sm break-all whitespace-pre-wrap"
-                >{{ selectedServerForInstall.agent_key || '未设置' }}</code
-              >
-            </div>
-            <Button
-              icon="pi pi-copy"
-              text
-              size="small"
-              @click.stop="copySelectedAgentKey"
-              v-tooltip.top="'复制密钥'"
-              class="flex-shrink-0"
-            />
-          </div>
-        </div>
-
-        <!-- 安装命令 -->
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center">
-              <h4 class="text-lg font-semibold text-color">Linux 安装命令</h4>
-            </div>
-            <Button
-              icon="pi pi-copy"
-              text
-              size="small"
-              @click="copySelectedInstallCommand"
-              v-tooltip.top="'复制命令'"
-            />
-          </div>
-          <div class="space-y-3">
-            <code
-              class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
-            >
-              {{ installCommand || '无法生成安装命令：缺少Agent Key' }}
-            </code>
-          </div>
-        </div>
-      </div>
-    </Dialog>
   </div>
 </template>
 
