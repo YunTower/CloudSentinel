@@ -64,6 +64,18 @@ export interface ServerListItemData {
   uptime?: string
   created_at?: string
   updated_at?: string
+  // 分组和付费相关字段
+  group_id?: number
+  group?: ServerGroup
+  billing_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'one_time' | 'custom'
+  custom_cycle_days?: number
+  price?: number
+  expire_time?: string
+  bandwidth_mbps?: number
+  traffic_limit_type?: 'unlimited' | 'permanent' | 'periodic'
+  traffic_limit_bytes?: number
+  traffic_reset_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
+  traffic_custom_cycle_days?: number
 }
 
 // 获取服务器列表响应类型

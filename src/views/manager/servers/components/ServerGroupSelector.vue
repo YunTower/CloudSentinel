@@ -26,8 +26,8 @@ const loadGroups = async () => {
   loading.value = true
   try {
     const response = await serversApi.getGroups()
-    if (response.data.status) {
-      groups.value = response.data.data || []
+    if (response.status && response.data) {
+      groups.value = response.data || []
     }
   } catch (error) {
     console.error('加载分组列表失败:', error)
@@ -56,7 +56,7 @@ defineExpose({
     :options="groups"
     option-label="name"
     option-value="id"
-    :placeholder="placeholder"
+    :placeholder="props.placeholder"
     :loading="loading"
     class="w-full"
     @update:model-value="handleChange"

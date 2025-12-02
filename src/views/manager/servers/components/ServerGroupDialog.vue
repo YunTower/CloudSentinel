@@ -52,19 +52,22 @@ const resetForm = () => {
   }
 }
 
-watch(() => props.visible, (newVal) => {
-  if (newVal) {
-    if (props.group) {
-      form.value = {
-        name: props.group.name || '',
-        description: props.group.description || '',
-        color: props.group.color || '',
+watch(
+  () => props.visible,
+  (newVal) => {
+    if (newVal) {
+      if (props.group) {
+        form.value = {
+          name: props.group.name || '',
+          description: props.group.description || '',
+          color: props.group.color || '',
+        }
+      } else {
+        resetForm()
       }
-    } else {
-      resetForm()
     }
-  }
-})
+  },
+)
 
 const handleSubmit = async () => {
   if (!form.value.name.trim()) {
@@ -112,6 +115,8 @@ const handleCancel = () => {
     :header="dialogHeader"
     :modal="true"
     :style="{ width: '500px' }"
+    :draggable="false"
+    :block-scroll="false"
   >
     <form @submit.prevent="handleSubmit">
       <div class="flex flex-col gap-4">
@@ -133,7 +138,12 @@ const handleCancel = () => {
 
         <div>
           <label for="color" class="block text-sm font-medium mb-2">颜色标识</label>
-          <InputText id="color" v-model="form.color" class="w-full" placeholder="例如：#FF5733（可选）" />
+          <InputText
+            id="color"
+            v-model="form.color"
+            class="w-full"
+            placeholder="例如：#FF5733（可选）"
+          />
         </div>
       </div>
     </form>
@@ -144,4 +154,3 @@ const handleCancel = () => {
     </template>
   </Dialog>
 </template>
-

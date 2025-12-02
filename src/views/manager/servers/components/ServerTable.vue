@@ -401,7 +401,7 @@ defineExpose({
 </script>
 <template>
   <div>
-    <Card class="shadow-lg border border-surface-200 dark:border-surface-700">
+    <Card class="border border-[var(--p-select-border-color)]">
       <template #content>
         <DataTable
           :value="servers"
