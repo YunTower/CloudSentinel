@@ -3,59 +3,13 @@ import { computed } from 'vue'
 import ProgressBar from 'primevue/progressbar'
 import type { ServerItem } from '@/types/server'
 import { getProgressBarColor, getProgressTextColor } from '@/utils/version.ts'
+import { formatSpeed, formatOS, getStatusColor, getStatusText as getStatusTextUtil } from '../utils'
 
 const props = defineProps<ServerItem>()
 
-const statusClass = computed(() => {
-  switch (props.status) {
-    case 'online':
-      return 'bg-green-500 dark:bg-green-400'
-    case 'offline':
-      return 'bg-red-500 dark:bg-red-400'
-    case 'maintenance':
-      return 'bg-yellow-500 dark:bg-yellow-400'
-    case 'error':
-      return 'bg-red-600 dark:bg-red-500'
-    default:
-      return 'bg-surface-400'
-  }
-})
+const statusClass = computed(() => getStatusColor(props.status))
 
-const statusText = computed(() => {
-  switch (props.status) {
-    case 'online':
-      return '在线'
-    case 'offline':
-      return '离线'
-    case 'maintenance':
-      return '维护中'
-    case 'error':
-      return '错误'
-    default:
-      return '未知'
-  }
-})
-
-// 格式化网络速度
-const formatSpeed = (speedKBps: number) => {
-  if (speedKBps >= 1024 * 1024) {
-    return `${(speedKBps / (1024 * 1024)).toFixed(1)}GB/s`
-  } else if (speedKBps >= 1024) {
-    return `${(speedKBps / 1024).toFixed(1)}MB/s`
-  } else {
-    return `${speedKBps.toFixed(1)}KB/s`
-  }
-}
-
-// 格式化操作系统显示
-const formatOS = (os: string) => {
-  if (os.includes('Ubuntu')) return 'Ubuntu'
-  if (os.includes('CentOS')) return 'CentOS'
-  if (os.includes('Windows')) return 'Windows'
-  if (os.includes('Debian')) return 'Debian'
-  if (os.includes('RHEL')) return 'RHEL'
-  return os.split(' ')[0] // 取第一个单词
-}
+const statusText = computed(() => getStatusTextUtil(props.status))
 </script>
 <template>
   <Card class="h-full">
@@ -104,7 +58,7 @@ const formatOS = (os: string) => {
           <div class="grid grid-cols-3 gap-2 text-xs">
             <div class="text-center">
               <div class="text-muted-color">系统</div>
-              <div class="font-semibold text-color truncate" :title="os">{{ formatOS(os) }}</div>
+              <div class="font-semibold text-color truncate" :title="props.os">{{ formatOS(props.os) }}</div>
             </div>
             <div class="text-center">
               <div class="text-muted-color">架构</div>
