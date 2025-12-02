@@ -72,7 +72,7 @@ export type GetServersResponse = ApiResponse<ServerListItemData[]>
 // 删除/更新/重启服务响应类型
 export type DeleteServerResponse = ApiResponse<null>
 export type UpdateServerResponse = ApiResponse<null>
-export type RestartServerResponse = ApiResponse<null>
+export type RestartServiceResponse = ApiResponse<null>
 
 // 服务器分组接口
 export interface ServerGroup {

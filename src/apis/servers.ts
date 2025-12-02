@@ -13,7 +13,7 @@ export default {
   getServerDetail: (id: string) => requester.Get(`/servers/${id}`),
   updateServer: (id: string, form: ServerForm) => requester.Patch(`/servers/${id}`, form),
   deleteServer: (id: string) => requester.Delete(`/servers/${id}`),
-  restartServer: (id: string) => requester.Post(`/servers/${id}/restart`),
+  restartService: (id: string) => requester.Post(`/servers/${id}/restart`),
   getServerMetricsCPU: (id: string, start?: string, end?: string) => {
     let url = `/servers/${id}/metrics/cpu`
     const params = new URLSearchParams()

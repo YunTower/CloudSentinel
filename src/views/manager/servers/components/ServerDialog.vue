@@ -9,7 +9,7 @@ import serversApi from '@/apis/servers'
 import type {
   Server,
   ServerForm,
-  RestartServerResponse,
+  RestartServiceResponse,
   ServerDetailResponse,
   ExtendedServerDetailData,
 } from '@/types/manager/servers'
@@ -106,7 +106,6 @@ const trafficLimitGB = computed({
     }
   },
 })
-
 
 const form = defineModel<ServerForm>('form', {
   default: () => ({
@@ -294,12 +293,12 @@ const handleCancel = () => {
   emit('cancel')
 }
 
-// 处理重启服务器
-const handleRestartServer = () => {
+// 处理重启服务
+const handleRestartService = () => {
   if (!props.editingServer) return
 
   confirm.require({
-    message: `确定要重启服务器 "${props.editingServer.name}" 吗？`,
+    message: `确定要重启 "${props.editingServer.name}" 的Agent服务吗？`,
     header: '重启确认',
     rejectProps: {
       label: '取消',
@@ -313,9 +312,9 @@ const handleRestartServer = () => {
     accept: async () => {
       restarting.value = true
       try {
-        const response = (await serversApi.restartServer(
+        const response = (await serversApi.restartService(
           props.editingServer!.id,
-        )) as RestartServerResponse
+        )) as RestartServiceResponse
 
         if (response.status) {
           toast.add({
@@ -346,8 +345,9 @@ const handleRestartServer = () => {
 <template>
   <Dialog
     v-model:visible="isVisible"
-    :header="isEditing ? '编辑服务器' : '添加服务器'"
+    :header="isEditing ? `编辑服务器 - ${props.editingServer?.name}` : '添加服务器'"
     :block-scroll="false"
+    :draggable="false"
     modal
     class="w-3xl"
     :pt="{
@@ -597,6 +597,26 @@ const handleRestartServer = () => {
           <!-- 操作 Tab -->
           <TabPanel v-if="isEditing" value="3">
             <div class="space-y-4 pt-4">
+              <!-- 服务器操作 -->
+              <div class="flex flex-row gap-3">
+                <Button
+                  label="重启服务"
+                  icon="pi pi-refresh"
+                  outlined
+                  severity="warn"
+                  :loading="restarting"
+                  @click="handleRestartService"
+                  class="justify-start"
+                />
+                <Button
+                  label="重置通信密钥"
+                  outlined
+                  :loading="restarting"
+                  @click="handleRestartService"
+                  class="justify-start"
+                />
+              </div>
+              <Divider />
               <!-- 安装信息 -->
               <InstallInfo
                 v-if="serverDetail"
@@ -605,25 +625,7 @@ const handleRestartServer = () => {
                   agent_key: serverDetail.agent_key,
                 }"
               />
-              <div v-else class="text-center py-8 text-muted-color">
-                无法加载服务器详情
-              </div>
-
-              <!-- 服务器操作 -->
-              <div class="p-4 bg-surface-50 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700">
-                <h4 class="text-lg font-semibold text-color mb-4">服务器操作</h4>
-                <div class="flex flex-col gap-3">
-                  <Button
-                    label="重启服务"
-                    icon="pi pi-refresh"
-                    text
-                    severity="warn"
-                    :loading="restarting"
-                    @click="handleRestartServer"
-                    class="justify-start"
-                  />
-                </div>
-              </div>
+              <div v-else class="text-center py-8 text-muted-color">无法加载服务器详情</div>
             </div>
           </TabPanel>
         </TabPanels>
@@ -631,16 +633,16 @@ const handleRestartServer = () => {
     </form>
 
     <template #footer>
-        <div class="flex gap-3">
-          <Button label="取消" text @click="handleCancel" class="px-6 py-2" />
-          <Button
-            :label="isEditing ? '更新配置' : '添加服务器'"
-            :icon="isEditing ? 'pi pi-check' : 'pi pi-plus'"
-            @click="handleSave"
-            :loading="props.saving"
-            class="px-6 py-2 font-medium"
-          />
-        </div>
+      <div class="flex gap-3">
+        <Button label="取消" text @click="handleCancel" class="px-6 py-2" />
+        <Button
+          :label="isEditing ? '更新配置' : '添加服务器'"
+          :icon="isEditing ? 'pi pi-check' : 'pi pi-plus'"
+          @click="handleSave"
+          :loading="props.saving"
+          class="px-6 py-2 font-medium"
+        />
+      </div>
     </template>
     <ConfirmPopup />
   </Dialog>

@@ -96,24 +96,25 @@ const copyInstallCommand = async () => {
 <template>
   <div class="space-y-4">
     <!-- 连接密钥 -->
-    <div class="mb-4">
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-2 flex-1 min-w-0">
-          <span class="font-medium text-color whitespace-nowrap">Agent Key:</span>
-          <code
-            class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-1 rounded font-mono text-sm break-all whitespace-pre-wrap"
-          >
-            {{ currentAgentKey }}
-          </code>
+    <div>
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center">
+          <h4 class="text-lg font-semibold text-color">Agent Key</h4>
         </div>
         <Button
           icon="pi pi-copy"
           text
           size="small"
-          @click.stop="copyAgentKey"
+          @click="copyAgentKey"
           v-tooltip.top="'复制密钥'"
-          class="flex-shrink-0"
         />
+      </div>
+      <div class="space-y-3">
+        <code
+          class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
+        >
+          {{ currentAgentKey }}
+        </code>
       </div>
     </div>
 
