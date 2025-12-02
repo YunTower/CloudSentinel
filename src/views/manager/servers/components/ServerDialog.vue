@@ -210,9 +210,12 @@ watch(
   () => props.visible,
   (visible) => {
     if (visible && props.editingServer) {
+      loadingDetail.value = true
       loadServerDetail()
     } else {
       serverDetail.value = null
+      loadingDetail.value = false
+      activeTab.value = '0'
     }
   },
 )
@@ -356,7 +359,16 @@ const handleRestartServer = () => {
         '!p-5 bg-surface-50 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700 rounded-b-xl',
     }"
   >
-    <form @submit.prevent="handleSave" class="space-y-6">
+    <div v-if="isEditing && loadingDetail" class="flex flex-col items-center justify-center py-20">
+      <ProgressSpinner
+        style="width: 50px; height: 50px"
+        strokeWidth="4"
+        fill="transparent"
+        animationDuration="0.5s"
+      />
+      <p class="mt-4 text-muted-color">加载服务器详情中...</p>
+    </div>
+    <form v-else @submit.prevent="handleSave" class="space-y-6">
       <Tabs :value="activeTab" @update:value="(val: string | number) => (activeTab = String(val))">
         <TabList>
           <Tab value="0">基础</Tab>
@@ -582,21 +594,12 @@ const handleRestartServer = () => {
             </div>
           </TabPanel>
 
-          <!-- 操作 Tab (仅编辑模式显示) -->
+          <!-- 操作 Tab -->
           <TabPanel v-if="isEditing" value="3">
             <div class="space-y-4 pt-4">
               <!-- 安装信息 -->
-              <div v-if="loadingDetail" class="flex flex-col items-center justify-center py-12">
-                <ProgressSpinner
-                  style="width: 50px; height: 50px"
-                  strokeWidth="4"
-                  fill="transparent"
-                  animationDuration="0.5s"
-                />
-                <p class="mt-4 text-muted-color">加载服务器详情中...</p>
-              </div>
               <InstallInfo
-                v-else-if="serverDetail"
+                v-if="serverDetail"
                 :server="{
                   ...props.editingServer!,
                   agent_key: serverDetail.agent_key,
