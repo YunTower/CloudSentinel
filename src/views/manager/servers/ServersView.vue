@@ -38,7 +38,6 @@ const showGroupDialog = ref(false)
 const showGroupManager = ref(false)
 const editingGroup = ref<ServerGroup | null>(null)
 const groups = ref<ServerGroup[]>([])
-const viewMode = ref<'list' | 'group'>('list')
 const editingServer = ref<Server | null>(null)
 const serverTableRef = ref<InstanceType<typeof ServerTable> | null>(null)
 
@@ -168,27 +167,6 @@ const filteredServers = computed(() => {
   }
 
   return filtered
-})
-
-// 按分组组织的服务器
-const groupedServers = computed(() => {
-  const grouped: { [key: string]: Server[] } = {
-    未分组: [],
-  }
-
-  filteredServers.value.forEach((server) => {
-    if (server.group_id && server.group) {
-      const groupName = server.group.name
-      if (!grouped[groupName]) {
-        grouped[groupName] = []
-      }
-      grouped[groupName].push(server)
-    } else {
-      grouped['未分组'].push(server)
-    }
-  })
-
-  return grouped
 })
 
 const handleEditServer = (server: Server) => {
@@ -664,51 +642,10 @@ onMounted(async () => {
         placeholder="筛选分组"
         class="w-[150px]"
       />
-
-      <div class="flex gap-2">
-        <Button
-          v-tooltip="viewMode === 'list' ? '列表视图' : '分组视图'"
-          :icon="viewMode === 'list' ? 'pi pi-list' : 'pi pi-folder'"
-          severity="secondary"
-          @click="viewMode = viewMode === 'list' ? 'group' : 'list'"
-        />
-      </div>
     </div>
 
     <div class="space-y-6">
-      <!-- 分组视图 -->
-      <div v-if="viewMode === 'group'" class="space-y-4">
-        <div
-          v-for="(groupServers, groupName) in groupedServers"
-          :key="groupName"
-          class="border rounded-lg p-4"
-        >
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold">{{ groupName }}</h3>
-            <span class="text-sm text-muted-color">{{ groupServers.length }} 台服务器</span>
-          </div>
-          <ServerTable
-            ref="serverTableRef"
-            :servers="groupServers"
-            :loading="loading || filterLoading"
-            :expanding-server-id="expandingServerId"
-            :deleting-server-id="deletingServerId"
-            :restarting-server-id="restartingServerId"
-            :latest-agent-version="latestAgentVersion"
-            :latest-agent-version-type="latestAgentVersionType"
-            @edit-server="handleEditServer"
-            @delete-server="handleDeleteServer"
-            @restart-server="handleRestartServer"
-            @expand-server="handleExpandServer"
-            @view-install-info="handleViewInstallInfo"
-            @update-agent="handleUpdateAgent"
-          />
-        </div>
-      </div>
-
-      <!-- 列表视图 -->
       <ServerTable
-        v-else
         ref="serverTableRef"
         :servers="filteredServers"
         :loading="loading || filterLoading"
