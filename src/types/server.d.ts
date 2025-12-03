@@ -1,5 +1,7 @@
+import type { ServerGroup } from './manager/servers'
+
 export interface ServerItem {
-  id: string 
+  id: string
   name: string
   status: 'online' | 'offline' | 'maintenance' | 'error'
   cpuUsage: number
@@ -14,4 +16,6 @@ export interface ServerItem {
     upload: number // KB/s
     download: number // KB/s
   }
+  group_id?: number
+  group?: ServerGroup
 }

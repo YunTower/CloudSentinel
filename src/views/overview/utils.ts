@@ -114,6 +114,8 @@ export function mapServerListItemToServerItem(server: ServerListItemData): Serve
       upload: networkUpload,
       download: networkDownload,
     },
+    group_id: server.group_id,
+    group: server.group,
   }
 }
 

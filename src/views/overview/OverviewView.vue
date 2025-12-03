@@ -1,50 +1,83 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import ServerCard from './components/ServerCard.vue'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
+import ServerTable from './components/ServerTable.vue'
+import GroupHeader from './components/GroupHeader.vue'
 import Dropdown from 'primevue/dropdown'
 import SelectButton from 'primevue/selectbutton'
-import ProgressBar from 'primevue/progressbar'
-import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import serversApi from '@/apis/servers'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useAuthStore } from '@/stores/auth'
 import type { ServerItem } from '@/types/server'
-import type { GetServersResponse } from '@/types/manager/servers'
-import { mapServerListItemToServerItem, formatSpeed, formatOS, getStatusColor, getStatusText } from './utils'
-import { getProgressBarColor, getProgressTextColor } from '@/utils/version.ts'
+import type { GetServersResponse, ServerGroup } from '@/types/manager/servers'
+import { mapServerListItemToServerItem, getStatusText, formatOS } from './utils'
 
 const toast = useToast()
 const router = useRouter()
 const authStore = useAuthStore()
 
+// localStorage key
+const VIEW_MODE_STORAGE_KEY = 'overview_view_mode'
+
 // 响应式状态
 const servers = ref<ServerItem[]>([])
+const groups = ref<ServerGroup[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const initializing = ref(false)
 
 // 视图模式
-const viewMode = ref<'card' | 'table'>('card')
-const groupBy = ref<'none' | 'status' | 'location' | 'os'>('none')
+const getStoredViewMode = (): 'card' | 'table' => {
+  try {
+    const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY)
+    if (stored === 'card' || stored === 'table') {
+      return stored
+    }
+  } catch (err) {
+    console.warn('读取视图模式失败:', err)
+  }
+  return 'card'
+}
+
+const viewMode = ref<'card' | 'table'>(getStoredViewMode())
+const groupBy = ref<'none' | number | 'status' | 'location' | 'os'>('none')
 
 // 视图选项
 const viewOptions = [
-  { label: '卡片', value: 'card', icon: 'pi pi-th-large' },
-  { label: '表格', value: 'table', icon: 'pi pi-table' },
+  { value: 'card', icon: 'pi pi-table' },
+  { value: 'table', icon: 'pi pi-list' },
 ]
 
 // 分组选项
-const groupOptions = [
-  { label: '不分组', value: 'none' },
-  { label: '按状态', value: 'status' },
-  { label: '按地区', value: 'location' },
-  { label: '按系统', value: 'os' },
-]
+const groupOptions = computed(() => {
+  const options: Array<{ label: string; value: 'none' | number | 'status' | 'location' | 'os' }> = [
+    { label: '不分组', value: 'none' },
+    { label: '按状态', value: 'status' },
+    { label: '按地域', value: 'location' },
+    { label: '按系统', value: 'os' },
+  ]
+
+  groups.value.forEach((group) => {
+    options.push({ label: group.name, value: group.id })
+  })
+
+  return options
+})
+
+// 加载服务器分组列表
+const loadGroups = async () => {
+  try {
+    const response = await serversApi.getGroups()
+    if (response.status && response.data) {
+      groups.value = response.data || []
+    }
+  } catch (err) {
+    console.error('加载分组列表失败:', err)
+  }
+}
 
 // 加载服务器列表
 const loadServers = async () => {
@@ -54,7 +87,6 @@ const loadServers = async () => {
     const response = (await serversApi.getServers()) as GetServersResponse
 
     if (response.status && response.data) {
-      // 将后端数据映射为前端格式
       servers.value = response.data.map((server) => mapServerListItemToServerItem(server))
     } else {
       throw new Error(response.message || '获取服务器列表失败')
@@ -87,7 +119,8 @@ const websocket = useWebSocket({
         diskUsage: data.disk_usage !== undefined ? data.disk_usage : server.diskUsage,
         networkIO: {
           upload: data.network_upload !== undefined ? data.network_upload : server.networkIO.upload,
-          download: data.network_download !== undefined ? data.network_download : server.networkIO.download,
+          download:
+            data.network_download !== undefined ? data.network_download : server.networkIO.download,
         },
       }
     } else {
@@ -102,7 +135,8 @@ const websocket = useWebSocket({
       servers.value[serverIndex] = {
         ...server,
         os: data.data.os !== undefined ? data.data.os : server.os,
-        architecture: data.data.architecture !== undefined ? data.data.architecture : server.architecture,
+        architecture:
+          data.data.architecture !== undefined ? data.data.architecture : server.architecture,
       }
     }
   },
@@ -130,18 +164,33 @@ const websocket = useWebSocket({
   },
 })
 
+watch(
+  viewMode,
+  (newValue) => {
+    try {
+      localStorage.setItem(VIEW_MODE_STORAGE_KEY, newValue)
+    } catch (err) {
+      console.warn('保存视图模式失败:', err)
+    }
+  },
+  { immediate: false },
+)
+
 onMounted(async () => {
   if (!authStore.isAuthenticated) {
     initializing.value = true
     await new Promise((resolve) => setTimeout(resolve, 100))
     if (!authStore.isAuthenticated) {
-      await router.push({ name: 'login', query: { redirect_uri: router.currentRoute.value.fullPath } })
+      await router.push({
+        name: 'login',
+        query: { redirect_uri: router.currentRoute.value.fullPath },
+      })
       return
     }
     initializing.value = false
   }
 
-  loadServers()
+  await Promise.all([loadServers(), loadGroups()])
   websocket.connect()
 })
 
@@ -149,22 +198,51 @@ onUnmounted(() => {
   websocket.disconnect()
 })
 
+// 类型守卫函数
+const isNumberGroup = (
+  value: 'none' | number | 'status' | 'location' | 'os',
+): value is number => {
+  return typeof value === 'number'
+}
+
 // 分组计算属性
 const groupedServers = computed(() => {
   if (groupBy.value === 'none') {
-    return { '全部': servers.value }
+    return { 全部: servers.value }
   }
 
   const grouped: Record<string, ServerItem[]> = {}
+  const currentGroupBy = groupBy.value
 
+  // 如果 groupBy 是数字，表示按具体分组 ID 分组
+  if (isNumberGroup(currentGroupBy)) {
+    const selectedGroup = groups.value.find((g) => g.id === currentGroupBy)
+    if (selectedGroup) {
+      servers.value.forEach((server) => {
+        if (server.group_id === currentGroupBy) {
+          if (!grouped[selectedGroup.name]) {
+            grouped[selectedGroup.name] = []
+          }
+          grouped[selectedGroup.name].push(server)
+        }
+      })
+      // 确保分组显示
+      if (!grouped[selectedGroup.name]) {
+        grouped[selectedGroup.name] = []
+      }
+    }
+    return grouped
+  }
+
+  // 其他分组方式
   servers.value.forEach((server) => {
     let key: string
-    switch (groupBy.value) {
+    switch (currentGroupBy) {
       case 'status':
         key = getStatusText(server.status)
         break
       case 'location':
-        key = server.location || '未知地区'
+        key = server.location || '未知地域'
         break
       case 'os':
         key = formatOS(server.os) || '未知系统'
@@ -182,20 +260,13 @@ const groupedServers = computed(() => {
   return grouped
 })
 
-// 获取状态严重程度（用于 Tag 组件）
-const getStatusSeverity = (status: string): 'success' | 'danger' | 'warning' | 'secondary' => {
-  switch (status) {
-    case 'online':
-      return 'success'
-    case 'offline':
-      return 'danger'
-    case 'maintenance':
-      return 'warning'
-    case 'error':
-      return 'danger'
-    default:
-      return 'secondary'
+// 获取分组颜色
+const getGroupColor = (groupName: string): string | undefined => {
+  if (isNumberGroup(groupBy.value)) {
+    const group = groups.value.find((g) => g.name === groupName)
+    return group?.color
   }
+  return undefined
 }
 </script>
 <template>
@@ -212,18 +283,19 @@ const getStatusSeverity = (status: string): 'success' | 'danger' | 'warning' | '
     </div>
 
     <!-- 错误状态 -->
-    <div v-else-if="error && !initializing" class="flex flex-col items-center justify-center py-12 space-y-4">
+    <div
+      v-else-if="error && !initializing"
+      class="flex flex-col items-center justify-center py-12 space-y-4"
+    >
       <p class="text-2xl text-color">{{ error }}</p>
-      <Button
-        size="small"
-        @click="loadServers"
-      >
-        重试
-      </Button>
+      <Button size="small" @click="loadServers"> 重试 </Button>
     </div>
 
     <!-- 空数据状态 -->
-    <div v-else-if="servers.length === 0 && !initializing" class="flex flex-col items-center justify-center py-12">
+    <div
+      v-else-if="servers.length === 0 && !initializing"
+      class="flex flex-col items-center justify-center py-12"
+    >
       <i class="pi pi-server text-4xl text-muted-color mb-4"></i>
       <p class="text-lg text-muted-color">暂无服务器</p>
     </div>
@@ -233,267 +305,44 @@ const getStatusSeverity = (status: string): 'success' | 'danger' | 'warning' | '
       <!-- 工具栏 -->
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div class="flex items-center gap-2">
-          <h2 class="text-xl font-semibold text-color">服务器概览</h2>
+          <h2 class="text-xl font-semibold text-color">总览</h2>
           <span class="text-sm text-muted-color">({{ servers.length }} 台)</span>
         </div>
         <div class="flex items-center gap-3">
           <Dropdown
             v-model="groupBy"
             :options="groupOptions"
+            size="small"
             option-label="label"
             option-value="value"
             placeholder="分组方式"
             class="w-[140px]"
           />
-          <SelectButton
-            v-model="viewMode"
-            :options="viewOptions"
-            option-label="label"
-            option-value="value"
-          />
+          <SelectButton v-model="viewMode" :options="viewOptions" option-value="value">
+            <template #option="slotProps">
+              <i :class="slotProps.option.icon"></i>
+            </template>
+          </SelectButton>
         </div>
       </div>
 
       <!-- 表格视图 -->
       <div v-if="viewMode === 'table'">
         <template v-if="groupBy === 'none'">
-          <DataTable
-            :value="servers"
-            striped-rows
-            class="p-datatable-sm"
-            :pt="{
-              root: { class: 'rounded-lg border border-surface-200 dark:border-surface-700' },
-              header: { class: 'bg-surface-50 dark:bg-surface-800' },
-              tbody: { class: 'bg-surface-0 dark:bg-surface-900' },
-              row: { class: 'hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' },
-            }"
-          >
-            <Column field="status" header="状态" style="width: 100px">
-              <template #body="{ data }">
-                <div class="flex items-center gap-2">
-                  <div
-                    :class="getStatusColor(data.status)"
-                    class="w-2 h-2 rounded-full shadow-sm animate-pulse-slow"
-                  ></div>
-                  <Tag :value="getStatusText(data.status)" :severity="getStatusSeverity(data.status)" />
-                </div>
-              </template>
-            </Column>
-            <Column field="name" header="名称" sortable style="min-width: 150px">
-              <template #body="{ data }">
-                <span class="font-medium text-color">{{ data.name }}</span>
-              </template>
-            </Column>
-            <Column field="location" header="地区" sortable style="width: 120px">
-              <template #body="{ data }">
-                <div class="flex items-center gap-1">
-                  <i class="pi pi-map-marker text-xs text-muted-color"></i>
-                  <span class="text-muted-color">{{ data.location || '-' }}</span>
-                </div>
-              </template>
-            </Column>
-            <Column field="os" header="系统" sortable style="width: 120px">
-              <template #body="{ data }">
-                <span class="text-color">{{ formatOS(data.os) || '-' }}</span>
-              </template>
-            </Column>
-            <Column field="cpuUsage" header="CPU" sortable style="width: 120px">
-              <template #body="{ data }">
-                <div class="space-y-1">
-                  <div class="flex items-center justify-between">
-                    <span class="text-sm font-semibold" :class="getProgressTextColor(data.cpuUsage)">
-                      {{ data.cpuUsage }}%
-                    </span>
-                  </div>
-                  <ProgressBar
-                    :value="data.cpuUsage"
-                    class="h-1.5"
-                    :pt="{
-                      value: {
-                        class: getProgressBarColor(data.cpuUsage) + ' transition-all duration-500',
-                      },
-                    }"
-                  />
-                </div>
-              </template>
-            </Column>
-            <Column field="memoryUsage" header="内存" sortable style="width: 120px">
-              <template #body="{ data }">
-                <div class="space-y-1">
-                  <div class="flex items-center justify-between">
-                    <span class="text-sm font-semibold" :class="getProgressTextColor(data.memoryUsage)">
-                      {{ data.memoryUsage }}%
-                    </span>
-                  </div>
-                  <ProgressBar
-                    :value="data.memoryUsage"
-                    class="h-1.5"
-                    :pt="{
-                      value: {
-                        class: getProgressBarColor(data.memoryUsage) + ' transition-all duration-500',
-                      },
-                    }"
-                  />
-                </div>
-              </template>
-            </Column>
-            <Column field="diskUsage" header="磁盘" sortable style="width: 120px">
-              <template #body="{ data }">
-                <div class="space-y-1">
-                  <div class="flex items-center justify-between">
-                    <span class="text-sm font-semibold" :class="getProgressTextColor(data.diskUsage)">
-                      {{ data.diskUsage }}%
-                    </span>
-                  </div>
-                  <ProgressBar
-                    :value="data.diskUsage"
-                    class="h-1.5"
-                    :pt="{
-                      value: {
-                        class: getProgressBarColor(data.diskUsage) + ' transition-all duration-500',
-                      },
-                    }"
-                  />
-                </div>
-              </template>
-            </Column>
-            <Column field="networkIO" header="网络" style="width: 150px">
-              <template #body="{ data }">
-                <div class="space-y-1 text-xs">
-                  <div class="flex items-center gap-1">
-                    <i class="pi pi-arrow-up text-green-600 dark:text-green-400"></i>
-                    <span class="text-muted-color">{{ formatSpeed(data.networkIO.upload) }}</span>
-                  </div>
-                  <div class="flex items-center gap-1">
-                    <i class="pi pi-arrow-down text-blue-600 dark:text-blue-400"></i>
-                    <span class="text-muted-color">{{ formatSpeed(data.networkIO.download) }}</span>
-                  </div>
-                </div>
-              </template>
-            </Column>
-          </DataTable>
+          <ServerTable :servers="servers" />
         </template>
         <template v-else>
-          <div v-for="(groupServers, groupName) in groupedServers" :key="groupName" class="mb-6 space-y-3">
-            <div class="flex items-center justify-between px-2">
-              <h3 class="text-lg font-semibold text-color">{{ groupName }}</h3>
-              <span class="text-sm text-muted-color">{{ groupServers.length }} 台服务器</span>
-            </div>
-            <DataTable
-              :value="groupServers"
-              striped-rows
-              class="p-datatable-sm"
-              :pt="{
-                root: { class: 'rounded-lg border border-surface-200 dark:border-surface-700' },
-                header: { class: 'bg-surface-50 dark:bg-surface-800' },
-                tbody: { class: 'bg-surface-0 dark:bg-surface-900' },
-                row: { class: 'hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' },
-              }"
-            >
-              <Column field="status" header="状态" style="width: 100px">
-                <template #body="{ data }">
-                  <div class="flex items-center gap-2">
-                    <div
-                      :class="getStatusColor(data.status)"
-                      class="w-2 h-2 rounded-full shadow-sm animate-pulse-slow"
-                    ></div>
-                    <Tag :value="getStatusText(data.status)" :severity="getStatusSeverity(data.status)" />
-                  </div>
-                </template>
-              </Column>
-              <Column field="name" header="名称" sortable style="min-width: 150px">
-                <template #body="{ data }">
-                  <span class="font-medium text-color">{{ data.name }}</span>
-                </template>
-              </Column>
-              <Column field="location" header="地区" sortable style="width: 120px">
-                <template #body="{ data }">
-                  <div class="flex items-center gap-1">
-                    <i class="pi pi-map-marker text-xs text-muted-color"></i>
-                    <span class="text-muted-color">{{ data.location || '-' }}</span>
-                  </div>
-                </template>
-              </Column>
-              <Column field="os" header="系统" sortable style="width: 120px">
-                <template #body="{ data }">
-                  <span class="text-color">{{ formatOS(data.os) || '-' }}</span>
-                </template>
-              </Column>
-              <Column field="cpuUsage" header="CPU" sortable style="width: 120px">
-                <template #body="{ data }">
-                  <div class="space-y-1">
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm font-semibold" :class="getProgressTextColor(data.cpuUsage)">
-                        {{ data.cpuUsage }}%
-                      </span>
-                    </div>
-                    <ProgressBar
-                      :value="data.cpuUsage"
-                      class="h-1.5"
-                      :pt="{
-                        value: {
-                          class: getProgressBarColor(data.cpuUsage) + ' transition-all duration-500',
-                        },
-                      }"
-                    />
-                  </div>
-                </template>
-              </Column>
-              <Column field="memoryUsage" header="内存" sortable style="width: 120px">
-                <template #body="{ data }">
-                  <div class="space-y-1">
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm font-semibold" :class="getProgressTextColor(data.memoryUsage)">
-                        {{ data.memoryUsage }}%
-                      </span>
-                    </div>
-                    <ProgressBar
-                      :value="data.memoryUsage"
-                      class="h-1.5"
-                      :pt="{
-                        value: {
-                          class: getProgressBarColor(data.memoryUsage) + ' transition-all duration-500',
-                        },
-                      }"
-                    />
-                  </div>
-                </template>
-              </Column>
-              <Column field="diskUsage" header="磁盘" sortable style="width: 120px">
-                <template #body="{ data }">
-                  <div class="space-y-1">
-                    <div class="flex items-center justify-between">
-                      <span class="text-sm font-semibold" :class="getProgressTextColor(data.diskUsage)">
-                        {{ data.diskUsage }}%
-                      </span>
-                    </div>
-                    <ProgressBar
-                      :value="data.diskUsage"
-                      class="h-1.5"
-                      :pt="{
-                        value: {
-                          class: getProgressBarColor(data.diskUsage) + ' transition-all duration-500',
-                        },
-                      }"
-                    />
-                  </div>
-                </template>
-              </Column>
-              <Column field="networkIO" header="网络" style="width: 150px">
-                <template #body="{ data }">
-                  <div class="space-y-1 text-xs">
-                    <div class="flex items-center gap-1">
-                      <i class="pi pi-arrow-up text-green-600 dark:text-green-400"></i>
-                      <span class="text-muted-color">{{ formatSpeed(data.networkIO.upload) }}</span>
-                    </div>
-                    <div class="flex items-center gap-1">
-                      <i class="pi pi-arrow-down text-blue-600 dark:text-blue-400"></i>
-                      <span class="text-muted-color">{{ formatSpeed(data.networkIO.download) }}</span>
-                    </div>
-                  </div>
-                </template>
-              </Column>
-            </DataTable>
+          <div
+            v-for="(groupServers, groupName) in groupedServers"
+            :key="groupName"
+            class="mb-6 space-y-3"
+          >
+            <GroupHeader
+              :group-name="groupName"
+              :count="groupServers.length"
+              :color="getGroupColor(groupName)"
+            />
+            <ServerTable :servers="groupServers" />
           </div>
         </template>
       </div>
@@ -501,17 +350,26 @@ const getStatusSeverity = (status: string): 'success' | 'danger' | 'warning' | '
       <!-- 卡片视图 -->
       <div v-else>
         <template v-if="groupBy === 'none'">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+          <div
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
+          >
             <ServerCard v-for="server in servers" :key="server.id" v-bind="server" />
           </div>
         </template>
         <template v-else>
-          <div v-for="(groupServers, groupName) in groupedServers" :key="groupName" class="mb-6 space-y-4">
-            <div class="flex items-center justify-between px-2">
-              <h3 class="text-lg font-semibold text-color">{{ groupName }}</h3>
-              <span class="text-sm text-muted-color">{{ groupServers.length }} 台服务器</span>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+          <div
+            v-for="(groupServers, groupName) in groupedServers"
+            :key="groupName"
+            class="mb-6 space-y-4"
+          >
+            <GroupHeader
+              :group-name="groupName"
+              :count="groupServers.length"
+              :color="getGroupColor(groupName)"
+            />
+            <div
+              class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
+            >
               <ServerCard v-for="server in groupServers" :key="server.id" v-bind="server" />
             </div>
           </div>
@@ -520,19 +378,3 @@ const getStatusSeverity = (status: string): 'success' | 'danger' | 'warning' | '
     </div>
   </div>
 </template>
-<style scoped>
-/* 自定义动画类 */
-@keyframes pulse-slow {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 2s ease-in-out infinite;
-}
-</style>

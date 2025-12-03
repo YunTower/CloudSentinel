@@ -16,7 +16,7 @@ const statusText = computed(() => getStatusTextUtil(props.status))
     <template #header>
       <div class="p-4 space-y-1">
         <div class="text-lg font-semibold truncate text-color-emphasis">
-          {{ name }}
+          {{ props.name }}
         </div>
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
@@ -28,7 +28,7 @@ const statusText = computed(() => getStatusTextUtil(props.status))
           </div>
           <div class="flex items-center gap-2">
             <i class="pi pi-map-marker !text-[12px] text-muted-color"></i>
-            <span class="text-xs font-medium text-muted-color">{{ location }}</span>
+            <span class="text-xs font-medium text-muted-color">{{ props.location }}</span>
           </div>
         </div>
       </div>
@@ -39,15 +39,15 @@ const statusText = computed(() => getStatusTextUtil(props.status))
         <!-- CPU 和内存监控 -->
         <div class="grid grid-cols-2 gap-4">
           <div class="text-center p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
-            <div class="text-2xl font-bold mb-1" :class="getProgressTextColor(cpuUsage)">
-              {{ cpuUsage }}%
+            <div class="text-2xl font-bold mb-1" :class="getProgressTextColor(props.cpuUsage)">
+              {{ props.cpuUsage }}%
             </div>
             <div class="text-xs font-medium text-muted-color">CPU</div>
           </div>
 
           <div class="text-center p-3 rounded-lg bg-surface-50 dark:bg-surface-800">
-            <div class="text-2xl font-bold mb-1" :class="getProgressTextColor(memoryUsage)">
-              {{ memoryUsage }}%
+            <div class="text-2xl font-bold mb-1" :class="getProgressTextColor(props.memoryUsage)">
+              {{ props.memoryUsage }}%
             </div>
             <div class="text-xs font-medium text-muted-color">内存</div>
           </div>
@@ -62,11 +62,11 @@ const statusText = computed(() => getStatusTextUtil(props.status))
             </div>
             <div class="text-center">
               <div class="text-muted-color">架构</div>
-              <div class="font-semibold text-color">{{ architecture }}</div>
+              <div class="font-semibold text-color">{{ props.architecture }}</div>
             </div>
             <div class="text-center">
               <div class="text-muted-color">核心</div>
-              <div class="font-semibold text-color">{{ cores }}</div>
+              <div class="font-semibold text-color">{{ props.cores }}</div>
             </div>
           </div>
         </div>
@@ -79,7 +79,7 @@ const statusText = computed(() => getStatusTextUtil(props.status))
             <div class="flex-1 flex justify-end">
               <div
                 class="w-2 h-2 rounded-full bg-primary animate-pulse"
-                v-if="networkIO.upload > 0 || networkIO.download > 0"
+                v-if="props.networkIO.upload > 0 || props.networkIO.download > 0"
               ></div>
             </div>
           </div>
@@ -90,7 +90,7 @@ const statusText = computed(() => getStatusTextUtil(props.status))
                 <span class="text-xs text-muted-color">上传</span>
               </div>
               <div class="text-base font-bold">
-                {{ formatSpeed(networkIO.upload) }}
+                {{ formatSpeed(props.networkIO.upload) }}
               </div>
             </div>
             <div class="bg-surface-0 dark:bg-surface-900 rounded-lg p-2 text-center">
@@ -99,7 +99,7 @@ const statusText = computed(() => getStatusTextUtil(props.status))
                 <span class="text-xs text-muted-color">下载</span>
               </div>
               <div class="text-base font-bold">
-                {{ formatSpeed(networkIO.download) }}
+                {{ formatSpeed(props.networkIO.download) }}
               </div>
             </div>
           </div>
@@ -111,14 +111,14 @@ const statusText = computed(() => getStatusTextUtil(props.status))
             <div class="flex items-center gap-2">
               <i class="pi pi-database text-sm text-muted-color"></i>
               <span class="text-sm font-medium text-color">磁盘</span>
-              <span v-if="totalStorage" class="text-xs text-muted-color">({{ totalStorage }})</span>
+              <span v-if="props.totalStorage" class="text-xs text-muted-color">({{ props.totalStorage }})</span>
             </div>
-            <span class="text-sm font-bold" :class="getProgressTextColor(diskUsage)">
-              {{ diskUsage }}%
+            <span class="text-sm font-bold" :class="getProgressTextColor(props.diskUsage)">
+              {{ props.diskUsage }}%
             </span>
           </div>
           <ProgressBar
-            :value="diskUsage"
+            :value="props.diskUsage"
             class="h-2"
             :pt="{
               value: {
@@ -156,7 +156,6 @@ const statusText = computed(() => getStatusTextUtil(props.status))
   padding: 0;
 }
 
-/* 自定义动画类 */
 @keyframes pulse-slow {
   0%,
   100% {
