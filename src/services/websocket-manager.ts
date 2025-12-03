@@ -89,7 +89,7 @@ class WebSocketManager {
 
       if (isDev) {
         // 开发环境
-        wsUrl = `ws://127.0.0.1:3000/ws/frontend?token=${encodeURIComponent(token)}`
+        wsUrl = `ws://127.0.0.1:3000/api/ws/frontend?token=${encodeURIComponent(token)}`
       } else {
         // 生产环境
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'

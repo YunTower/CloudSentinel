@@ -36,10 +36,8 @@ const { onAuthRequired, onResponseRefreshToken } = createServerTokenAuthenticati
 
 export const requester = createAlova({
   requestAdapter: adapterFetch(),
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL_PREFIX || '/api',
   cacheFor: null,
-  beforeRequest: onAuthRequired((method) => {
-    // 可以在这里添加其他请求前处理逻辑
-  }),
+  beforeRequest: onAuthRequired(() => {}),
   responded: onResponseRefreshToken((response) => response.json()),
 })

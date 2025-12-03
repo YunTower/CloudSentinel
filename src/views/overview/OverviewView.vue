@@ -1,24 +1,83 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import ServerCard from './components/ServerCard.vue'
+import ServerTable from './components/ServerTable.vue'
+import GroupHeader from './components/GroupHeader.vue'
+import Dropdown from 'primevue/dropdown'
+import SelectButton from 'primevue/selectbutton'
+import Button from 'primevue/button'
 import serversApi from '@/apis/servers'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useAuthStore } from '@/stores/auth'
 import type { ServerItem } from '@/types/server'
-import type { GetServersResponse } from '@/types/manager/servers'
-import { mapServerListItemToServerItem } from './utils'
+import type { GetServersResponse, ServerGroup } from '@/types/manager/servers'
+import { mapServerListItemToServerItem, getStatusText, formatOS } from './utils'
 
 const toast = useToast()
 const router = useRouter()
 const authStore = useAuthStore()
 
+// localStorage key
+const VIEW_MODE_STORAGE_KEY = 'overview_view_mode'
+
 // 响应式状态
 const servers = ref<ServerItem[]>([])
+const groups = ref<ServerGroup[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const initializing = ref(false)
+
+// 视图模式
+const getStoredViewMode = (): 'card' | 'table' => {
+  try {
+    const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY)
+    if (stored === 'card' || stored === 'table') {
+      return stored
+    }
+  } catch (err) {
+    console.warn('读取视图模式失败:', err)
+  }
+  return 'card'
+}
+
+const viewMode = ref<'card' | 'table'>(getStoredViewMode())
+const groupBy = ref<'none' | number | 'status' | 'location' | 'os'>('none')
+
+// 视图选项
+const viewOptions = [
+  { value: 'card', icon: 'pi pi-table' },
+  { value: 'table', icon: 'pi pi-list' },
+]
+
+// 分组选项
+const groupOptions = computed(() => {
+  const options: Array<{ label: string; value: 'none' | number | 'status' | 'location' | 'os' }> = [
+    { label: '不分组', value: 'none' },
+    { label: '按状态', value: 'status' },
+    { label: '按地域', value: 'location' },
+    { label: '按系统', value: 'os' },
+  ]
+
+  groups.value.forEach((group) => {
+    options.push({ label: group.name, value: group.id })
+  })
+
+  return options
+})
+
+// 加载服务器分组列表
+const loadGroups = async () => {
+  try {
+    const response = await serversApi.getGroups()
+    if (response.status && response.data) {
+      groups.value = response.data || []
+    }
+  } catch (err) {
+    console.error('加载分组列表失败:', err)
+  }
+}
 
 // 加载服务器列表
 const loadServers = async () => {
@@ -28,7 +87,6 @@ const loadServers = async () => {
     const response = (await serversApi.getServers()) as GetServersResponse
 
     if (response.status && response.data) {
-      // 将后端数据映射为前端格式
       servers.value = response.data.map((server) => mapServerListItemToServerItem(server))
     } else {
       throw new Error(response.message || '获取服务器列表失败')
@@ -61,7 +119,8 @@ const websocket = useWebSocket({
         diskUsage: data.disk_usage !== undefined ? data.disk_usage : server.diskUsage,
         networkIO: {
           upload: data.network_upload !== undefined ? data.network_upload : server.networkIO.upload,
-          download: data.network_download !== undefined ? data.network_download : server.networkIO.download,
+          download:
+            data.network_download !== undefined ? data.network_download : server.networkIO.download,
         },
       }
     } else {
@@ -76,7 +135,8 @@ const websocket = useWebSocket({
       servers.value[serverIndex] = {
         ...server,
         os: data.data.os !== undefined ? data.data.os : server.os,
-        architecture: data.data.architecture !== undefined ? data.data.architecture : server.architecture,
+        architecture:
+          data.data.architecture !== undefined ? data.data.architecture : server.architecture,
       }
     }
   },
@@ -104,24 +164,110 @@ const websocket = useWebSocket({
   },
 })
 
+watch(
+  viewMode,
+  (newValue) => {
+    try {
+      localStorage.setItem(VIEW_MODE_STORAGE_KEY, newValue)
+    } catch (err) {
+      console.warn('保存视图模式失败:', err)
+    }
+  },
+  { immediate: false },
+)
+
 onMounted(async () => {
   if (!authStore.isAuthenticated) {
     initializing.value = true
     await new Promise((resolve) => setTimeout(resolve, 100))
     if (!authStore.isAuthenticated) {
-      await router.push({ name: 'login', query: { redirect_uri: router.currentRoute.value.fullPath } })
+      await router.push({
+        name: 'login',
+        query: { redirect_uri: router.currentRoute.value.fullPath },
+      })
       return
     }
     initializing.value = false
   }
 
-  loadServers()
+  await Promise.all([loadServers(), loadGroups()])
   websocket.connect()
 })
 
 onUnmounted(() => {
   websocket.disconnect()
 })
+
+// 类型守卫函数
+const isNumberGroup = (
+  value: 'none' | number | 'status' | 'location' | 'os',
+): value is number => {
+  return typeof value === 'number'
+}
+
+// 分组计算属性
+const groupedServers = computed(() => {
+  if (groupBy.value === 'none') {
+    return { 全部: servers.value }
+  }
+
+  const grouped: Record<string, ServerItem[]> = {}
+  const currentGroupBy = groupBy.value
+
+  // 如果 groupBy 是数字，表示按具体分组 ID 分组
+  if (isNumberGroup(currentGroupBy)) {
+    const selectedGroup = groups.value.find((g) => g.id === currentGroupBy)
+    if (selectedGroup) {
+      servers.value.forEach((server) => {
+        if (server.group_id === currentGroupBy) {
+          if (!grouped[selectedGroup.name]) {
+            grouped[selectedGroup.name] = []
+          }
+          grouped[selectedGroup.name].push(server)
+        }
+      })
+      // 确保分组显示
+      if (!grouped[selectedGroup.name]) {
+        grouped[selectedGroup.name] = []
+      }
+    }
+    return grouped
+  }
+
+  // 其他分组方式
+  servers.value.forEach((server) => {
+    let key: string
+    switch (currentGroupBy) {
+      case 'status':
+        key = getStatusText(server.status)
+        break
+      case 'location':
+        key = server.location || '未知地域'
+        break
+      case 'os':
+        key = formatOS(server.os) || '未知系统'
+        break
+      default:
+        key = '全部'
+    }
+
+    if (!grouped[key]) {
+      grouped[key] = []
+    }
+    grouped[key].push(server)
+  })
+
+  return grouped
+})
+
+// 获取分组颜色
+const getGroupColor = (groupName: string): string | undefined => {
+  if (isNumberGroup(groupBy.value)) {
+    const group = groups.value.find((g) => g.name === groupName)
+    return group?.color
+  }
+  return undefined
+}
 </script>
 <template>
   <div class="mx-0 my-auto space-y-6">
@@ -137,28 +283,98 @@ onUnmounted(() => {
     </div>
 
     <!-- 错误状态 -->
-    <div v-else-if="error && !initializing" class="flex flex-col items-center justify-center py-12 space-y-4">
+    <div
+      v-else-if="error && !initializing"
+      class="flex flex-col items-center justify-center py-12 space-y-4"
+    >
       <p class="text-2xl text-color">{{ error }}</p>
-      <Button
-        size="small"
-        @click="loadServers"
-      >
-        重试
-      </Button>
+      <Button size="small" @click="loadServers"> 重试 </Button>
     </div>
 
     <!-- 空数据状态 -->
-    <div v-else-if="servers.length === 0 && !initializing" class="flex flex-col items-center justify-center py-12">
+    <div
+      v-else-if="servers.length === 0 && !initializing"
+      class="flex flex-col items-center justify-center py-12"
+    >
       <i class="pi pi-server text-4xl text-muted-color mb-4"></i>
       <p class="text-lg text-muted-color">暂无服务器</p>
     </div>
 
-    <!-- 服务器卡片列表 -->
-    <div
-      v-else-if="!initializing"
-      class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
-    >
-      <ServerCard v-for="server in servers" :key="server.id" v-bind="server" />
+    <!-- 主要内容 -->
+    <div v-else-if="!initializing" class="space-y-6">
+      <!-- 工具栏 -->
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <div class="flex items-center gap-2">
+          <h2 class="text-xl font-semibold text-color">总览</h2>
+          <span class="text-sm text-muted-color">({{ servers.length }} 台)</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <Dropdown
+            v-model="groupBy"
+            :options="groupOptions"
+            size="small"
+            option-label="label"
+            option-value="value"
+            placeholder="分组方式"
+            class="w-[140px]"
+          />
+          <SelectButton v-model="viewMode" :options="viewOptions" option-value="value">
+            <template #option="slotProps">
+              <i :class="slotProps.option.icon"></i>
+            </template>
+          </SelectButton>
+        </div>
+      </div>
+
+      <!-- 表格视图 -->
+      <div v-if="viewMode === 'table'">
+        <template v-if="groupBy === 'none'">
+          <ServerTable :servers="servers" />
+        </template>
+        <template v-else>
+          <div
+            v-for="(groupServers, groupName) in groupedServers"
+            :key="groupName"
+            class="mb-6 space-y-3"
+          >
+            <GroupHeader
+              :group-name="groupName"
+              :count="groupServers.length"
+              :color="getGroupColor(groupName)"
+            />
+            <ServerTable :servers="groupServers" />
+          </div>
+        </template>
+      </div>
+
+      <!-- 卡片视图 -->
+      <div v-else>
+        <template v-if="groupBy === 'none'">
+          <div
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
+          >
+            <ServerCard v-for="server in servers" :key="server.id" v-bind="server" />
+          </div>
+        </template>
+        <template v-else>
+          <div
+            v-for="(groupServers, groupName) in groupedServers"
+            :key="groupName"
+            class="mb-6 space-y-4"
+          >
+            <GroupHeader
+              :group-name="groupName"
+              :count="groupServers.length"
+              :color="getGroupColor(groupName)"
+            />
+            <div
+              class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
+            >
+              <ServerCard v-for="server in groupServers" :key="server.id" v-bind="server" />
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
   </div>
 </template>

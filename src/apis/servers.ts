@@ -1,13 +1,24 @@
 import { requester } from '@/utils/requester.ts'
-import type { ServerForm } from '@/types/manager/servers'
+import type {
+  ServerForm,
+  ServerGroup,
+  ServerAlertRules,
+  ServerAlertRulesInput,
+} from '@/types/manager/servers'
 
 export default {
   createServer: (form: ServerForm) => requester.Post('/servers', form),
-  getServers: () => requester.Get('/servers'),
+  getServers: (groupID?: number) => {
+    let url = '/servers'
+    if (groupID !== undefined) {
+      url += `?group_id=${groupID}`
+    }
+    return requester.Get(url)
+  },
   getServerDetail: (id: string) => requester.Get(`/servers/${id}`),
   updateServer: (id: string, form: ServerForm) => requester.Patch(`/servers/${id}`, form),
   deleteServer: (id: string) => requester.Delete(`/servers/${id}`),
-  restartServer: (id: string) => requester.Post(`/servers/${id}/restart`),
+  restartService: (id: string) => requester.Post(`/servers/${id}/restart`),
   getServerMetricsCPU: (id: string, start?: string, end?: string) => {
     let url = `/servers/${id}/metrics/cpu`
     const params = new URLSearchParams()
@@ -45,4 +56,12 @@ export default {
     const params = type ? { type } : {}
     return requester.Post(url, params)
   },
+  // 服务器分组管理
+  getGroups: () => requester.Get<{ status: boolean; message: string; data: ServerGroup[] }>('/servers/groups'),
+  createGroup: (group: { name: string; description?: string; color?: string }) =>
+    requester.Post<{ status: boolean; message: string; data: ServerGroup }>('/servers/groups', group),
+  updateGroup: (id: number, group: { name: string; description?: string; color?: string }) =>
+    requester.Patch<{ status: boolean; message: string; data: ServerGroup }>(`/servers/groups/${id}`, group),
+  deleteGroup: (id: number) =>
+    requester.Delete<{ status: boolean; message: string; data: null }>(`/servers/groups/${id}`),
 }

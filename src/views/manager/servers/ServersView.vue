@@ -3,7 +3,11 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import ServerTable from './components/ServerTable.vue'
 import ServerDialog from './components/ServerDialog.vue'
+import ServerGroupDialog from './components/ServerGroupDialog.vue'
+import ServerGroupManager from './components/ServerGroupManager.vue'
+import InstallInfo from './components/InstallInfo.vue'
 import serversApi from '@/apis/servers'
+import type { ServerGroup } from '@/types/manager/servers'
 import updateApi from '@/apis/update'
 import { useWebSocket } from '@/composables/useWebSocket'
 import type { VersionType } from '@/utils/version.ts'
@@ -16,7 +20,7 @@ import type {
   GetServersResponse,
   DeleteServerResponse,
   UpdateServerResponse,
-  RestartServerResponse,
+  RestartServiceResponse,
   ServerListItemData,
 } from '@/types/manager/servers'
 
@@ -28,7 +32,12 @@ const deletingServerId = ref<string>('')
 const restartingServerId = ref<string>('')
 const searchQuery = ref('')
 const statusFilter = ref<string>('all')
+const groupFilter = ref<number | null>(null)
 const showAddDialog = ref(false)
+const showGroupDialog = ref(false)
+const showGroupManager = ref(false)
+const editingGroup = ref<ServerGroup | null>(null)
+const groups = ref<ServerGroup[]>([])
 const editingServer = ref<Server | null>(null)
 const serverTableRef = ref<InstanceType<typeof ServerTable> | null>(null)
 
@@ -121,6 +130,18 @@ const websocket = useWebSocket({
   },
 })
 
+// 加载分组列表
+const loadGroups = async () => {
+  try {
+    const response = await serversApi.getGroups()
+    if (response.status && response.data) {
+      groups.value = response.data || []
+    }
+  } catch (error) {
+    console.error('加载分组列表失败:', error)
+  }
+}
+
 // 过滤后的服务器
 const filteredServers = computed(() => {
   let filtered = servers.value
@@ -139,6 +160,12 @@ const filteredServers = computed(() => {
   if (statusFilter.value && statusFilter.value !== 'all') {
     filtered = filtered.filter((server) => server.status === statusFilter.value)
   }
+
+  // 分组过滤
+  if (groupFilter.value !== null) {
+    filtered = filtered.filter((server) => server.group_id === groupFilter.value)
+  }
+
   return filtered
 })
 
@@ -183,7 +210,7 @@ const handleDeleteServer = async (server: Server) => {
 const handleRestartServer = async (server: Server) => {
   restartingServerId.value = server.id
   try {
-    const response = (await serversApi.restartServer(server.id)) as RestartServerResponse
+    const response = (await serversApi.restartService(server.id)) as RestartServiceResponse
 
     if (response.status) {
       toast.add({
@@ -272,6 +299,22 @@ const handleSaveServer = async (form: ServerForm) => {
   }
 }
 
+// 分组管理
+const handleCreateGroup = () => {
+  editingGroup.value = null
+  showGroupDialog.value = true
+}
+
+const handleEditGroup = (group: ServerGroup) => {
+  editingGroup.value = group
+  showGroupDialog.value = true
+}
+
+const handleGroupSuccess = async () => {
+  await loadGroups()
+  await loadServers()
+}
+
 const loadServers = async () => {
   loading.value = true
   try {
@@ -310,6 +353,17 @@ const loadServers = async () => {
           kernel: '',
           hostname: '',
           uptime: server.uptime || '0天0时0分',
+          group_id: server.group_id,
+          group: server.group,
+          billing_cycle: server.billing_cycle,
+          custom_cycle_days: server.custom_cycle_days,
+          price: server.price,
+          expire_time: server.expire_time,
+          bandwidth_mbps: server.bandwidth_mbps,
+          traffic_limit_type: server.traffic_limit_type,
+          traffic_limit_bytes: server.traffic_limit_bytes,
+          traffic_reset_cycle: server.traffic_reset_cycle,
+          traffic_custom_cycle_days: server.traffic_custom_cycle_days,
           cpu,
           memory,
           disk,
@@ -380,113 +434,12 @@ const loadServerDetail = async (serverId: string) => {
   server._detailLoaded = true
 }
 
-const copyAgentKey = async () => {
-  try {
-    await navigator.clipboard.writeText(generatedAgentKey.value)
-    toast.add({
-      severity: 'success',
-      summary: '复制成功',
-      detail: 'Agent Key已复制到剪贴板',
-      life: 2000,
-    })
-  } catch {
-    toast.add({
-      severity: 'error',
-      summary: '复制失败',
-      detail: '请手动复制Agent Key',
-      life: 3000,
-    })
-  }
-}
-
-const installCommand = computed(() => {
-  if (selectedServerForInstall.value) {
-    const server = selectedServerForInstall.value
-    if (!server.agent_key) return ''
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = window.location.host
-    const wsUrl = `${protocol}//${host}/api/ws/agent`
-    const installScriptURL = window.location.origin + '/install.sh'
-    return `curl -fsSL ${installScriptURL} | bash -s -- --server=${wsUrl} --key=${server.agent_key}`
-  }
-  if (!generatedAgentKey.value || !serverIP.value) return ''
-  const installScriptURL = window.location.origin + '/install.sh'
-  return `curl -fsSL ${installScriptURL} | bash -s -- --server=${websocketURL.value} --key=${generatedAgentKey.value}`
-})
-
-// 处理查看安装脚本
 // 处理查看安装信息
 const handleViewInstallInfo = (server: Server) => {
   selectedServerForInstall.value = server
   showInstallInfoDialog.value = true
 }
 
-const copySelectedAgentKey = async () => {
-  if (!selectedServerForInstall.value?.agent_key) {
-    toast.add({
-      severity: 'warn',
-      summary: '无法复制',
-      detail: 'Agent Key 不存在',
-      life: 2000,
-    })
-    return
-  }
-  try {
-    await navigator.clipboard.writeText(selectedServerForInstall.value.agent_key)
-    toast.add({
-      severity: 'success',
-      summary: '复制成功',
-      detail: 'Agent Key已复制到剪贴板',
-      life: 2000,
-    })
-  } catch (error) {
-    console.error('复制失败:', error)
-    toast.add({
-      severity: 'error',
-      summary: '复制失败',
-      detail: '请手动复制Agent Key',
-      life: 3000,
-    })
-  }
-}
-
-const copySelectedInstallCommand = async () => {
-  try {
-    await navigator.clipboard.writeText(installCommand.value)
-    toast.add({
-      severity: 'success',
-      summary: '复制成功',
-      detail: '安装命令已复制到剪贴板',
-      life: 2000,
-    })
-  } catch {
-    toast.add({
-      severity: 'error',
-      summary: '复制失败',
-      detail: '请手动复制安装命令',
-      life: 3000,
-    })
-  }
-}
-
-const copyInstallCommand = async () => {
-  try {
-    await navigator.clipboard.writeText(installCommand.value)
-    toast.add({
-      severity: 'success',
-      summary: '复制成功',
-      detail: '安装命令已复制到剪贴板',
-      life: 2000,
-    })
-  } catch {
-    toast.add({
-      severity: 'error',
-      summary: '复制失败',
-      detail: '请手动复制安装命令',
-      life: 3000,
-    })
-  }
-}
 
 const handleCancelDialog = () => {
   showAddDialog.value = false
@@ -607,6 +560,7 @@ const handleUpdateAgent = async (server: Server) => {
 }
 
 onMounted(async () => {
+  await loadGroups()
   await loadServers()
   await loadAgentVersion()
   websocket.connect()
@@ -630,11 +584,63 @@ onMounted(async () => {
         <h1 class="text-3xl font-bold text-color mb-2">服务器管理</h1>
         <p class="text-muted-color">管理和监控所有服务器节点</p>
       </div>
+      <div class="flex gap-2">
+        <Button
+          label="分组管理"
+          icon="pi pi-folder"
+          severity="secondary"
+          @click="showGroupManager = true"
+        />
+        <Button
+          label="创建分组"
+          icon="pi pi-plus"
+          severity="secondary"
+          @click="handleCreateGroup"
+        />
       <Button
         label="添加服务器"
         icon="pi pi-plus"
         @click="showAddDialog = true"
-        class="shadow-sm"
+        />
+      </div>
+    </div>
+
+    <!-- 筛选栏 -->
+    <div class="mb-4 flex gap-4 items-center flex-wrap">
+      <div class="flex-1 min-w-[200px]">
+        <IconField>
+          <InputIcon class="pi pi-search" />
+          <InputText
+            v-model="searchQuery"
+            placeholder="搜索服务器名称、IP或地域..."
+            class="w-full"
+          />
+        </IconField>
+      </div>
+      <Select
+        v-model="statusFilter"
+        :options="[
+          { label: '全部状态', value: 'all' },
+          { label: '在线', value: 'online' },
+          { label: '离线', value: 'offline' },
+          { label: '错误', value: 'error' },
+        ]"
+        option-label="label"
+        option-value="value"
+        placeholder="筛选状态"
+        class="w-[150px]"
+      />
+
+      <Select
+        v-model="groupFilter"
+        :options="[
+          { label: '全部分组', value: null },
+          ...groups.map((g) => ({ label: g.name, value: g.id })),
+        ]"
+        option-label="label"
+        option-value="value"
+        placeholder="筛选分组"
+        class="w-[150px]"
       />
     </div>
 
@@ -657,6 +663,21 @@ onMounted(async () => {
       />
     </div>
 
+    <!-- 分组管理对话框 -->
+    <ServerGroupManager
+      v-model:visible="showGroupManager"
+      :servers="servers"
+      @refresh="handleGroupSuccess"
+      @edit-group="handleEditGroup"
+    />
+
+    <!-- 创建/编辑分组对话框 -->
+    <ServerGroupDialog
+      v-model:visible="showGroupDialog"
+      :group="editingGroup"
+      @success="handleGroupSuccess"
+    />
+
     <ServerDialog
       v-model:visible="showAddDialog"
       v-model:form="serverForm"
@@ -664,6 +685,7 @@ onMounted(async () => {
       :saving="saving"
       @save="handleSaveServer"
       @cancel="handleCancelDialog"
+      @restart-server="handleRestartServer"
     />
 
     <!-- Agent Key和安装命令显示对话框 -->
@@ -675,48 +697,12 @@ onMounted(async () => {
         </div>
       </template>
       <div class="space-y-4">
-        <!-- Agent Key -->
-
-        <div class="flex items-start gap-3">
-          <div class="flex-1">
-            <div class="flex justify-between mb-2">
-              <p class="font-medium">服务器已成功添加！请保存以下Agent Key：</p>
-              <Button
-                icon="pi pi-copy"
-                text
-                size="small"
-                class="mt-2"
-                v-tooltip.top="'复制 Key'"
-                @click="copyAgentKey"
-              />
-            </div>
-            <div
-              class="bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all"
-            >
-              {{ generatedAgentKey }}
-            </div>
-          </div>
-        </div>
-
-        <!-- 安装命令 -->
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center">
-              <h4 class="text-lg font-semibold text-color">Linux 安装命令</h4>
-            </div>
-            <Button
-              icon="pi pi-copy"
-              text
-              size="small"
-              @click="copyInstallCommand"
-              v-tooltip.top="'复制命令'"
-            />
-          </div>
-          <code
-            class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
-          >
-            {{ installCommand }}
-          </code>
+        <p class="font-medium mb-4">服务器已成功添加！请保存以下信息：</p>
+        <InstallInfo
+          :agent-key="generatedAgentKey"
+          :server-i-p="serverIP"
+          :websocket-u-r-l="websocketURL"
+        />
           <div class="mt-4 p-3 border rounded-lg">
             <div class="flex items-start gap-2">
               <div>
@@ -730,7 +716,6 @@ onMounted(async () => {
                   <li>• 系统信息（地域、操作系统等）将自动获取</li>
                   <li>• 请妥善保管Agent Key避免泄露，此Agent Key用于服务器之间身份验证</li>
                 </ul>
-              </div>
             </div>
           </div>
         </div>
@@ -747,61 +732,6 @@ onMounted(async () => {
         </div>
       </template>
     </Dialog>
-
-    <!-- 查看安装信息对话框 -->
-    <Dialog
-      v-model:visible="showInstallInfoDialog"
-      header="安装信息"
-      modal
-      :closable="true"
-      class="w-3xl"
-    >
-      <div class="space-y-4" v-if="selectedServerForInstall">
-        <!-- 连接密钥 -->
-        <div class="mb-4">
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2 flex-1 min-w-0">
-              <span class="font-medium text-color whitespace-nowrap">连接密钥 (Agent Key):</span>
-              <code
-                class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-1 rounded font-mono text-sm break-all whitespace-pre-wrap"
-                >{{ selectedServerForInstall.agent_key || '未设置' }}</code
-              >
-            </div>
-            <Button
-              icon="pi pi-copy"
-              text
-              size="small"
-              @click.stop="copySelectedAgentKey"
-              v-tooltip.top="'复制密钥'"
-              class="flex-shrink-0"
-            />
-          </div>
-        </div>
-
-        <!-- 安装命令 -->
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center">
-              <h4 class="text-lg font-semibold text-color">Linux 安装命令</h4>
-            </div>
-            <Button
-              icon="pi pi-copy"
-              text
-              size="small"
-              @click="copySelectedInstallCommand"
-              v-tooltip.top="'复制命令'"
-            />
-          </div>
-          <div class="space-y-3">
-            <code
-              class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
-            >
-              {{ installCommand || '无法生成安装命令：缺少Agent Key' }}
-            </code>
-          </div>
-        </div>
-      </div>
-    </Dialog>
   </div>
 </template>
 
@@ -811,3 +741,4 @@ onMounted(async () => {
   margin: 0 auto;
 }
 </style>
+

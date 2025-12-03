@@ -11,12 +11,38 @@ import ServerSwapCard from './ServerSwapCard.vue'
 import ServerDiskCard from './ServerDiskCard.vue'
 import ServerNetworkCard from './ServerNetworkCard.vue'
 import ServerMetricsChart from './ServerMetricsChart.vue'
-import { getStatusText, getStatusSeverity, hasAgentUpdate, getVersionTypeConfig, parseVersion } from '@/utils/version.ts'
+import {
+  getStatusText,
+  getStatusSeverity,
+  hasAgentUpdate,
+  getVersionTypeConfig,
+  parseVersion,
+} from '@/utils/version.ts'
 import { useToast } from 'primevue/usetoast'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import type { VersionType } from '@/utils/version.ts'
+
+// 计算到期天数
+const getExpireDays = (expireTime?: string): number | null => {
+  if (!expireTime) return null
+  const expire = new Date(expireTime)
+  const now = new Date()
+  const diff = expire.getTime() - now.getTime()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+}
+
+// 获取到期状态颜色
+const getExpireStatus = (expireTime?: string): { severity: string; label: string } | null => {
+  const days = getExpireDays(expireTime)
+  if (days === null) return null
+  if (days < 0) return { severity: 'danger', label: '已过期' }
+  if (days <= 1) return { severity: 'danger', label: '即将过期' }
+  if (days <= 3) return { severity: 'warning', label: '3天内到期' }
+  if (days <= 7) return { severity: 'warning', label: '7天内到期' }
+  return { severity: 'success', label: `${days}天后到期` }
+}
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.role === 'admin')
@@ -51,7 +77,11 @@ const updatingAgentId = ref<string>('')
 // 检查是否需要更新
 const needsUpdate = (server: Server): boolean => {
   if (!props.latestAgentVersion || !server.agent_version) return false
-  return hasAgentUpdate(server.agent_version, props.latestAgentVersion, props.latestAgentVersionType)
+  return hasAgentUpdate(
+    server.agent_version,
+    props.latestAgentVersion,
+    props.latestAgentVersionType,
+  )
 }
 
 // 显示更新对话框
@@ -188,27 +218,6 @@ const confirmDelete = (event: Event, server: Server) => {
     },
     accept: () => {
       emit('delete-server', server)
-    },
-  })
-}
-
-// 确认重启
-const confirmRestart = (event: Event, server: Server) => {
-  confirm.require({
-    target: event.currentTarget as HTMLElement,
-    message: `确定要重启服务器 "${server.name}" 的Agent服务吗？`,
-    header: '重启确认',
-    rejectProps: {
-      label: '取消',
-      severity: 'secondary',
-      outlined: true,
-    },
-    acceptProps: {
-      label: '重启',
-      severity: 'warn',
-    },
-    accept: () => {
-      emit('restart-server', server)
     },
   })
 }
@@ -392,7 +401,7 @@ defineExpose({
 </script>
 <template>
   <div>
-    <Card class="shadow-lg border border-surface-200 dark:border-surface-700">
+    <Card class="border border-[var(--p-select-border-color)]">
       <template #content>
         <DataTable
           :value="servers"
@@ -456,6 +465,21 @@ defineExpose({
             </template>
           </Column>
 
+          <!-- 分组列 -->
+          <Column field="group" header="分组" sortable class="w-32">
+            <template #body="{ data }">
+              <div v-if="data.group" class="flex items-center gap-2">
+                <span
+                  v-if="data.group.color"
+                  class="w-3 h-3 rounded-full"
+                  :style="{ backgroundColor: data.group.color }"
+                />
+                <span class="text-sm truncate">{{ data.group.name }}</span>
+              </div>
+              <span v-else class="text-sm text-muted-color">-</span>
+            </template>
+          </Column>
+
           <!-- 地域列 -->
           <Column field="location" header="地域" sortable class="w-32">
             <template #body="{ data }">
@@ -510,10 +534,35 @@ defineExpose({
             </template>
           </Column>
 
+          <!-- 到期时间列 -->
+          <Column field="expire_time" header="到期时间" sortable class="w-40">
+            <template #body="{ data }">
+              <div v-if="data.expire_time" class="text-left">
+                <div class="text-sm font-medium text-color">
+                  {{ new Date(data.expire_time).toLocaleDateString('zh-CN') }}
+                </div>
+                <Tag
+                  v-if="getExpireStatus(data.expire_time)"
+                  :value="getExpireStatus(data.expire_time)?.label"
+                  :severity="getExpireStatus(data.expire_time)?.severity"
+                  class="text-xs mt-1"
+                />
+              </div>
+              <span v-else class="text-sm text-muted-color">-</span>
+            </template>
+          </Column>
+
           <!-- 操作列 -->
           <Column header="操作" class="w-24">
             <template #body="{ data }">
               <div class="flex items-center gap-1">
+                <Button
+                  icon="pi pi-pen-to-square"
+                  size="small"
+                  text
+                  @click="emit('edit-server', data)"
+                  class="hover:bg-red-50"
+                />
                 <Button
                   icon="pi pi-trash"
                   size="small"
@@ -657,33 +706,6 @@ defineExpose({
                   />
                 </div>
               </div>
-
-              <!-- 操作按钮 -->
-              <div
-                class="mt-6 pt-6 border-t border-surface-200 dark:border-surface-700 flex justify-end gap-3"
-              >
-                <Button
-                  label="查看安装信息"
-                  text
-                  @click="$emit('view-install-info', data)"
-                  class="shadow-sm"
-                />
-                <Button
-                  label="重启服务"
-                  icon="pi pi-refresh"
-                  text
-                  severity="warn"
-                  @click="confirmRestart($event, data)"
-                  :loading="props.restartingServerId === data.id"
-                  class="shadow-sm"
-                />
-                <Button
-                  label="编辑服务器"
-                  icon="pi pi-pencil"
-                  @click="$emit('edit-server', data)"
-                  class="shadow-sm"
-                />
-              </div>
             </div>
           </template>
         </DataTable>
@@ -702,7 +724,9 @@ defineExpose({
       <div v-if="selectedServerForUpdate" class="flex flex-col gap-4">
         <div>
           <p class="text-sm text-color-secondary mb-2">服务器信息</p>
-          <p class="font-medium">{{ selectedServerForUpdate.name }} ({{ selectedServerForUpdate.ip }})</p>
+          <p class="font-medium">
+            {{ selectedServerForUpdate.name }} ({{ selectedServerForUpdate.ip }})
+          </p>
         </div>
 
         <div>
@@ -711,8 +735,16 @@ defineExpose({
             <span class="font-medium">{{ selectedServerForUpdate.agent_version || '-' }}</span>
             <Tag
               v-if="selectedServerForUpdate.agent_version"
-              :value="getVersionTypeConfig(parseVersion(selectedServerForUpdate.agent_version).versionType).label"
-              :severity="getVersionTypeConfig(parseVersion(selectedServerForUpdate.agent_version).versionType).severity"
+              :value="
+                getVersionTypeConfig(
+                  parseVersion(selectedServerForUpdate.agent_version).versionType,
+                ).label
+              "
+              :severity="
+                getVersionTypeConfig(
+                  parseVersion(selectedServerForUpdate.agent_version).versionType,
+                ).severity
+              "
               size="small"
             />
           </div>
