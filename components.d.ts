@@ -25,6 +25,7 @@ declare module 'vue' {
     IconField: typeof import('primevue/iconfield')['default']
     InputIcon: typeof import('primevue/inputicon')['default']
     InputNumber: typeof import('primevue/inputnumber')['default']
+    InputSwitch: typeof import('primevue/inputswitch')['default']
     InputText: typeof import('primevue/inputtext')['default']
     Loading: typeof import('./src/components/Loading/Loading.vue')['default']
     Menu: typeof import('./src/components/Layout/Menu.vue')['default']

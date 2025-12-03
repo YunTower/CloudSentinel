@@ -245,4 +245,55 @@ export interface ExtendedServerDetailData extends ServerDetailData {
   traffic_limit_bytes?: number
   traffic_reset_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
   traffic_custom_cycle_days?: number
+  alert_rules?: ServerAlertRules
+}
+
+// 告警规则接口
+export interface AlertRule {
+  enabled: boolean
+  warning: number
+  critical: number
+}
+
+// 服务器告警规则集合
+export interface ServerAlertRules {
+  cpu: AlertRule
+  memory: AlertRule
+  disk: AlertRule
+  bandwidth?: {
+    enabled: boolean
+    threshold: number // Mbps
+  }
+  traffic?: {
+    enabled: boolean
+    threshold_percent: number // 流量使用百分比阈值
+  }
+  expiration?: {
+    enabled: boolean
+    alert_days: number // 提前多少天告警
+  }
+}
+
+// 服务器告警规则输入接口
+export interface ServerAlertRulesInput {
+  cpu?: AlertRule
+  memory?: AlertRule
+  disk?: AlertRule
+  bandwidth?: {
+    enabled: boolean
+    threshold: number
+  }
+  traffic?: {
+    enabled: boolean
+    threshold_percent: number
+  }
+  expiration?: {
+    enabled: boolean
+    alert_days: number
+  }
+}
+
+// 服务器表单接口（包含告警规则）
+export interface ServerFormWithAlertRules extends ServerForm {
+  alert_rules?: ServerAlertRulesInput
 }

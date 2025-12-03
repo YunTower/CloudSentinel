@@ -1,5 +1,10 @@
 import { requester } from '@/utils/requester.ts'
-import type { ServerForm, ServerGroup } from '@/types/manager/servers'
+import type {
+  ServerForm,
+  ServerGroup,
+  ServerAlertRules,
+  ServerAlertRulesInput,
+} from '@/types/manager/servers'
 
 export default {
   createServer: (form: ServerForm) => requester.Post('/servers', form),

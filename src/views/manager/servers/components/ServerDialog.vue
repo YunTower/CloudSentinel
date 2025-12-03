@@ -12,6 +12,9 @@ import type {
   RestartServiceResponse,
   ServerDetailResponse,
   ExtendedServerDetailData,
+  ServerAlertRules,
+  ServerAlertRulesInput,
+  ServerFormWithAlertRules,
 } from '@/types/manager/servers'
 
 interface Props {
@@ -35,6 +38,9 @@ const activeTab = ref('0')
 const restarting = ref(false)
 const loadingDetail = ref(false)
 const serverDetail = ref<ExtendedServerDetailData | null>(null)
+const loadingAlertRules = ref(false)
+const savingAlertRules = ref(false)
+const alertRules = ref<ServerAlertRules | null>(null)
 
 const isVisible = computed({
   get: () => props.visible,
@@ -168,6 +174,10 @@ const loadServerDetail = async () => {
         traffic_reset_cycle: detail.traffic_reset_cycle,
         traffic_custom_cycle_days: detail.traffic_custom_cycle_days,
       }
+      // 从服务器详情中获取告警规则
+      if (detail.alert_rules) {
+        alertRules.value = detail.alert_rules
+      }
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '获取服务器详情失败'
@@ -205,15 +215,20 @@ const loadServerDetail = async () => {
   }
 }
 
+
+// 保存告警规则
 watch(
   () => props.visible,
   (visible) => {
     if (visible && props.editingServer) {
       loadingDetail.value = true
       loadServerDetail()
+      // 告警规则现在从服务器详情中获取，不需要单独调用 loadAlertRules
     } else {
       serverDetail.value = null
+      alertRules.value = null
       loadingDetail.value = false
+      loadingAlertRules.value = false
       activeTab.value = '0'
     }
   },
@@ -249,7 +264,7 @@ watch(
   { immediate: true },
 )
 
-const handleSave = () => {
+const handleSave = async () => {
   // 验证必填字段
   if (!form.value.name || !form.value.ip) {
     toast.add({
@@ -284,7 +299,28 @@ const handleSave = () => {
     return
   }
 
-  const submitForm = { ...form.value }
+  const submitForm: ServerFormWithAlertRules = { ...form.value }
+
+  // 如果是编辑模式且有告警规则，将告警规则一起提交
+  if (isEditing.value && props.editingServer && alertRules.value) {
+    const rulesInput: ServerAlertRulesInput = {
+      cpu: alertRules.value.cpu,
+      memory: alertRules.value.memory,
+      disk: alertRules.value.disk,
+    }
+
+    if (alertRules.value.bandwidth) {
+      rulesInput.bandwidth = alertRules.value.bandwidth
+    }
+    if (alertRules.value.traffic) {
+      rulesInput.traffic = alertRules.value.traffic
+    }
+    if (alertRules.value.expiration) {
+      rulesInput.expiration = alertRules.value.expiration
+    }
+
+    submitForm.alert_rules = rulesInput
+  }
 
   emit('save', submitForm)
 }
@@ -374,6 +410,7 @@ const handleRestartService = () => {
           <Tab value="0">基础</Tab>
           <Tab value="1">计费</Tab>
           <Tab value="2">网络</Tab>
+          <Tab v-if="isEditing" value="4">告警</Tab>
           <Tab v-if="isEditing" value="3">操作</Tab>
         </TabList>
         <TabPanels>
@@ -628,6 +665,238 @@ const handleRestartService = () => {
               <div v-else class="text-center py-8 text-muted-color">无法加载服务器详情</div>
             </div>
           </TabPanel>
+
+          <!-- 告警配置 Tab -->
+          <TabPanel v-if="isEditing" value="4">
+            <div class="space-y-4 pt-4">
+              <div v-if="loadingAlertRules" class="flex flex-col items-center justify-center py-10">
+                <ProgressSpinner
+                  style="width: 40px; height: 40px"
+                  strokeWidth="4"
+                  fill="transparent"
+                  animationDuration="0.5s"
+                />
+                <p class="mt-3 text-sm text-muted-color">加载告警规则中...</p>
+              </div>
+              <div v-else-if="alertRules" class="space-y-6">
+                <!-- 基础资源告警 -->
+                <div class="space-y-4">
+                  <h3 class="text-base font-semibold text-color flex items-center gap-2">
+                    <i class="pi pi-server text-primary"></i>
+                    基础资源告警
+                  </h3>
+                  <div class="grid grid-cols-3 gap-4 items-start">
+                    <!-- CPU 告警 -->
+                    <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                      <div class="flex items-center justify-between">
+                        <label class="text-sm font-medium text-color">CPU 使用率</label>
+                        <InputSwitch v-model="alertRules.cpu.enabled" />
+                      </div>
+                      <div v-if="alertRules.cpu.enabled" class="space-y-2">
+                        <div>
+                          <label class="text-xs text-muted-color">警告阈值 (%)</label>
+                          <InputNumber
+                            v-model="alertRules.cpu.warning"
+                            :min="0"
+                            :max="100"
+                            :disabled="!alertRules.cpu.enabled"
+                            class="w-full"
+                          />
+                        </div>
+                        <div>
+                          <label class="text-xs text-muted-color">严重阈值 (%)</label>
+                          <InputNumber
+                            v-model="alertRules.cpu.critical"
+                            :min="0"
+                            :max="100"
+                            :disabled="!alertRules.cpu.enabled"
+                            class="w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 内存告警 -->
+                    <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                      <div class="flex items-center justify-between">
+                        <label class="text-sm font-medium text-color">内存使用率</label>
+                        <InputSwitch v-model="alertRules.memory.enabled" />
+                      </div>
+                      <div v-if="alertRules.memory.enabled" class="space-y-2">
+                        <div>
+                          <label class="text-xs text-muted-color">警告阈值 (%)</label>
+                          <InputNumber
+                            v-model="alertRules.memory.warning"
+                            :min="0"
+                            :max="100"
+                            :disabled="!alertRules.memory.enabled"
+                            class="w-full"
+                          />
+                        </div>
+                        <div>
+                          <label class="text-xs text-muted-color">严重阈值 (%)</label>
+                          <InputNumber
+                            v-model="alertRules.memory.critical"
+                            :min="0"
+                            :max="100"
+                            :disabled="!alertRules.memory.enabled"
+                            class="w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 磁盘告警 -->
+                    <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                      <div class="flex items-center justify-between">
+                        <label class="text-sm font-medium text-color">磁盘使用率</label>
+                        <InputSwitch v-model="alertRules.disk.enabled" />
+                      </div>
+                      <div v-if="alertRules.disk.enabled" class="space-y-2">
+                        <div>
+                          <label class="text-xs text-muted-color">警告阈值 (%)</label>
+                          <InputNumber
+                            v-model="alertRules.disk.warning"
+                            :min="0"
+                            :max="100"
+                            :disabled="!alertRules.disk.enabled"
+                            class="w-full"
+                          />
+                        </div>
+                        <div>
+                          <label class="text-xs text-muted-color">严重阈值 (%)</label>
+                          <InputNumber
+                            v-model="alertRules.disk.critical"
+                            :min="0"
+                            :max="100"
+                            :disabled="!alertRules.disk.enabled"
+                            class="w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 网络资源告警 -->
+                <div class="space-y-4">
+                  <h3 class="text-base font-semibold text-color flex items-center gap-2">
+                    <i class="pi pi-wifi text-primary"></i>
+                    网络资源告警
+                  </h3>
+                  <div class="grid grid-cols-2 gap-4 items-start">
+                    <!-- 带宽峰值告警 -->
+                    <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                      <div class="flex items-center justify-between">
+                        <label class="text-sm font-medium text-color">带宽峰值</label>
+                        <InputSwitch
+                          :model-value="alertRules?.bandwidth?.enabled ?? false"
+                          @update:model-value="
+                            (val: boolean) => {
+                              if (!alertRules) return
+                              if (!alertRules.bandwidth) {
+                                alertRules.bandwidth = { enabled: val, threshold: 100 }
+                              } else {
+                                alertRules.bandwidth.enabled = val
+                              }
+                            }
+                          "
+                        />
+                      </div>
+                      <div v-if="alertRules && alertRules.bandwidth?.enabled" class="space-y-2">
+                        <div>
+                          <label class="text-xs text-muted-color">峰值阈值 (Mbps)</label>
+                          <InputNumber
+                            v-model="alertRules.bandwidth!.threshold"
+                            :min="0"
+                            :disabled="!alertRules.bandwidth?.enabled"
+                            suffix=" Mbps"
+                            class="w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 流量耗尽告警 -->
+                    <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                      <div class="flex items-center justify-between">
+                        <label class="text-sm font-medium text-color">流量耗尽</label>
+                        <InputSwitch
+                          :model-value="alertRules?.traffic?.enabled ?? false"
+                          @update:model-value="
+                            (val: boolean) => {
+                              if (!alertRules) return
+                              if (!alertRules.traffic) {
+                                alertRules.traffic = { enabled: val, threshold_percent: 80 }
+                              } else {
+                                alertRules.traffic.enabled = val
+                              }
+                            }
+                          "
+                        />
+                      </div>
+                      <div v-if="alertRules && alertRules.traffic?.enabled" class="space-y-2">
+                        <div>
+                          <label class="text-xs text-muted-color">告警阈值 (%)</label>
+                          <InputNumber
+                            v-model="alertRules.traffic!.threshold_percent"
+                            :min="0"
+                            :max="100"
+                            :disabled="!alertRules.traffic?.enabled"
+                            suffix=" %"
+                            class="w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 其他告警 -->
+                <div class="space-y-4">
+                  <h3 class="text-base font-semibold text-color flex items-center gap-2">
+                    <i class="pi pi-bell text-primary"></i>
+                    其他告警
+                  </h3>
+                  <div class="grid grid-cols-1 gap-4">
+                    <!-- 到期提醒 -->
+                    <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                      <div class="flex items-center justify-between">
+                        <label class="text-sm font-medium text-color">服务器到期提醒</label>
+                        <InputSwitch
+                          :model-value="alertRules?.expiration?.enabled ?? false"
+                          @update:model-value="
+                            (val: boolean) => {
+                              if (!alertRules) return
+                              if (!alertRules.expiration) {
+                                alertRules.expiration = { enabled: val, alert_days: 7 }
+                              } else {
+                                alertRules.expiration.enabled = val
+                              }
+                            }
+                          "
+                        />
+                      </div>
+                      <div v-if="alertRules && alertRules.expiration?.enabled" class="space-y-2">
+                        <div>
+                          <label class="text-xs text-muted-color">提前提醒天数</label>
+                          <InputNumber
+                            v-model="alertRules.expiration!.alert_days"
+                            :min="1"
+                            :disabled="!alertRules.expiration?.enabled"
+                            suffix=" 天"
+                            class="w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+              <div v-else class="text-center py-8 text-muted-color">无法加载告警规则</div>
+            </div>
+          </TabPanel>
         </TabPanels>
       </Tabs>
     </form>
@@ -639,7 +908,7 @@ const handleRestartService = () => {
           :label="isEditing ? '更新配置' : '添加服务器'"
           :icon="isEditing ? 'pi pi-check' : 'pi pi-plus'"
           @click="handleSave"
-          :loading="props.saving"
+          :loading="props.saving || savingAlertRules"
           class="px-6 py-2 font-medium"
         />
       </div>
