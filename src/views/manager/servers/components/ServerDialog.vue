@@ -15,7 +15,9 @@ import type {
   ServerAlertRules,
   ServerAlertRulesInput,
   ServerFormWithAlertRules,
+  ServerNotificationChannels,
 } from '@/types/manager/servers'
+import alertsApi from '@/apis/settings/alerts'
 
 interface Props {
   visible: boolean
@@ -41,6 +43,11 @@ const serverDetail = ref<ExtendedServerDetailData | null>(null)
 const loadingAlertRules = ref(false)
 const savingAlertRules = ref(false)
 const alertRules = ref<ServerAlertRules | null>(null)
+const notificationChannels = ref<ServerNotificationChannels>({})
+const globalNotificationChannels = ref<{ email: boolean; webhook: boolean }>({
+  email: false,
+  webhook: false,
+})
 
 const isVisible = computed({
   get: () => props.visible,
@@ -320,6 +327,11 @@ const handleSave = async () => {
     }
 
     submitForm.alert_rules = rulesInput
+  }
+
+  // 添加通知渠道配置
+  if (isEditing.value && props.editingServer) {
+    submitForm.notification_channels = notificationChannels.value
   }
 
   emit('save', submitForm)
@@ -895,6 +907,46 @@ const handleRestartService = () => {
 
               </div>
               <div v-else class="text-center py-8 text-muted-color">无法加载告警规则</div>
+
+              <!-- 通知渠道配置 -->
+              <div class="mt-6 space-y-4">
+                <h3 class="text-base font-semibold text-color flex items-center gap-2">
+                  <i class="pi pi-send text-primary"></i>
+                  通知渠道
+                </h3>
+                <p class="text-sm text-muted-color">
+                  选择此服务器告警时使用的通知方式。只有全局已配置的通知方式才能在此启用。
+                </p>
+                <div class="grid grid-cols-2 gap-4">
+                  <!-- 邮件通知 -->
+                  <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                    <div class="flex items-center justify-between">
+                      <label class="text-sm font-medium text-color">邮件通知</label>
+                      <InputSwitch
+                        v-model="notificationChannels.email"
+                        :disabled="!globalNotificationChannels.email"
+                      />
+                    </div>
+                    <p v-if="!globalNotificationChannels.email" class="text-xs text-muted-color">
+                      全局邮件通知未配置
+                    </p>
+                  </div>
+
+                  <!-- Webhook 通知 -->
+                  <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                    <div class="flex items-center justify-between">
+                      <label class="text-sm font-medium text-color">Webhook 通知</label>
+                      <InputSwitch
+                        v-model="notificationChannels.webhook"
+                        :disabled="!globalNotificationChannels.webhook"
+                      />
+                    </div>
+                    <p v-if="!globalNotificationChannels.webhook" class="text-xs text-muted-color">
+                      全局 Webhook 通知未配置
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </TabPanel>
         </TabPanels>

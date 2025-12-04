@@ -64,4 +64,11 @@ export default {
     requester.Patch<{ status: boolean; message: string; data: ServerGroup }>(`/servers/groups/${id}`, group),
   deleteGroup: (id: number) =>
     requester.Delete<{ status: boolean; message: string; data: null }>(`/servers/groups/${id}`),
+  // 复制告警规则
+  copyAlertRules: (sourceId: string, targetIds: string[], ruleTypes: string[]) =>
+    requester.Post<{ status: boolean; message: string }>('/servers/copy-alert-rules', {
+      source_server_id: sourceId,
+      target_server_ids: targetIds,
+      rule_types: ruleTypes,
+    }),
 }

@@ -6,6 +6,7 @@ import ServerDialog from './components/ServerDialog.vue'
 import ServerGroupDialog from './components/ServerGroupDialog.vue'
 import ServerGroupManager from './components/ServerGroupManager.vue'
 import InstallInfo from './components/InstallInfo.vue'
+import CopyAlertRulesDialog from './components/CopyAlertRulesDialog.vue'
 import serversApi from '@/apis/servers'
 import type { ServerGroup } from '@/types/manager/servers'
 import updateApi from '@/apis/update'
@@ -40,6 +41,8 @@ const editingGroup = ref<ServerGroup | null>(null)
 const groups = ref<ServerGroup[]>([])
 const editingServer = ref<Server | null>(null)
 const serverTableRef = ref<InstanceType<typeof ServerTable> | null>(null)
+const selectedServers = ref<Server[]>([])
+const showCopyAlertRulesDialog = ref(false)
 
 // 表单数据
 const serverForm = ref<ServerForm>({
@@ -548,6 +551,25 @@ const loadAgentVersion = async () => {
 }
 
 // 处理 Agent 更新
+// 处理选中服务器变化
+const handleSelectionChange = (servers: Server[]) => {
+  selectedServers.value = servers
+}
+
+// 检查是否可以复制告警规则（至少选中一个服务器且有告警规则）
+const canCopyAlertRules = computed(() => {
+  if (selectedServers.value.length === 0) return false
+  // 这里需要检查选中的服务器是否有告警规则
+  // 暂时返回 true，后续在复制对话框中检查
+  return true
+})
+
+// 处理复制告警规则成功
+const handleCopyAlertRulesSuccess = () => {
+  selectedServers.value = []
+  // 可以刷新服务器列表以获取最新数据
+}
+
 const handleUpdateAgent = async (server: Server) => {
   // 更新后可以刷新服务器列表以获取最新版本号
   // 这里可以选择是否刷新
@@ -644,6 +666,35 @@ onMounted(async () => {
       />
     </div>
 
+    <!-- 选中服务器操作栏 -->
+    <div
+      v-if="selectedServers.length > 0"
+      class="mb-4 p-4 bg-surface-100 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700 flex items-center justify-between"
+    >
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-medium text-color"
+          >已选择 {{ selectedServers.length }} 个服务器</span
+        >
+      </div>
+      <div class="flex items-center gap-2">
+        <Button
+          label="复制告警规则到"
+          icon="pi pi-copy"
+          size="small"
+          :disabled="!canCopyAlertRules"
+          @click="showCopyAlertRulesDialog = true"
+        />
+        <Button
+          label="取消选择"
+          icon="pi pi-times"
+          size="small"
+          severity="secondary"
+          outlined
+          @click="selectedServers = []"
+        />
+      </div>
+    </div>
+
     <div class="space-y-6">
       <ServerTable
         ref="serverTableRef"
@@ -654,14 +705,23 @@ onMounted(async () => {
         :restarting-server-id="restartingServerId"
         :latest-agent-version="latestAgentVersion"
         :latest-agent-version-type="latestAgentVersionType"
+        :selected-servers="selectedServers"
         @edit-server="handleEditServer"
         @delete-server="handleDeleteServer"
         @restart-server="handleRestartServer"
         @expand-server="handleExpandServer"
         @view-install-info="handleViewInstallInfo"
         @update-agent="handleUpdateAgent"
+        @selection-change="handleSelectionChange"
       />
     </div>
+
+    <!-- 复制告警规则对话框 -->
+    <CopyAlertRulesDialog
+      v-model:visible="showCopyAlertRulesDialog"
+      :source-servers="selectedServers"
+      @success="handleCopyAlertRulesSuccess"
+    />
 
     <!-- 分组管理对话框 -->
     <ServerGroupManager

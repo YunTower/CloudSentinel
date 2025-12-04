@@ -246,6 +246,7 @@ export interface ExtendedServerDetailData extends ServerDetailData {
   traffic_reset_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
   traffic_custom_cycle_days?: number
   alert_rules?: ServerAlertRules
+  notification_channels?: ServerNotificationChannels
 }
 
 // 告警规则接口
@@ -293,7 +294,14 @@ export interface ServerAlertRulesInput {
   }
 }
 
-// 服务器表单接口（包含告警规则）
+// 服务器通知渠道配置
+export interface ServerNotificationChannels {
+  email?: boolean
+  webhook?: boolean
+}
+
+// 服务器表单接口（包含告警规则和通知渠道）
 export interface ServerFormWithAlertRules extends ServerForm {
   alert_rules?: ServerAlertRulesInput
+  notification_channels?: ServerNotificationChannels
 }

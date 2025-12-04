@@ -1,26 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
-import type { AlertRules, Notifications } from '@/types/settings/alerts'
+import type { Notifications } from '@/types/settings/alerts'
 import alertsApi from '@/apis/settings/alerts'
-
-const alertRules = ref<AlertRules>({
-  cpu: {
-    enabled: false,
-    warning: 80,
-    critical: 90,
-  },
-  memory: {
-    enabled: false,
-    warning: 85,
-    critical: 95,
-  },
-  disk: {
-    enabled: false,
-    warning: 85,
-    critical: 95,
-  },
-})
 
 const notifications = ref<Notifications>({
   email: {
@@ -83,22 +65,6 @@ const hasNotificationChannel = (): boolean => {
   return false
 }
 
-// 处理告警规则开关变化
-const handleRuleToggle = async (ruleType: 'cpu' | 'memory' | 'disk', newValue: boolean) => {
-  if (newValue && !hasNotificationChannel()) {
-    await nextTick()
-    alertRules.value[ruleType].enabled = false
-
-    toast.add({
-      severity: 'warn',
-      summary: '无法开启告警',
-      detail: '请先至少配置并启用一个通知渠道（邮件或 Webhook），且配置信息完整',
-      life: 5000,
-    })
-    return
-  }
-  alertRules.value[ruleType].enabled = newValue
-}
 
 // 加载告警设置
 const loadAlertSettings = async () => {
@@ -107,25 +73,6 @@ const loadAlertSettings = async () => {
     const res = await alertsApi.getAlertsSettings()
     if (res?.status && res?.data) {
       const data = res.data
-
-      // 加载告警规则
-      if (data.rules) {
-        if (data.rules.cpu) {
-          alertRules.value.cpu.enabled = data.rules.cpu.enabled
-          alertRules.value.cpu.warning = Number(data.rules.cpu.warning) || 80
-          alertRules.value.cpu.critical = Number(data.rules.cpu.critical) || 90
-        }
-        if (data.rules.memory) {
-          alertRules.value.memory.enabled = data.rules.memory.enabled
-          alertRules.value.memory.warning = Number(data.rules.memory.warning) || 85
-          alertRules.value.memory.critical = Number(data.rules.memory.critical) || 95
-        }
-        if (data.rules.disk) {
-          alertRules.value.disk.enabled = data.rules.disk.enabled
-          alertRules.value.disk.warning = Number(data.rules.disk.warning) || 85
-          alertRules.value.disk.critical = Number(data.rules.disk.critical) || 95
-        }
-      }
 
       // 加载通知配置
       if (data.notifications) {
@@ -163,42 +110,6 @@ const loadAlertSettings = async () => {
   }
 }
 
-// 验证告警规则
-const validateRules = (): boolean => {
-  const rules = [alertRules.value.cpu, alertRules.value.memory, alertRules.value.disk]
-  for (const rule of rules) {
-    if (rule.enabled) {
-      if (rule.warning <= 0 || rule.warning >= 100) {
-        toast.add({
-          severity: 'warn',
-          summary: '验证失败',
-          detail: '告警阈值必须在 1-99 之间',
-          life: 3000,
-        })
-        return false
-      }
-      if (rule.critical <= 0 || rule.critical >= 100) {
-        toast.add({
-          severity: 'warn',
-          summary: '验证失败',
-          detail: '严重阈值必须在 1-99 之间',
-          life: 3000,
-        })
-        return false
-      }
-      if (rule.warning >= rule.critical) {
-        toast.add({
-          severity: 'warn',
-          summary: '验证失败',
-          detail: '告警阈值必须小于严重阈值',
-          life: 3000,
-        })
-        return false
-      }
-    }
-  }
-  return true
-}
 
 // 验证通知配置
 const validateNotifications = (): boolean => {
@@ -339,11 +250,6 @@ const testAlert = async (type: 'email' | 'webhook') => {
 
 // 保存告警设置
 const saveAlertSettings = async () => {
-  // 验证规则
-  if (!validateRules()) {
-    return
-  }
-
   // 验证通知配置
   if (!validateNotifications()) {
     return
@@ -352,11 +258,6 @@ const saveAlertSettings = async () => {
   saving.value = true
   try {
     const res = await alertsApi.saveAlertsSettings({
-      rules: {
-        cpu: alertRules.value.cpu,
-        memory: alertRules.value.memory,
-        disk: alertRules.value.disk,
-      },
       notifications: notifications.value,
     })
 
@@ -395,7 +296,7 @@ onMounted(() => {
     <div class="mb-6 flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold text-color mb-2">告警设置</h1>
-        <p class="text-muted-color">配置系统监控告警规则和通知方式</p>
+        <p class="text-muted-color">配置告警通知方式</p>
       </div>
       <div>
         <Button
@@ -415,169 +316,6 @@ onMounted(() => {
     </div>
 
     <div v-else class="space-y-6">
-      <!-- 告警规则 -->
-      <Card>
-        <template #title>
-          <div class="flex items-center gap-2">
-            <i class="pi pi-bell text-primary"></i>
-            <span>告警规则</span>
-          </div>
-        </template>
-        <template #content>
-          <div class="space-y-4">
-            <!-- CPU 告警 -->
-            <div class="space-y-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="text-sm font-medium text-color">CPU 使用率告警</label>
-                  <Message size="small" severity="secondary" variant="simple"
-                    >监控服务器 CPU 使用率</Message
-                  >
-                </div>
-                <ToggleSwitch
-                  v-model="alertRules.cpu.enabled"
-                  @update:model-value="(val) => handleRuleToggle('cpu', val)"
-                />
-              </div>
-
-              <div
-                v-if="alertRules.cpu.enabled"
-                class="ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700"
-              >
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-color">告警阈值 (%)</label>
-                    <InputNumber
-                      v-model="alertRules.cpu.warning"
-                      :min="1"
-                      :max="100"
-                      suffix="%"
-                      :disabled="!alertRules.cpu.enabled"
-                    />
-                    <Message size="small" severity="secondary" variant="simple"
-                      >当 CPU 使用率超过此值时触发警告</Message
-                    >
-                  </div>
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-color">严重阈值 (%)</label>
-                    <InputNumber
-                      v-model="alertRules.cpu.critical"
-                      :min="1"
-                      :max="100"
-                      suffix="%"
-                      :disabled="!alertRules.cpu.enabled"
-                    />
-                    <Message size="small" severity="secondary" variant="simple"
-                      >当 CPU 使用率超过此值时触发严重告警</Message
-                    >
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 内存告警 -->
-            <div class="space-y-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="text-sm font-medium text-color">内存使用率告警</label>
-                  <Message size="small" severity="secondary" variant="simple"
-                    >监控服务器内存使用率</Message
-                  >
-                </div>
-                <ToggleSwitch
-                  v-model="alertRules.memory.enabled"
-                  @update:model-value="(val) => handleRuleToggle('memory', val)"
-                />
-              </div>
-
-              <div
-                v-if="alertRules.memory.enabled"
-                class="ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700"
-              >
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-color">告警阈值 (%)</label>
-                    <InputNumber
-                      v-model="alertRules.memory.warning"
-                      :min="1"
-                      :max="100"
-                      suffix="%"
-                      :disabled="!alertRules.memory.enabled"
-                    />
-                    <Message size="small" severity="secondary" variant="simple"
-                      >当内存使用率超过此值时触发警告</Message
-                    >
-                  </div>
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-color">严重阈值 (%)</label>
-                    <InputNumber
-                      v-model="alertRules.memory.critical"
-                      :min="1"
-                      :max="100"
-                      suffix="%"
-                      :disabled="!alertRules.memory.enabled"
-                    />
-                    <Message size="small" severity="secondary" variant="simple"
-                      >当内存使用率超过此值时触发严重告警</Message
-                    >
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 磁盘告警 -->
-            <div class="space-y-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="text-sm font-medium text-color">磁盘使用率告警</label>
-                  <Message size="small" severity="secondary" variant="simple"
-                    >监控服务器磁盘使用率</Message
-                  >
-                </div>
-                <ToggleSwitch
-                  v-model="alertRules.disk.enabled"
-                  @update:model-value="(val) => handleRuleToggle('disk', val)"
-                />
-              </div>
-
-              <div
-                v-if="alertRules.disk.enabled"
-                class="ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700"
-              >
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-color">告警阈值 (%)</label>
-                    <InputNumber
-                      v-model="alertRules.disk.warning"
-                      :min="1"
-                      :max="100"
-                      suffix="%"
-                      :disabled="!alertRules.disk.enabled"
-                    />
-                    <Message size="small" severity="secondary" variant="simple"
-                      >当磁盘使用率超过此值时触发警告</Message
-                    >
-                  </div>
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-color">严重阈值 (%)</label>
-                    <InputNumber
-                      v-model="alertRules.disk.critical"
-                      :min="1"
-                      :max="100"
-                      suffix="%"
-                      :disabled="!alertRules.disk.enabled"
-                    />
-                    <Message size="small" severity="secondary" variant="simple"
-                      >当磁盘使用率超过此值时触发严重告警</Message
-                    >
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </template>
-      </Card>
-
       <!-- 通知设置 -->
       <Card>
         <template #title>
