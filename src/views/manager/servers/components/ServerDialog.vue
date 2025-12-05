@@ -32,6 +32,7 @@ const emit = defineEmits<{
   save: [form: ServerForm]
   cancel: []
   'restart-server': [server: Server]
+  'save-success': []
 }>()
 
 const toast = useToast()
@@ -184,6 +185,20 @@ const loadServerDetail = async () => {
       // 从服务器详情中获取告警规则
       if (detail.alert_rules) {
         alertRules.value = detail.alert_rules
+      } else {
+        // 如果没有告警规则，初始化为禁用状态
+        alertRules.value = {
+          cpu: { enabled: false, warning: 80, critical: 90 },
+          memory: { enabled: false, warning: 85, critical: 95 },
+          disk: { enabled: false, warning: 85, critical: 95 },
+        }
+      }
+
+      // 从服务器详情中获取通知渠道配置
+      if (detail.notification_channels) {
+        notificationChannels.value = detail.notification_channels
+      } else {
+        notificationChannels.value = {}
       }
     }
   } catch (error: unknown) {
@@ -223,17 +238,42 @@ const loadServerDetail = async () => {
 }
 
 
-// 保存告警规则
+// 加载全局通知渠道配置
+const loadGlobalNotificationChannels = async () => {
+  try {
+    const res = await alertsApi.getAlertsSettings()
+    if (res?.status && res?.data?.notifications) {
+      const notifications = res.data.notifications
+      // 检查邮件通知是否已配置且启用
+      globalNotificationChannels.value.email =
+        notifications.email?.enabled === true &&
+        !!notifications.email?.smtp &&
+        !!notifications.email?.from &&
+        !!notifications.email?.to
+      // 检查Webhook通知是否已配置且启用
+      globalNotificationChannels.value.webhook =
+        notifications.webhook?.enabled === true &&
+        !!notifications.webhook?.webhook &&
+        (notifications.webhook.webhook.startsWith('http://') ||
+          notifications.webhook.webhook.startsWith('https://'))
+    }
+  } catch (error) {
+    console.error('加载全局通知渠道配置失败:', error)
+  }
+}
+
+// 监听对话框显示状态
 watch(
   () => props.visible,
   (visible) => {
     if (visible && props.editingServer) {
       loadingDetail.value = true
       loadServerDetail()
-      // 告警规则现在从服务器详情中获取，不需要单独调用 loadAlertRules
+      loadGlobalNotificationChannels()
     } else {
       serverDetail.value = null
       alertRules.value = null
+      notificationChannels.value = {}
       loadingDetail.value = false
       loadingAlertRules.value = false
       activeTab.value = '0'
@@ -243,8 +283,12 @@ watch(
 
 watch(
   () => props.editingServer,
-  (server) => {
-    if (server && !props.visible) {
+  (server, oldServer) => {
+    // 如果对话框打开且服务器ID变化，重新加载详情
+    if (server && props.visible && oldServer && server.id !== oldServer.id) {
+      loadServerDetail()
+      loadGlobalNotificationChannels()
+    } else if (server && !props.visible) {
       form.value = {
         name: server.name,
         ip: server.ip,

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
+import { Loading } from '@/components/Loading'
 import type { Server, ServerAlertRules } from '@/types/manager/servers'
 import serversApi from '@/apis/servers'
 
@@ -49,26 +50,23 @@ const loadSourceAlertRules = async () => {
 
   loading.value = true
   try {
-    const response = await serversApi.getServerDetail(sourceServer.value.id)
+    const response = await serversApi.getServerAlertRules(sourceServer.value.id)
     if (response.status && response.data) {
-      const detail = response.data as any
-      if (detail.alert_rules) {
-        sourceAlertRules.value = detail.alert_rules
-        // 提取已启用的规则类型
-        enabledRuleTypes.value = []
-        if (detail.alert_rules.cpu?.enabled) enabledRuleTypes.value.push('cpu')
-        if (detail.alert_rules.memory?.enabled) enabledRuleTypes.value.push('memory')
-        if (detail.alert_rules.disk?.enabled) enabledRuleTypes.value.push('disk')
-        if (detail.alert_rules.bandwidth?.enabled) enabledRuleTypes.value.push('bandwidth')
-        if (detail.alert_rules.traffic?.enabled) enabledRuleTypes.value.push('traffic')
-        if (detail.alert_rules.expiration?.enabled) enabledRuleTypes.value.push('expiration')
-        // 默认选中所有已启用的规则
-        selectedRuleTypes.value = [...enabledRuleTypes.value]
-      } else {
-        sourceAlertRules.value = null
-        enabledRuleTypes.value = []
-        selectedRuleTypes.value = []
-      }
+      sourceAlertRules.value = response.data
+      // 提取已启用的规则类型
+      enabledRuleTypes.value = []
+      if (response.data.cpu?.enabled) enabledRuleTypes.value.push('cpu')
+      if (response.data.memory?.enabled) enabledRuleTypes.value.push('memory')
+      if (response.data.disk?.enabled) enabledRuleTypes.value.push('disk')
+      if (response.data.bandwidth?.enabled) enabledRuleTypes.value.push('bandwidth')
+      if (response.data.traffic?.enabled) enabledRuleTypes.value.push('traffic')
+      if (response.data.expiration?.enabled) enabledRuleTypes.value.push('expiration')
+      // 默认选中所有已启用的规则
+      selectedRuleTypes.value = [...enabledRuleTypes.value]
+    } else {
+      sourceAlertRules.value = null
+      enabledRuleTypes.value = []
+      selectedRuleTypes.value = []
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '加载告警规则失败'
@@ -86,20 +84,22 @@ const loadSourceAlertRules = async () => {
 // 获取规则显示文本
 const getRuleDisplayText = (ruleType: string): string => {
   if (!sourceAlertRules.value) return ''
-  const rule = (sourceAlertRules.value as any)[ruleType]
-  if (!rule) return ''
+  const rule = sourceAlertRules.value[ruleType as keyof ServerAlertRules]
+  if (!rule || typeof rule !== 'object' || !('enabled' in rule)) return ''
+
+  const ruleObj = rule as Record<string, unknown>
 
   switch (ruleType) {
     case 'cpu':
     case 'memory':
     case 'disk':
-      return `警告: ${rule.warning}%, 严重: ${rule.critical}%`
+      return `警告: ${ruleObj.warning}%, 严重: ${ruleObj.critical}%`
     case 'bandwidth':
-      return `阈值: ${rule.threshold} Mbps`
+      return `阈值: ${ruleObj.threshold} Mbps`
     case 'traffic':
-      return `阈值: ${rule.threshold_percent}%`
+      return `阈值: ${ruleObj.threshold_percent}%`
     case 'expiration':
-      return `提前 ${rule.alert_days} 天告警`
+      return `提前 ${ruleObj.alert_days} 天告警`
     default:
       return ''
   }
@@ -190,20 +190,19 @@ watch(
     :draggable="false"
     @update:visible="(val) => emit('update:visible', val)"
   >
-    <div v-if="loading" class="flex items-center justify-center py-12">
-      <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
-    </div>
+    <Loading :loading="loading" text="加载告警规则中..." :overlay="false" />
 
-    <div v-else-if="!sourceServer" class="py-8 text-center text-muted-color">
-      请先选择一个源服务器
-    </div>
+    <template v-if="!loading">
+      <div v-if="!sourceServer" class="py-8 text-center text-muted-color">
+        请先选择一个源服务器
+      </div>
 
-    <div v-else-if="enabledRuleTypes.length === 0" class="py-8 text-center">
-      <p class="text-muted-color mb-2">源服务器 "{{ sourceServer.name }}" 没有配置告警规则</p>
-      <p class="text-sm text-muted-color">请先为该服务器配置告警规则后再进行复制</p>
-    </div>
+      <div v-else-if="enabledRuleTypes.length === 0" class="py-8 text-center">
+        <p class="text-muted-color mb-2">源服务器 "{{ sourceServer.name }}" 没有配置告警规则</p>
+        <p class="text-sm text-muted-color">请先为该服务器配置告警规则后再进行复制</p>
+      </div>
 
-    <div v-else class="space-y-6">
+      <div v-else class="space-y-6">
       <!-- 源服务器信息 -->
       <div class="p-4 bg-surface-100 dark:bg-surface-800 rounded-lg">
         <p class="text-sm font-medium text-color mb-1">源服务器</p>
@@ -268,7 +267,8 @@ watch(
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </template>
 
     <template #footer>
       <div class="flex justify-end gap-2">

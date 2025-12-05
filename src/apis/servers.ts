@@ -64,6 +64,11 @@ export default {
     requester.Patch<{ status: boolean; message: string; data: ServerGroup }>(`/servers/groups/${id}`, group),
   deleteGroup: (id: number) =>
     requester.Delete<{ status: boolean; message: string; data: null }>(`/servers/groups/${id}`),
+  // 获取服务器告警规则（仅告警规则，不包括其他服务器信息）
+  getServerAlertRules: (id: string) =>
+    requester.Get<{ status: boolean; message: string; data: ServerAlertRules }>(
+      `/servers/${id}/alert-rules`,
+    ),
   // 复制告警规则
   copyAlertRules: (sourceId: string, targetIds: string[], ruleTypes: string[]) =>
     requester.Post<{ status: boolean; message: string }>('/servers/copy-alert-rules', {

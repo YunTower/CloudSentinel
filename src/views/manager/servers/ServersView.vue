@@ -257,6 +257,10 @@ const handleSaveServer = async (form: ServerForm) => {
           detail: '服务器信息已更新',
           life: 3000,
         })
+        // 如果对话框仍然打开，触发重新加载
+        if (showAddDialog.value && editingServer.value) {
+          handleSaveSuccess()
+        }
       } else {
         throw new Error(response.message || '更新失败')
       }
@@ -556,18 +560,28 @@ const handleSelectionChange = (servers: Server[]) => {
   selectedServers.value = servers
 }
 
-// 检查是否可以复制告警规则（至少选中一个服务器且有告警规则）
+// 检查是否可以复制告警规则（只选择了一个服务器）
 const canCopyAlertRules = computed(() => {
-  if (selectedServers.value.length === 0) return false
-  // 这里需要检查选中的服务器是否有告警规则
-  // 暂时返回 true，后续在复制对话框中检查
-  return true
+  return selectedServers.value.length === 1
 })
 
 // 处理复制告警规则成功
 const handleCopyAlertRulesSuccess = () => {
   selectedServers.value = []
   // 可以刷新服务器列表以获取最新数据
+}
+
+// 处理保存成功
+const handleSaveSuccess = async () => {
+  // 如果对话框仍然打开，重新加载服务器列表和详情
+  if (showAddDialog.value && editingServer.value) {
+    await loadServers()
+    const updatedServer = servers.value.find((s) => s.id === editingServer.value!.id)
+    if (updatedServer) {
+      // 创建一个新对象，确保触发 watch
+      editingServer.value = { ...updatedServer }
+    }
+  }
 }
 
 const handleUpdateAgent = async (server: Server) => {
@@ -744,6 +758,7 @@ onMounted(async () => {
       :editing-server="editingServer"
       :saving="saving"
       @save="handleSaveServer"
+      @save-success="handleSaveSuccess"
       @cancel="handleCancelDialog"
       @restart-server="handleRestartServer"
     />
@@ -767,7 +782,7 @@ onMounted(async () => {
             <div class="flex items-start gap-2">
               <div>
                 <p class="font-medium mb-1 gap-2">
-                  <i class="pi pi-info-circle mt-0.5"></i>
+                  <i class="pi pi-info-circle mt-0.5 mr-2"></i>
                   <span class="font-bold">安装说明</span>
                 </p>
                 <ul class="space-y-1">
