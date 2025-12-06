@@ -731,14 +731,15 @@ onMounted(async () => {
     </div>
 
     <!-- 复制告警规则对话框 -->
-    <CopyAlertRulesDialog
+    <copy-alert-rules-dialog
       v-model:visible="showCopyAlertRulesDialog"
       :source-servers="selectedServers"
+      :all-servers="servers"
       @success="handleCopyAlertRulesSuccess"
     />
 
     <!-- 分组管理对话框 -->
-    <ServerGroupManager
+    <server-group-manager
       v-model:visible="showGroupManager"
       :servers="servers"
       @refresh="handleGroupSuccess"
@@ -746,13 +747,13 @@ onMounted(async () => {
     />
 
     <!-- 创建/编辑分组对话框 -->
-    <ServerGroupDialog
+    <server-group-dialog
       v-model:visible="showGroupDialog"
       :group="editingGroup"
       @success="handleGroupSuccess"
     />
 
-    <ServerDialog
+    <server-dialog
       v-model:visible="showAddDialog"
       v-model:form="serverForm"
       :editing-server="editingServer"

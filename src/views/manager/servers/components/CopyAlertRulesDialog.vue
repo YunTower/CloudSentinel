@@ -11,6 +11,7 @@ import serversApi from '@/apis/servers'
 interface Props {
   visible: boolean
   sourceServers: Server[]
+  allServers: Server[]
 }
 
 const props = defineProps<Props>()
@@ -24,9 +25,13 @@ const toast = useToast()
 const loading = ref(false)
 const saving = ref(false)
 
-// 源服务器（第一个选中的服务器）
+// 源服务器
 const sourceServer = computed(() => props.sourceServers[0])
-const targetServers = computed(() => props.sourceServers.slice(1))
+// 目标服务器
+const targetServers = computed(() => {
+  if (!sourceServer.value) return []
+  return props.allServers.filter((server) => server.id !== sourceServer.value.id)
+})
 
 // 源服务器的告警规则
 const sourceAlertRules = ref<ServerAlertRules | null>(null)
