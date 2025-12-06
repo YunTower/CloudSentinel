@@ -48,7 +48,6 @@ const showCopyAlertRulesDialog = ref(false)
 const serverForm = ref<ServerForm>({
   name: '',
   ip: '',
-  port: 22,
   status: 'online',
   location: '',
   os: '',
@@ -352,7 +351,6 @@ const loadServers = async () => {
           id: server.id,
           name: server.name,
           ip: server.ip,
-          port: server.port || 22,
           status: server.status || 'offline',
           location: server.location || '',
           os: server.os || '',
@@ -457,7 +455,6 @@ const resetForm = () => {
   serverForm.value = {
     name: '',
     ip: '',
-    port: 22,
     status: 'online',
     location: '',
     os: '',

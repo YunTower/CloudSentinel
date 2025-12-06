@@ -516,7 +516,7 @@ defineExpose({
           </Column>
 
           <!-- Agent版本列 -->
-          <Column v-if="isAdmin" field="agent_version" header="版本" sortable class="w-36">
+          <Column v-if="isAdmin" field="agent_version" header="版本" sortable>
             <template #body="{ data }">
               <div class="text-left flex gap-2 items-center">
                 <div class="text-sm font-medium text-color">{{ data.agent_version || '-' }}</div>
