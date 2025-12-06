@@ -18,7 +18,7 @@ export default {
   getServerDetail: (id: string) => requester.Get(`/servers/${id}`),
   updateServer: (id: string, form: ServerForm) => requester.Patch(`/servers/${id}`, form),
   deleteServer: (id: string) => requester.Delete(`/servers/${id}`),
-  restartService: (id: string) => requester.Post(`/servers/${id}/restart`),
+  restartService: (id: string) => requester.Post(`/servers/${id}/agent/restart`),
   getServerMetricsCPU: (id: string, start?: string, end?: string) => {
     let url = `/servers/${id}/metrics/cpu`
     const params = new URLSearchParams()
@@ -52,7 +52,7 @@ export default {
     return requester.Get(url)
   },
   updateAgent: (id: string, type?: string) => {
-    const url = `/servers/${id}/update-agent`
+    const url = `/servers/${id}/agent/update`
     const params = type ? { type } : {}
     return requester.Post(url, params)
   },
@@ -71,7 +71,7 @@ export default {
     ),
   // 复制告警规则
   copyAlertRules: (sourceId: string, targetIds: string[], ruleTypes: string[]) =>
-    requester.Post<{ status: boolean; message: string }>('/servers/copy-alert-rules', {
+    requester.Post<{ status: boolean; message: string }>('/servers/alert-rules/copy', {
       source_server_id: sourceId,
       target_server_ids: targetIds,
       rule_types: ruleTypes,
