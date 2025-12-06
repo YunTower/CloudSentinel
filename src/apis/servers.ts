@@ -56,6 +56,7 @@ export default {
     const params = type ? { type } : {}
     return requester.Post(url, params)
   },
+  resetAgentKey: (id: string) => requester.Post<{ status: boolean; message: string; data: { agent_key: string } }>(`/servers/${id}/agent/reset-key`),
   // 服务器分组管理
   getGroups: () => requester.Get<{ status: boolean; message: string; data: ServerGroup[] }>('/servers/groups'),
   createGroup: (group: { name: string; description?: string; color?: string }) =>

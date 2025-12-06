@@ -39,6 +39,7 @@ const toast = useToast()
 const confirm = useConfirm()
 const activeTab = ref('0')
 const restarting = ref(false)
+const resettingKey = ref(false)
 const loadingDetail = ref(false)
 const serverDetail = ref<ExtendedServerDetailData | null>(null)
 const loadingAlertRules = ref(false)
@@ -433,6 +434,56 @@ const handleRestartService = () => {
     },
   })
 }
+
+// 处理重置通信密钥
+const handleResetAgentKey = () => {
+  if (!props.editingServer) return
+
+  confirm.require({
+    message: `确定要重置 "${props.editingServer.name}" 的通信密钥吗？重置后Agent需要使用新密钥重新连接面板`,
+    header: '重置通信密钥确认',
+    rejectProps: {
+      label: '取消',
+      severity: 'secondary',
+      outlined: true,
+    },
+    acceptProps: {
+      label: '重置',
+      severity: 'warn',
+    },
+    accept: async () => {
+      resettingKey.value = true
+      try {
+        const response = await serversApi.resetAgentKey(props.editingServer!.id)
+
+        if (response.status && response.data) {
+          toast.add({
+            severity: 'success',
+            summary: '重置成功',
+            detail: `服务器 "${props.editingServer!.name}" 的通信密钥已重置。`,
+            life: 5000,
+          })
+          // 重新加载服务器详情
+          if (props.editingServer) {
+            await loadServerDetail()
+          }
+        } else {
+          throw new Error(response.message || '重置失败')
+        }
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : '请稍后重试'
+        toast.add({
+          severity: 'error',
+          summary: '重置失败',
+          detail: errorMessage,
+          life: 3000,
+        })
+      } finally {
+        resettingKey.value = false
+      }
+    },
+  })
+}
 </script>
 <template>
   <Dialog
@@ -704,8 +755,8 @@ const handleRestartService = () => {
                 <Button
                   label="重置通信密钥"
                   outlined
-                  :loading="restarting"
-                  @click="handleRestartService"
+                  :loading="resettingKey"
+                  @click="handleResetAgentKey"
                   class="justify-start"
                 />
               </div>
