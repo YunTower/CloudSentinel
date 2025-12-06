@@ -98,14 +98,12 @@ export interface AlertsNotificationsDto {
 }
 
 export interface GetAlertsSettingsData {
-  rules: AlertsRulesDto
   notifications: AlertsNotificationsDto
 }
 
 export type GetAlertsSettingsResponse = ApiResponse<GetAlertsSettingsData>
 
 export interface SaveAlertsSettingsBody {
-  rules: AlertsRulesDto
   notifications: AlertsNotificationsDto
 }
 

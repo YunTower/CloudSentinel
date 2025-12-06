@@ -15,7 +15,9 @@ import type {
   ServerAlertRules,
   ServerAlertRulesInput,
   ServerFormWithAlertRules,
+  ServerNotificationChannels,
 } from '@/types/manager/servers'
+import alertsApi from '@/apis/settings/alerts'
 
 interface Props {
   visible: boolean
@@ -30,17 +32,24 @@ const emit = defineEmits<{
   save: [form: ServerForm]
   cancel: []
   'restart-server': [server: Server]
+  'save-success': []
 }>()
 
 const toast = useToast()
 const confirm = useConfirm()
 const activeTab = ref('0')
 const restarting = ref(false)
+const resettingKey = ref(false)
 const loadingDetail = ref(false)
 const serverDetail = ref<ExtendedServerDetailData | null>(null)
 const loadingAlertRules = ref(false)
 const savingAlertRules = ref(false)
 const alertRules = ref<ServerAlertRules | null>(null)
+const notificationChannels = ref<ServerNotificationChannels>({})
+const globalNotificationChannels = ref<{ email: boolean; webhook: boolean }>({
+  email: false,
+  webhook: false,
+})
 
 const isVisible = computed({
   get: () => props.visible,
@@ -177,6 +186,20 @@ const loadServerDetail = async () => {
       // 从服务器详情中获取告警规则
       if (detail.alert_rules) {
         alertRules.value = detail.alert_rules
+      } else {
+        // 如果没有告警规则，初始化为禁用状态
+        alertRules.value = {
+          cpu: { enabled: false, warning: 80, critical: 90 },
+          memory: { enabled: false, warning: 85, critical: 95 },
+          disk: { enabled: false, warning: 85, critical: 95 },
+        }
+      }
+
+      // 从服务器详情中获取通知渠道配置
+      if (detail.notification_channels) {
+        notificationChannels.value = detail.notification_channels
+      } else {
+        notificationChannels.value = {}
       }
     }
   } catch (error: unknown) {
@@ -216,17 +239,42 @@ const loadServerDetail = async () => {
 }
 
 
-// 保存告警规则
+// 加载全局通知渠道配置
+const loadGlobalNotificationChannels = async () => {
+  try {
+    const res = await alertsApi.getAlertsSettings()
+    if (res?.status && res?.data?.notifications) {
+      const notifications = res.data.notifications
+      // 检查邮件通知是否已配置且启用
+      globalNotificationChannels.value.email =
+        notifications.email?.enabled === true &&
+        !!notifications.email?.smtp &&
+        !!notifications.email?.from &&
+        !!notifications.email?.to
+      // 检查Webhook通知是否已配置且启用
+      globalNotificationChannels.value.webhook =
+        notifications.webhook?.enabled === true &&
+        !!notifications.webhook?.webhook &&
+        (notifications.webhook.webhook.startsWith('http://') ||
+          notifications.webhook.webhook.startsWith('https://'))
+    }
+  } catch (error) {
+    console.error('加载全局通知渠道配置失败:', error)
+  }
+}
+
+// 监听对话框显示状态
 watch(
   () => props.visible,
   (visible) => {
     if (visible && props.editingServer) {
       loadingDetail.value = true
       loadServerDetail()
-      // 告警规则现在从服务器详情中获取，不需要单独调用 loadAlertRules
+      loadGlobalNotificationChannels()
     } else {
       serverDetail.value = null
       alertRules.value = null
+      notificationChannels.value = {}
       loadingDetail.value = false
       loadingAlertRules.value = false
       activeTab.value = '0'
@@ -236,8 +284,12 @@ watch(
 
 watch(
   () => props.editingServer,
-  (server) => {
-    if (server && !props.visible) {
+  (server, oldServer) => {
+    // 如果对话框打开且服务器ID变化，重新加载详情
+    if (server && props.visible && oldServer && server.id !== oldServer.id) {
+      loadServerDetail()
+      loadGlobalNotificationChannels()
+    } else if (server && !props.visible) {
       form.value = {
         name: server.name,
         ip: server.ip,
@@ -322,6 +374,11 @@ const handleSave = async () => {
     submitForm.alert_rules = rulesInput
   }
 
+  // 添加通知渠道配置
+  if (isEditing.value && props.editingServer) {
+    submitForm.notification_channels = notificationChannels.value
+  }
+
   emit('save', submitForm)
 }
 
@@ -373,6 +430,56 @@ const handleRestartService = () => {
         })
       } finally {
         restarting.value = false
+      }
+    },
+  })
+}
+
+// 处理重置通信密钥
+const handleResetAgentKey = () => {
+  if (!props.editingServer) return
+
+  confirm.require({
+    message: `确定要重置 "${props.editingServer.name}" 的通信密钥吗？重置后Agent需要使用新密钥重新连接面板`,
+    header: '重置通信密钥确认',
+    rejectProps: {
+      label: '取消',
+      severity: 'secondary',
+      outlined: true,
+    },
+    acceptProps: {
+      label: '重置',
+      severity: 'warn',
+    },
+    accept: async () => {
+      resettingKey.value = true
+      try {
+        const response = await serversApi.resetAgentKey(props.editingServer!.id)
+
+        if (response.status && response.data) {
+          toast.add({
+            severity: 'success',
+            summary: '重置成功',
+            detail: `服务器 "${props.editingServer!.name}" 的通信密钥已重置。`,
+            life: 5000,
+          })
+          // 重新加载服务器详情
+          if (props.editingServer) {
+            await loadServerDetail()
+          }
+        } else {
+          throw new Error(response.message || '重置失败')
+        }
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : '请稍后重试'
+        toast.add({
+          severity: 'error',
+          summary: '重置失败',
+          detail: errorMessage,
+          life: 3000,
+        })
+      } finally {
+        resettingKey.value = false
       }
     },
   })
@@ -648,8 +755,8 @@ const handleRestartService = () => {
                 <Button
                   label="重置通信密钥"
                   outlined
-                  :loading="restarting"
-                  @click="handleRestartService"
+                  :loading="resettingKey"
+                  @click="handleResetAgentKey"
                   class="justify-start"
                 />
               </div>
@@ -895,6 +1002,46 @@ const handleRestartService = () => {
 
               </div>
               <div v-else class="text-center py-8 text-muted-color">无法加载告警规则</div>
+
+              <!-- 通知渠道配置 -->
+              <div class="mt-6 space-y-4">
+                <h3 class="text-base font-semibold text-color flex items-center gap-2">
+                  <i class="pi pi-send text-primary"></i>
+                  通知渠道
+                </h3>
+                <p class="text-sm text-muted-color">
+                  选择此服务器告警时使用的通知方式。只有全局已配置的通知方式才能在此启用。
+                </p>
+                <div class="grid grid-cols-2 gap-4">
+                  <!-- 邮件通知 -->
+                  <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                    <div class="flex items-center justify-between">
+                      <label class="text-sm font-medium text-color">邮件通知</label>
+                      <InputSwitch
+                        v-model="notificationChannels.email"
+                        :disabled="!globalNotificationChannels.email"
+                      />
+                    </div>
+                    <p v-if="!globalNotificationChannels.email" class="text-xs text-muted-color">
+                      全局邮件通知未配置
+                    </p>
+                  </div>
+
+                  <!-- Webhook 通知 -->
+                  <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                    <div class="flex items-center justify-between">
+                      <label class="text-sm font-medium text-color">Webhook 通知</label>
+                      <InputSwitch
+                        v-model="notificationChannels.webhook"
+                        :disabled="!globalNotificationChannels.webhook"
+                      />
+                    </div>
+                    <p v-if="!globalNotificationChannels.webhook" class="text-xs text-muted-color">
+                      全局 Webhook 通知未配置
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </TabPanel>
         </TabPanels>

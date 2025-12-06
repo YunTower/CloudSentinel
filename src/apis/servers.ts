@@ -18,7 +18,7 @@ export default {
   getServerDetail: (id: string) => requester.Get(`/servers/${id}`),
   updateServer: (id: string, form: ServerForm) => requester.Patch(`/servers/${id}`, form),
   deleteServer: (id: string) => requester.Delete(`/servers/${id}`),
-  restartService: (id: string) => requester.Post(`/servers/${id}/restart`),
+  restartService: (id: string) => requester.Post(`/servers/${id}/agent/restart`),
   getServerMetricsCPU: (id: string, start?: string, end?: string) => {
     let url = `/servers/${id}/metrics/cpu`
     const params = new URLSearchParams()
@@ -52,10 +52,11 @@ export default {
     return requester.Get(url)
   },
   updateAgent: (id: string, type?: string) => {
-    const url = `/servers/${id}/update-agent`
+    const url = `/servers/${id}/agent/update`
     const params = type ? { type } : {}
     return requester.Post(url, params)
   },
+  resetAgentKey: (id: string) => requester.Post<{ status: boolean; message: string; data: { agent_key: string } }>(`/servers/${id}/agent/reset-key`),
   // 服务器分组管理
   getGroups: () => requester.Get<{ status: boolean; message: string; data: ServerGroup[] }>('/servers/groups'),
   createGroup: (group: { name: string; description?: string; color?: string }) =>
@@ -64,4 +65,16 @@ export default {
     requester.Patch<{ status: boolean; message: string; data: ServerGroup }>(`/servers/groups/${id}`, group),
   deleteGroup: (id: number) =>
     requester.Delete<{ status: boolean; message: string; data: null }>(`/servers/groups/${id}`),
+  // 获取服务器告警规则（仅告警规则，不包括其他服务器信息）
+  getServerAlertRules: (id: string) =>
+    requester.Get<{ status: boolean; message: string; data: ServerAlertRules }>(
+      `/servers/${id}/alert-rules`,
+    ),
+  // 复制告警规则
+  copyAlertRules: (sourceId: string, targetIds: string[], ruleTypes: string[]) =>
+    requester.Post<{ status: boolean; message: string }>('/servers/alert-rules/copy', {
+      source_server_id: sourceId,
+      target_server_ids: targetIds,
+      rule_types: ruleTypes,
+    }),
 }

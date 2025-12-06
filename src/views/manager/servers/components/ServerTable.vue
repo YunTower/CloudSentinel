@@ -56,6 +56,7 @@ interface Props {
   expandingServerId?: string
   latestAgentVersion?: string
   latestAgentVersionType?: VersionType
+  selectedServers?: Server[]
 }
 
 const props = defineProps<Props>()
@@ -67,6 +68,7 @@ const emit = defineEmits<{
   'restart-server': [server: Server]
   'expand-server': [serverId: string]
   'update-agent': [server: Server]
+  'selection-change': [servers: Server[]]
 }>()
 
 // 版本更新相关
@@ -124,6 +126,10 @@ const confirmUpdateAgent = async () => {
 const confirm = useConfirm()
 const expandedRows = ref<{ [key: string]: boolean }>({})
 const pendingExpandServerId = ref<string>('')
+const selectedServers = computed({
+  get: () => props.selectedServers || [],
+  set: (value) => emit('selection-change', value),
+})
 const metricsData = ref<{
   [key: string]: {
     cpu?: MetricsData[]
@@ -415,9 +421,11 @@ defineExpose({
           stripedRows
           hover
           v-model:expandedRows="expandedRows"
+          v-model:selection="selectedServers"
           dataKey="id"
           scrollable
           @row-expand="onRowExpand"
+          @selection-change="(e) => emit('selection-change', e.data as Server[])"
           :pt="{
             root: { class: 'rounded-lg' },
             header: { class: 'bg-surface-50 dark:bg-surface-800' },
@@ -438,6 +446,9 @@ defineExpose({
               </p>
             </div>
           </template>
+
+          <!-- 选择列 -->
+          <Column selectionMode="multiple" headerStyle="width: 3rem" style="width: 3rem" />
 
           <!-- 展开列 -->
           <Column expander style="width: 3rem" />

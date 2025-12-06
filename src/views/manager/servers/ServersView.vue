@@ -6,6 +6,7 @@ import ServerDialog from './components/ServerDialog.vue'
 import ServerGroupDialog from './components/ServerGroupDialog.vue'
 import ServerGroupManager from './components/ServerGroupManager.vue'
 import InstallInfo from './components/InstallInfo.vue'
+import CopyAlertRulesDialog from './components/CopyAlertRulesDialog.vue'
 import serversApi from '@/apis/servers'
 import type { ServerGroup } from '@/types/manager/servers'
 import updateApi from '@/apis/update'
@@ -40,6 +41,8 @@ const editingGroup = ref<ServerGroup | null>(null)
 const groups = ref<ServerGroup[]>([])
 const editingServer = ref<Server | null>(null)
 const serverTableRef = ref<InstanceType<typeof ServerTable> | null>(null)
+const selectedServers = ref<Server[]>([])
+const showCopyAlertRulesDialog = ref(false)
 
 // 表单数据
 const serverForm = ref<ServerForm>({
@@ -254,6 +257,10 @@ const handleSaveServer = async (form: ServerForm) => {
           detail: '服务器信息已更新',
           life: 3000,
         })
+        // 如果对话框仍然打开，触发重新加载
+        if (showAddDialog.value && editingServer.value) {
+          handleSaveSuccess()
+        }
       } else {
         throw new Error(response.message || '更新失败')
       }
@@ -548,6 +555,35 @@ const loadAgentVersion = async () => {
 }
 
 // 处理 Agent 更新
+// 处理选中服务器变化
+const handleSelectionChange = (servers: Server[]) => {
+  selectedServers.value = servers
+}
+
+// 检查是否可以复制告警规则（只选择了一个服务器）
+const canCopyAlertRules = computed(() => {
+  return selectedServers.value.length === 1
+})
+
+// 处理复制告警规则成功
+const handleCopyAlertRulesSuccess = () => {
+  selectedServers.value = []
+  // 可以刷新服务器列表以获取最新数据
+}
+
+// 处理保存成功
+const handleSaveSuccess = async () => {
+  // 如果对话框仍然打开，重新加载服务器列表和详情
+  if (showAddDialog.value && editingServer.value) {
+    await loadServers()
+    const updatedServer = servers.value.find((s) => s.id === editingServer.value!.id)
+    if (updatedServer) {
+      // 创建一个新对象，确保触发 watch
+      editingServer.value = { ...updatedServer }
+    }
+  }
+}
+
 const handleUpdateAgent = async (server: Server) => {
   // 更新后可以刷新服务器列表以获取最新版本号
   // 这里可以选择是否刷新
@@ -644,6 +680,35 @@ onMounted(async () => {
       />
     </div>
 
+    <!-- 选中服务器操作栏 -->
+    <div
+      v-if="selectedServers.length > 0"
+      class="mb-4 p-4 bg-surface-100 dark:bg-surface-800 rounded-lg border border-surface-200 dark:border-surface-700 flex items-center justify-between"
+    >
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-medium text-color"
+          >已选择 {{ selectedServers.length }} 个服务器</span
+        >
+      </div>
+      <div class="flex items-center gap-2">
+        <Button
+          label="复制告警规则到"
+          icon="pi pi-copy"
+          size="small"
+          :disabled="!canCopyAlertRules"
+          @click="showCopyAlertRulesDialog = true"
+        />
+        <Button
+          label="取消选择"
+          icon="pi pi-times"
+          size="small"
+          severity="secondary"
+          outlined
+          @click="selectedServers = []"
+        />
+      </div>
+    </div>
+
     <div class="space-y-6">
       <ServerTable
         ref="serverTableRef"
@@ -654,17 +719,27 @@ onMounted(async () => {
         :restarting-server-id="restartingServerId"
         :latest-agent-version="latestAgentVersion"
         :latest-agent-version-type="latestAgentVersionType"
+        :selected-servers="selectedServers"
         @edit-server="handleEditServer"
         @delete-server="handleDeleteServer"
         @restart-server="handleRestartServer"
         @expand-server="handleExpandServer"
         @view-install-info="handleViewInstallInfo"
         @update-agent="handleUpdateAgent"
+        @selection-change="handleSelectionChange"
       />
     </div>
 
+    <!-- 复制告警规则对话框 -->
+    <copy-alert-rules-dialog
+      v-model:visible="showCopyAlertRulesDialog"
+      :source-servers="selectedServers"
+      :all-servers="servers"
+      @success="handleCopyAlertRulesSuccess"
+    />
+
     <!-- 分组管理对话框 -->
-    <ServerGroupManager
+    <server-group-manager
       v-model:visible="showGroupManager"
       :servers="servers"
       @refresh="handleGroupSuccess"
@@ -672,18 +747,19 @@ onMounted(async () => {
     />
 
     <!-- 创建/编辑分组对话框 -->
-    <ServerGroupDialog
+    <server-group-dialog
       v-model:visible="showGroupDialog"
       :group="editingGroup"
       @success="handleGroupSuccess"
     />
 
-    <ServerDialog
+    <server-dialog
       v-model:visible="showAddDialog"
       v-model:form="serverForm"
       :editing-server="editingServer"
       :saving="saving"
       @save="handleSaveServer"
+      @save-success="handleSaveSuccess"
       @cancel="handleCancelDialog"
       @restart-server="handleRestartServer"
     />
@@ -707,7 +783,7 @@ onMounted(async () => {
             <div class="flex items-start gap-2">
               <div>
                 <p class="font-medium mb-1 gap-2">
-                  <i class="pi pi-info-circle mt-0.5"></i>
+                  <i class="pi pi-info-circle mt-0.5 mr-2"></i>
                   <span class="font-bold">安装说明</span>
                 </p>
                 <ul class="space-y-1">
