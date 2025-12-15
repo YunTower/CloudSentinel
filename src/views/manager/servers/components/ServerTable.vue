@@ -425,7 +425,7 @@ defineExpose({
           dataKey="id"
           scrollable
           @row-expand="onRowExpand"
-          @selection-change="(e) => emit('selection-change', e.data as Server[])"
+          @selection-change="(e: { data: Server[] }) => emit('selection-change', e.data)"
           :pt="{
             root: { class: 'rounded-lg' },
             header: { class: 'bg-surface-50 dark:bg-surface-800' },
