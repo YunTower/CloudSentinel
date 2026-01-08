@@ -96,8 +96,7 @@ const performUpdate = async () => {
   if (versionInfo.value?.latest_version_type !== 'release') {
     confirm.require({
       message: '当前更新版本非正式版（Release），可能存在不稳定因素，是否确认更新？',
-      header: '更新确认',
-      icon: 'pi pi-exclamation-triangle',
+      header: '高风险操作确认',
       acceptClass: 'p-button-danger',
       acceptLabel: '确认继续操作',
       rejectLabel: '取消',
@@ -156,7 +155,7 @@ const executeUpdate = async () => {
           severity: 'error',
           summary: '更新失败',
           detail: `获取更新状态失败（${error}）`,
-          life: 5000,
+          life: 6000,
         })
       }
     }, 1000)
@@ -217,6 +216,7 @@ const savePanelSettings = async () => {
 
 onMounted(() => {
   loadPanelSettings()
+  checkForUpdate()
 })
 </script>
 <template>
