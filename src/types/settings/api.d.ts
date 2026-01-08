@@ -5,9 +5,6 @@ export interface ApiResponse<T> {
   data: T
 }
 
-// Panel
-export type ReleaseTypes = 'gitee' | 'github'
-
 export interface GetPanelSettingsData {
   panel_title: string
   current_version: string

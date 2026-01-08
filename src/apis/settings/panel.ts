@@ -1,6 +1,5 @@
 import { requester } from '@/utils/requester.ts'
 import type {
-  ReleaseTypes,
   GetCheckUpdateResponse,
   GetPanelSettingsResponse,
   GetUpdateStatusResponse,
@@ -21,8 +20,7 @@ export default {
     requester.Patch('/settings/panel', settings),
   getPanelSettings: () => requester.Get<GetPanelSettingsResponse>('/settings/panel'),
   getPublicSettings: getPublicSettingsMethod,
-  checkUpdate: (type: ReleaseTypes) =>
-    requester.Get<GetCheckUpdateResponse>('/update/check', { params: { type } }),
+  checkUpdate: () => requester.Get<GetCheckUpdateResponse>('/update/check'),
   getUpdateStatus: () => requester.Get<GetUpdateStatusResponse>('/update/status'),
-  updatePanel: (type: ReleaseTypes) => requester.Post('/update', { type }),
+  updatePanel: () => requester.Post('/update'),
 }
