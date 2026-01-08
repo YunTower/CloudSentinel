@@ -105,21 +105,50 @@ export const compareVersions = (version1: string, version2: string): number => {
 }
 
 /**
- * 从版本字符串中提取版本号和版本类型
- * @param version 版本字符串，如 "1.0.0-release" 或 "1.0.0"
- * @returns { version: string, versionType: VersionType }
+ * 从版本字符串中提取版本号、版本类型和预发布版本序号
+ * @param version 版本字符串，如 "1.0.0-release" 或 "1.0.0-beta.1" 或 "v0.0.1-beta.2"
+ * @returns { version: string, versionType: VersionType, preReleaseNum: number }
  */
-export const parseVersion = (version: string): { version: string; versionType: VersionType } => {
-  const parts = version.split('-')
+export const parseVersion = (
+  version: string
+): { version: string; versionType: VersionType; preReleaseNum: number } => {
+  // 移除开头的 'v' 前缀
+  let normalizedVersion = version
+  if (version.startsWith('v')) {
+    normalizedVersion = version.substring(1)
+  }
+
+  // 分割版本号和预发布标识
+  const parts = normalizedVersion.split('-')
   const versionNum = parts[0]
-  const versionType = (parts[1] || 'release') as VersionType
-  return { version: versionNum, versionType }
+  let versionType: VersionType = 'release'
+  let preReleaseNum = 0
+
+  if (parts.length > 1) {
+    const preRelease = parts[1]
+    // 尝试提取预发布版本序号（如 beta.1 中的 1）
+    const preReleaseParts = preRelease.split('.')
+    if (preReleaseParts.length > 1) {
+      // 提取类型（如 "beta"）
+      versionType = (preReleaseParts[0] as VersionType) || 'release'
+      // 提取序号（如 "1"）
+      const num = parseInt(preReleaseParts[1], 10)
+      if (!isNaN(num)) {
+        preReleaseNum = num
+      }
+    } else {
+      // 没有序号，直接使用整个字符串作为类型
+      versionType = (preRelease as VersionType) || 'release'
+    }
+  }
+
+  return { version: versionNum, versionType, preReleaseNum }
 }
 
 /**
  * 判断是否需要更新
- * @param currentVersion 当前版本，如 "1.0.0" 或 "1.0.0-release"
- * @param latestVersion 最新版本，如 "1.0.1" 或 "1.0.1-release"
+ * @param currentVersion 当前版本，如 "1.0.0" 或 "1.0.0-release" 或 "v0.0.1-beta.1"
+ * @param latestVersion 最新版本，如 "1.0.1" 或 "1.0.1-release" 或 "v0.0.1-beta.2"
  * @param currentVersionType 当前版本类型（如果版本号中已包含类型，可省略）
  * @param latestVersionType 最新版本类型（如果版本号中已包含类型，可省略）
  * @returns 是否需要更新
@@ -148,17 +177,39 @@ export const hasUpdate = (
     return true
   }
 
-  if (versionCompare === 0) {
-    // 版本号相同，比较版本类型优先级
-    const latestPriority = VERSION_TYPE_PRIORITY[latestType] ?? 0
-    const currentPriority = VERSION_TYPE_PRIORITY[currentType] ?? 0
-
-    if (latestPriority > currentPriority) {
-      // 最新版本类型优先级更高，需要更新
-      return true
-    }
+  if (versionCompare < 0) {
+    // 最新版本号更小，不需要更新
+    return false
   }
 
+  // 版本号相同，比较版本类型优先级
+  const latestPriority = VERSION_TYPE_PRIORITY[latestType] ?? 0
+  const currentPriority = VERSION_TYPE_PRIORITY[currentType] ?? 0
+
+  if (latestPriority > currentPriority) {
+    // 最新版本类型优先级更高，需要更新
+    return true
+  }
+
+  if (latestPriority < currentPriority) {
+    // 最新版本类型优先级更低，不需要更新
+    return false
+  }
+
+  // 类型优先级相同，比较预发布版本序号（仅对非 release 版本）
+  if (currentType !== 'release' && latestType !== 'release') {
+    return latest.preReleaseNum > current.preReleaseNum
+  }
+
+  // 如果一个是 release，另一个不是，release 优先级更高
+  if (currentType === 'release' && latestType !== 'release') {
+    return false
+  }
+  if (currentType !== 'release' && latestType === 'release') {
+    return true
+  }
+
+  // 都是 release 或类型相同且序号相同，不需要更新
   return false
 }
 
