@@ -156,7 +156,7 @@ watch(
 
     <div v-else>
       <div v-if="groups.length === 0" class="text-center py-12 text-muted-color">
-        <i class="pi pi-folder text-4xl mb-4 opacity-50"></i>
+        <i class="pi pi-folder mb-4 opacity-50 text-[2rem]!"></i>
         <p>暂无分组，请先创建分组</p>
       </div>
 
