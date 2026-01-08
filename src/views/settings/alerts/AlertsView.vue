@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import type { Notifications } from '@/types/settings/alerts'
 import alertsApi from '@/apis/settings/alerts'
@@ -18,6 +18,7 @@ const notifications = ref<Notifications>({
     enabled: false,
     webhook: '',
     mentioned: '@all',
+    platform: 'generic',
   },
 })
 
@@ -27,6 +28,33 @@ const securityOptions = [
   { label: 'SSL/TLS', value: 'SSL' },
 ]
 
+const webhookPlatformOptions = [
+  { label: '企业微信', value: 'wechat' },
+  { label: '飞书', value: 'feishu' },
+  { label: '通用', value: 'generic' },
+]
+
+// 根据选择的平台返回不同的 placeholder
+const webhookPlaceholder = computed(() => {
+  const platform = notifications.value.webhook.platform
+  switch (platform) {
+    case 'feishu':
+      return 'https://open.feishu.cn/open-apis/bot/v2/hook/...'
+    case 'wechat':
+      return 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...'
+    case 'generic':
+      return 'https://example.com/webhook'
+    default:
+      return '请输入 Webhook URL'
+  }
+})
+
+// 判断当前平台是否支持提及功能
+const supportsMention = computed(() => {
+  const platform = notifications.value.webhook.platform
+  return platform === 'feishu' || platform === 'wechat'
+})
+
 const saving = ref(false)
 const loading = ref(false)
 const testing = ref({
@@ -35,66 +63,116 @@ const testing = ref({
 })
 const toast = useToast()
 
-// 检查是否至少配置了一个通知渠道
-const hasNotificationChannel = (): boolean => {
-  // 检查邮件通知是否已启用且配置完整
-  if (notifications.value.email.enabled) {
-    const email = notifications.value.email
-    if (
-      email.smtp.trim() &&
-      email.port > 0 &&
-      email.port <= 65535 &&
-      email.from.trim() &&
-      email.to.trim()
-    ) {
-      return true
-    }
+// 提及用户列表
+const mentionedUsers = ref<string[]>([])
+// 当前输入的提及用户ID
+const mentionedInput = ref('')
+
+// 添加提及用户
+const addMentionedUser = () => {
+  const value = mentionedInput.value.trim()
+  if (!value) {
+    return
   }
 
-  // 检查企业微信通知是否已启用且配置完整
-  if (notifications.value.webhook.enabled) {
-    const webhook = notifications.value.webhook
-    if (
-      webhook.webhook.trim() &&
-      (webhook.webhook.startsWith('http://') || webhook.webhook.startsWith('https://'))
-    ) {
-      return true
-    }
+  // 检查是否已存在
+  if (mentionedUsers.value.includes(value)) {
+    toast.add({
+      severity: 'warn',
+      summary: '提示',
+      detail: '该用户已添加',
+      life: 2000,
+    })
+    return
   }
 
-  return false
+  // 添加用户
+  mentionedUsers.value.push(value)
+  mentionedInput.value = ''
+
+  updateMentionedString()
 }
 
+// 删除提及用户
+const removeMentionedUser = (index: number) => {
+  mentionedUsers.value.splice(index, 1)
+  updateMentionedString()
+}
+
+// 更新 mentioned 字符串
+const updateMentionedString = () => {
+  if (mentionedUsers.value.length === 0) {
+    notifications.value.webhook.mentioned = ''
+  } else {
+    notifications.value.webhook.mentioned = mentionedUsers.value.join(',')
+  }
+}
+
+// 从字符串加载提及用户数组
+const loadMentionedUsers = () => {
+  const mentioned = notifications.value.webhook.mentioned || ''
+  if (mentioned === '@all') {
+    mentionedUsers.value = ['@all']
+  } else if (mentioned) {
+    mentionedUsers.value = mentioned
+      .split(',')
+      .map((id) => id.trim())
+      .filter((id) => id)
+  } else {
+    mentionedUsers.value = []
+  }
+}
+
+// 监听平台类型变化，动态处理提及用户
+watch(
+  () => notifications.value.webhook.platform,
+  (newPlatform, oldPlatform) => {
+    // 如果切换到不支持提及的平台，清空提及用户
+    if (newPlatform === 'generic' || !newPlatform) {
+      if (oldPlatform === 'feishu' || oldPlatform === 'wechat') {
+        mentionedUsers.value = []
+        notifications.value.webhook.mentioned = ''
+      }
+    }
+  },
+)
 
 // 加载告警设置
 const loadAlertSettings = async () => {
   loading.value = true
   try {
     const res = await alertsApi.getAlertsSettings()
-    if (res?.status && res?.data) {
-      const data = res.data
+    if (!res?.status || !res?.data?.notifications) {
+      return
+    }
 
-      // 加载通知配置
-      if (data.notifications) {
-        if (data.notifications.email) {
-          notifications.value.email.enabled = data.notifications.email.enabled
-          notifications.value.email.smtp = String(data.notifications.email.smtp || '')
-          notifications.value.email.port = Number(data.notifications.email.port) || 587
-          notifications.value.email.security = String(
-            data.notifications.email.security || 'STARTTLS',
-          )
-          notifications.value.email.from = String(data.notifications.email.from || '')
-          notifications.value.email.to = String(data.notifications.email.to || '')
-          notifications.value.email.password = '' // 不从后端加载密码
-        }
-        if (data.notifications.webhook) {
-          notifications.value.webhook.enabled = data.notifications.webhook.enabled
-          notifications.value.webhook.webhook = String(data.notifications.webhook.webhook || '')
-          notifications.value.webhook.mentioned = String(
-            data.notifications.webhook.mentioned || '@all',
-          )
-        }
-      }
+    const { email, webhook } = res.data.notifications
+
+    // 加载邮件配置
+    if (email) {
+      Object.assign(notifications.value.email, {
+        enabled: email.enabled || false,
+        smtp: String(email.smtp || ''),
+        port: Number(email.port) || 587,
+        security: String(email.security || 'STARTTLS'),
+        from: String(email.from || ''),
+        to: String(email.to || ''),
+        password: '',
+      })
+    }
+
+    // 加载 Webhook 配置
+    if (webhook) {
+      Object.assign(notifications.value.webhook, {
+        enabled: webhook.enabled || false,
+        webhook: String(webhook.webhook || ''),
+        mentioned: String(webhook.mentioned || ''),
+        platform: webhook.platform
+          ? (webhook.platform as 'feishu' | 'wechat' | 'generic')
+          : 'generic',
+      })
+      // 加载提及用户列表
+      loadMentionedUsers()
     }
   } catch (error: unknown) {
     console.error('Failed to load alert settings:', error)
@@ -109,7 +187,6 @@ const loadAlertSettings = async () => {
     loading.value = false
   }
 }
-
 
 // 验证通知配置
 const validateNotifications = (): boolean => {
@@ -215,6 +292,10 @@ const testAlert = async (type: 'email' | 'webhook') => {
   testing.value[type] = true
   try {
     // 准备配置数据
+    // 如果是 webhook，需要先同步提及用户数组到字符串
+    if (type === 'webhook') {
+      updateMentionedString()
+    }
     const config = type === 'email' ? notifications.value.email : notifications.value.webhook
 
     const res = await alertsApi.testAlertSettings({
@@ -254,6 +335,9 @@ const saveAlertSettings = async () => {
   if (!validateNotifications()) {
     return
   }
+
+  // 同步提及用户数组到字符串
+  updateMentionedString()
 
   saving.value = true
   try {
@@ -410,18 +494,38 @@ onMounted(() => {
                 class="space-y-3 ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700"
               >
                 <div class="flex flex-col gap-2">
-                  <label class="text-sm font-medium text-color">Webhook URL</label>
-                  <InputText
-                    v-model="notifications.webhook.webhook"
-                    placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..."
+                  <label class="text-sm font-medium text-color">平台类型</label>
+                  <Select
+                    v-model="notifications.webhook.platform"
+                    :options="webhookPlatformOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="选择平台"
                   />
                 </div>
                 <div class="flex flex-col gap-2">
+                  <label class="text-sm font-medium text-color">Webhook URL</label>
+                  <InputText
+                    v-model="notifications.webhook.webhook"
+                    :placeholder="webhookPlaceholder"
+                  />
+                </div>
+                <div v-if="supportsMention" class="flex flex-col gap-2">
                   <label class="text-sm font-medium text-color">提及用户</label>
                   <InputText
-                    v-model="notifications.webhook.mentioned"
-                    placeholder="@all 或 用户ID"
+                    v-model="mentionedInput"
+                    placeholder="输入用户ID后按回车添加"
+                    @keydown.enter.prevent="addMentionedUser"
                   />
+                  <div v-if="mentionedUsers.length > 0" class="flex flex-wrap gap-2 mt-2">
+                    <Chip
+                      v-for="(user, index) in mentionedUsers"
+                      :key="index"
+                      :label="user"
+                      removable
+                      @remove="removeMentionedUser(index)"
+                    />
+                  </div>
                 </div>
                 <div class="pt-2">
                   <Button
