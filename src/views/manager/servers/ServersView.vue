@@ -322,7 +322,6 @@ const handleGroupSuccess = async () => {
 }
 
 const loadServers = async () => {
-  loading.value = true
   try {
     const response = (await serversApi.getServers()) as GetServersResponse
 
@@ -389,8 +388,6 @@ const loadServers = async () => {
       detail: errorMessage,
       life: 3000,
     })
-  } finally {
-    loading.value = false
   }
 }
 
@@ -444,7 +441,6 @@ const handleViewInstallInfo = (server: Server) => {
   selectedServerForInstall.value = server
   showInstallInfoDialog.value = true
 }
-
 
 const handleCancelDialog = () => {
   showAddDialog.value = false
@@ -551,7 +547,6 @@ const loadAgentVersion = async () => {
   }
 }
 
-// 处理 Agent 更新
 // 处理选中服务器变化
 const handleSelectionChange = (servers: Server[]) => {
   selectedServers.value = servers
@@ -582,8 +577,6 @@ const handleSaveSuccess = async () => {
 }
 
 const handleUpdateAgent = async (server: Server) => {
-  // 更新后可以刷新服务器列表以获取最新版本号
-  // 这里可以选择是否刷新
   toast.add({
     severity: 'info',
     summary: '更新中',
@@ -593,6 +586,7 @@ const handleUpdateAgent = async (server: Server) => {
 }
 
 onMounted(async () => {
+  loading.value = true
   await loadGroups()
   await loadServers()
   await loadAgentVersion()
@@ -607,6 +601,8 @@ onMounted(async () => {
       }
     })
   }
+
+  loading.value = false
 })
 </script>
 
@@ -630,11 +626,7 @@ onMounted(async () => {
           severity="secondary"
           @click="handleCreateGroup"
         />
-      <Button
-        label="添加服务器"
-        icon="pi pi-plus"
-        @click="showAddDialog = true"
-        />
+        <Button label="添加服务器" icon="pi pi-plus" @click="showAddDialog = true" />
       </div>
     </div>
 
@@ -776,19 +768,19 @@ onMounted(async () => {
           :server-i-p="serverIP"
           :websocket-u-r-l="websocketURL"
         />
-          <div class="mt-4 p-3 border rounded-lg">
-            <div class="flex items-start gap-2">
-              <div>
-                <p class="font-medium mb-1 gap-2">
-                  <i class="pi pi-info-circle mt-0.5 mr-2"></i>
-                  <span class="font-bold">安装说明</span>
-                </p>
-                <ul class="space-y-1">
-                  <li>• 在目标Linux服务器上执行上述安装命令</li>
-                  <li>• 安装完成后，探针会自动连接到控制中心</li>
-                  <li>• 系统信息（地域、操作系统等）将自动获取</li>
-                  <li>• 请妥善保管Agent Key避免泄露，此Agent Key用于服务器之间身份验证</li>
-                </ul>
+        <div class="mt-4 p-3 border rounded-lg">
+          <div class="flex items-start gap-2">
+            <div>
+              <p class="font-medium mb-1 gap-2">
+                <i class="pi pi-info-circle mt-0.5 mr-2"></i>
+                <span class="font-bold">安装说明</span>
+              </p>
+              <ul class="space-y-1">
+                <li>• 在目标Linux服务器上执行上述安装命令</li>
+                <li>• 安装完成后，探针会自动连接到控制中心</li>
+                <li>• 系统信息（地域、操作系统等）将自动获取</li>
+                <li>• 请妥善保管Agent Key避免泄露，此Agent Key用于服务器之间身份验证</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -810,8 +802,6 @@ onMounted(async () => {
 
 <style scoped>
 .servers-view {
-  padding: 2rem;
   margin: 0 auto;
 }
 </style>
-

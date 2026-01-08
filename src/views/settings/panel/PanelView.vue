@@ -477,7 +477,6 @@ onMounted(() => {
 </template>
 <style scoped>
 .panel-view {
-  padding: 2rem;
   margin: 0 auto;
 }
 </style>

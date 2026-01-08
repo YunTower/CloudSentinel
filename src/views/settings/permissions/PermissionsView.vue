@@ -600,7 +600,6 @@ onMounted(() => {
 </template>
 <style scoped>
 .permissions-view {
-  padding: 2rem;
   margin: 0 auto;
 }
 

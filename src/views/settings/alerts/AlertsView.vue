@@ -444,7 +444,6 @@ onMounted(() => {
 </template>
 <style scoped>
 .alerts-view {
-  padding: 2rem;
   margin: 0 auto;
 }
 </style>
