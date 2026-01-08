@@ -8,7 +8,7 @@ import ProgressBar from 'primevue/progressbar'
 import ConfirmDialog from 'primevue/confirmdialog'
 import panelApi from '@/apis/settings/panel'
 import { useAuthStore } from '@/stores/auth'
-import type { PanelSettings, UpdateSource } from '@/types/settings/panel'
+import type { PanelSettings } from '@/types/settings/panel'
 import type { GetUpdateData } from '@/types/settings/api'
 import { hasUpdate as checkHasUpdate, getVersionTypeConfig } from '@/utils/version.ts'
 
@@ -44,22 +44,6 @@ const updateProgress = ref(0)
 const updateStep = ref('')
 const currentStep = ref('')
 
-// 更新源配置
-const updateSources = ref<UpdateSource[]>([
-  {
-    label: 'GitHub',
-    value: 'github',
-    description: '官方源，更新及时，国外服务器访问较快',
-  },
-  {
-    label: 'Gitee',
-    value: 'gitee',
-    description: '国内镜像源，国内服务器访问较快',
-  },
-])
-
-const selectedUpdateSource = ref<'gitee' | 'github'>('github')
-
 // 版本信息
 const versionInfo = ref<VersionInfo>({
   change_log: '',
@@ -75,7 +59,7 @@ const versionInfo = ref<VersionInfo>({
 const checkForUpdate = async () => {
   checkingUpdate.value = true
   try {
-    const response = await panelApi.checkUpdate(selectedUpdateSource.value)
+    const response = await panelApi.checkUpdate()
     if (!response?.status) {
       toast.add({
         severity: 'warn',
@@ -91,7 +75,7 @@ const checkForUpdate = async () => {
     toast.add({
       severity: 'info',
       summary: '成功！！！',
-      detail: '检查到最新版本信息喽~',
+      detail: '检查到最新的版本信息喽~',
       life: 3000,
     })
   } catch (error) {
@@ -112,8 +96,7 @@ const performUpdate = async () => {
   if (versionInfo.value?.latest_version_type !== 'release') {
     confirm.require({
       message: '当前更新版本非正式版（Release），可能存在不稳定因素，是否确认更新？',
-      header: '更新确认',
-      icon: 'pi pi-exclamation-triangle',
+      header: '高风险操作确认',
       acceptClass: 'p-button-danger',
       acceptLabel: '确认继续操作',
       rejectLabel: '取消',
@@ -132,7 +115,7 @@ const executeUpdate = async () => {
   updateStep.value = '正在初始化更新...'
 
   try {
-    await panelApi.updatePanel(selectedUpdateSource.value)
+    await panelApi.updatePanel()
 
     const pollInterval = setInterval(async () => {
       try {
@@ -172,7 +155,7 @@ const executeUpdate = async () => {
           severity: 'error',
           summary: '更新失败',
           detail: `获取更新状态失败（${error}）`,
-          life: 5000,
+          life: 6000,
         })
       }
     }, 1000)
@@ -233,6 +216,7 @@ const savePanelSettings = async () => {
 
 onMounted(() => {
   loadPanelSettings()
+  checkForUpdate()
 })
 </script>
 <template>
@@ -289,51 +273,7 @@ onMounted(() => {
           </div>
         </template>
         <template #content>
-          <div class="space-y-6">
-            <!-- 更新线路设置 -->
-            <div class="flex items-center justify-between">
-              <div class="flex-1">
-                <div class="flex items-center gap-2 mb-1">
-                  <label class="text-sm font-medium text-color">更新线路</label>
-                </div>
-                <p class="text-sm text-muted-color">
-                  选择系统更新的下载源，{{
-                    updateSources.find((s) => s.value === selectedUpdateSource)?.description
-                  }}
-                </p>
-              </div>
-
-              <div class="flex-shrink-0 ml-6">
-                <Select
-                  v-model="selectedUpdateSource"
-                  :options="updateSources"
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="选择更新线路"
-                  size="small"
-                  class="w-48"
-                >
-                  <template #option="{ option }">
-                    <div class="flex items-center gap-3 w-full">
-                      <i v-if="option.value === 'github'" class="pi pi-github"></i>
-                      <i v-else-if="option.value === 'gitee'" class="pi pi-heart text-red-500"></i>
-                      <div class="flex-1">
-                        <div class="text-sm font-medium">{{ option.label }}</div>
-                        <div class="text-xs">{{ option.description }}</div>
-                      </div>
-                    </div>
-                  </template>
-                  <template #value="{ value }">
-                    <div v-if="value" class="flex items-center gap-2">
-                      <i v-if="value === 'github'" class="pi pi-github"></i>
-                      <i v-else-if="value === 'gitee'" class="pi pi-heart text-red-500"></i>
-                      <span>{{ updateSources.find((s) => s.value === value)?.label }}</span>
-                    </div>
-                  </template>
-                </Select>
-              </div>
-            </div>
-
+          <div class="space-y-3">
             <!-- 版本信息 -->
             <div
               class="flex items-center justify-between p-4 rounded-lg bg-surface-50 dark:bg-surface-800"
@@ -360,12 +300,12 @@ onMounted(() => {
               />
             </div>
 
-            <!-- 更新状态展示 - 只有在检查更新后才显示 -->
+            <!-- 更新状态展示 -->
             <div v-if="hasCheckedUpdate && versionInfo" class="animate-fade-in">
               <!-- 可用更新 -->
               <div
                 v-if="hasUpdate"
-                class="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800 overflow-hidden"
+                class="rounded-xl bg-surface-50 dark:bg-surface-800 overflow-hidden"
               >
                 <!-- 头部：版本信息与操作 -->
                 <div class="p-5 flex items-start justify-between gap-4">
@@ -373,7 +313,7 @@ onMounted(() => {
                     <div class="flex items-center gap-3">
                       <span class="text-base font-medium text-color">发现新版本</span>
                       <div
-                        class="flex items-center gap-2 px-2.5 py-1 rounded-md bg-primary-50 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-900/30"
+                        class="flex items-center gap-2 px-2.5 py-1 rounded-md bg-primary-100 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-900/30"
                       >
                         <span class="text-sm font-bold text-primary-700 dark:text-primary-300">
                           v{{ versionInfo.latest_version }}
@@ -477,7 +417,6 @@ onMounted(() => {
 </template>
 <style scoped>
 .panel-view {
-  padding: 2rem;
   margin: 0 auto;
 }
 </style>

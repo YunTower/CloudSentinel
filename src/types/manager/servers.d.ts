@@ -10,7 +10,6 @@ export interface ServerDetailData {
   id: string
   name: string
   ip: string
-  port?: number
   status: 'online' | 'offline' | 'maintenance' | 'error'
   location: string
   os?: string
@@ -36,7 +35,6 @@ export interface CreateServerData {
   id: string
   name: string
   ip: string
-  port: number
   status: 'online' | 'offline' | 'maintenance' | 'error'
   location: string
   os: string
@@ -54,7 +52,6 @@ export interface ServerListItemData {
   id: string
   name: string
   ip: string
-  port?: number
   status: 'online' | 'offline' | 'maintenance' | 'error'
   location: string
   os?: string
@@ -101,7 +98,6 @@ export interface Server {
   id: string
   name: string
   ip: string
-  port?: number
   status: 'online' | 'offline' | 'maintenance' | 'error'
   location: string
   os: string
@@ -144,7 +140,6 @@ export interface Server {
 export interface ServerForm {
   name: string
   ip: string
-  port?: number
   status: 'online' | 'offline' | 'maintenance' | 'error'
   location: string
   os: string
@@ -300,7 +295,7 @@ export interface ServerNotificationChannels {
   webhook?: boolean
 }
 
-// 服务器表单接口（包含告警规则和通知渠道）
+// 服务器表单接口
 export interface ServerFormWithAlertRules extends ServerForm {
   alert_rules?: ServerAlertRulesInput
   notification_channels?: ServerNotificationChannels

@@ -126,7 +126,6 @@ const form = defineModel<ServerForm>('form', {
   default: () => ({
     name: '',
     ip: '',
-    port: 22,
     status: 'online' as const,
     location: '',
     os: '',
@@ -165,7 +164,6 @@ const loadServerDetail = async () => {
       form.value = {
         name: detail.name,
         ip: detail.ip,
-        port: detail.port || 22,
         status: detail.status,
         location: detail.location,
         os: detail.os || '',
@@ -214,7 +212,6 @@ const loadServerDetail = async () => {
       form.value = {
         name: props.editingServer.name,
         ip: props.editingServer.ip,
-        port: props.editingServer.port,
         status: props.editingServer.status,
         location: props.editingServer.location,
         os: props.editingServer.os,
@@ -293,7 +290,6 @@ watch(
       form.value = {
         name: server.name,
         ip: server.ip,
-        port: server.port,
         status: server.status,
         location: server.location,
         os: server.os,
@@ -335,17 +331,6 @@ const handleSave = async () => {
       severity: 'error',
       summary: '验证失败',
       detail: '请输入有效的IP地址',
-      life: 3000,
-    })
-    return
-  }
-
-  // 验证通信端口范围
-  if (form.value.port && (form.value.port < 1 || form.value.port > 65535)) {
-    toast.add({
-      severity: 'error',
-      summary: '验证失败',
-      detail: '通信端口号必须在1-65535之间',
       life: 3000,
     })
     return
@@ -440,7 +425,7 @@ const handleResetAgentKey = () => {
   if (!props.editingServer) return
 
   confirm.require({
-    message: `确定要重置 "${props.editingServer.name}" 的通信密钥吗？重置后Agent需要使用新密钥重新连接面板`,
+    message: `确定要重置 "${props.editingServer.name}" 的通信密钥和指纹吗？重置后Agent需要使用新密钥重新连接面板，并重新绑定指纹`,
     header: '重置通信密钥确认',
     rejectProps: {
       label: '取消',
@@ -460,7 +445,7 @@ const handleResetAgentKey = () => {
           toast.add({
             severity: 'success',
             summary: '重置成功',
-            detail: `服务器 "${props.editingServer!.name}" 的通信密钥已重置。`,
+            detail: `服务器 "${props.editingServer!.name}" 的通信密钥和指纹已重置。`,
             life: 5000,
           })
           // 重新加载服务器详情
@@ -550,22 +535,6 @@ const handleResetAgentKey = () => {
                     placeholder="192.168.1.100"
                     required
                     class="w-full border-surface-300 dark:border-surface-600 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
-                  />
-                </div>
-
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-sitemap text-primary text-xs"></i>
-                    通信端口
-                    <span class="text-red-500">*</span>
-                  </label>
-                  <InputNumber
-                    v-model="form.port"
-                    placeholder="22"
-                    :min="1"
-                    :max="65535"
-                    :use-grouping="false"
-                    class="w-full"
                   />
                 </div>
 

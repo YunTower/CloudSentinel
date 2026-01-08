@@ -292,10 +292,6 @@ onMounted(async () => {
 
 <style scoped>
 @media (max-width: 640px) {
-  .login-view {
-    padding: 1rem;
-  }
-
   .w-full.max-w-md {
     max-width: 100%;
   }
