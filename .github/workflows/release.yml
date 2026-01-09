@@ -197,21 +197,28 @@ jobs:
           TAG_NAME="${{ steps.tag.outputs.tag_name }}"
           cd backend-repo
           
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 获取当前 HEAD 的 SHA
+          COMMIT_SHA=$(git rev-parse HEAD)
           
-          # 配置 git 使用 token 进行认证
-          if [ -n "$GITHUB_TOKEN" ]; then
-            git remote set-url origin https://x-access-token:$GITHUB_TOKEN@github.com/$BACKEND_REPO.git
-          fi
+          # 使用 GitHub API 创建 tag
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$BACKEND_REPO/git/refs" \
+            -d "{\"ref\":\"refs/tags/$TAG_NAME\",\"sha\":\"$COMMIT_SHA\"}")
           
-          # 检查 tag 是否已存在
-          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" = "201" ]; then
+            echo "Created tag $TAG_NAME in backend repository"
+          elif [ "$HTTP_CODE" = "422" ]; then
+            # 422 通常表示 tag 已存在
             echo "Tag $TAG_NAME already exists in backend repository"
           else
-            git tag "$TAG_NAME"
-            git push origin "$TAG_NAME"
-            echo "Created and pushed tag $TAG_NAME to backend repository"
+            echo "Failed to create tag. HTTP code: $HTTP_CODE"
+            echo "Response: $BODY"
+            exit 1
           fi
       
       - name: Prepare release notes
