@@ -22,17 +22,17 @@ const toast = useToast()
 
 // 计算安装命令
 const installCommand = computed(() => {
+  const basicCommand =
+    'curl -L https://raw.githubusercontent.com/YunTower/CloudSentinel-Agent/refs/heads/master/install.sh -o cloudsentinel_agent.sh && chmod +x cloudsentinel_agent.sh && sudo ./cloudsentinel_agent.sh'
   if (props.server) {
     if (!props.server.agent_key) return '无法生成安装命令：缺少Agent Key'
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
     const wsUrl = `${protocol}//${host}/api/ws/agent`
-    const installScriptURL = window.location.origin + '/install.sh'
-    return `curl -fsSL ${installScriptURL} | bash -s -- --server=${wsUrl} --key=${props.server.agent_key}`
+    return basicCommand + ` --server=${wsUrl} --key=${props.server.agent_key} --daemon`
   }
   if (!props.agentKey || !props.serverIP) return '无法生成安装命令：缺少Agent Key或服务器IP'
-  const installScriptURL = window.location.origin + '/install.sh'
-  return `curl -fsSL ${installScriptURL} | bash -s -- --server=${props.websocketURL} --key=${props.agentKey}`
+  return basicCommand + ` --server=${props.websocketURL} --key=${props.agentKey} --daemon`
 })
 
 // 获取当前使用的 Agent Key

@@ -51,18 +51,26 @@ export default {
     if (params.toString()) url += `?${params.toString()}`
     return requester.Get(url)
   },
-  updateAgent: (id: string, type?: string) => {
-    const url = `/servers/${id}/agent/update`
-    const params = type ? { type } : {}
-    return requester.Post(url, params)
+  updateAgent: (id: string) => {
+    return requester.Post(`/servers/${id}/agent/update`)
   },
-  resetAgentKey: (id: string) => requester.Post<{ status: boolean; message: string; data: { agent_key: string } }>(`/servers/${id}/agent/reset-key`),
+  resetAgentKey: (id: string) =>
+    requester.Post<{ status: boolean; message: string; data: { agent_key: string } }>(
+      `/servers/${id}/agent/reset-key`,
+    ),
   // 服务器分组管理
-  getGroups: () => requester.Get<{ status: boolean; message: string; data: ServerGroup[] }>('/servers/groups'),
+  getGroups: () =>
+    requester.Get<{ status: boolean; message: string; data: ServerGroup[] }>('/servers/groups'),
   createGroup: (group: { name: string; description?: string; color?: string }) =>
-    requester.Post<{ status: boolean; message: string; data: ServerGroup }>('/servers/groups', group),
+    requester.Post<{ status: boolean; message: string; data: ServerGroup }>(
+      '/servers/groups',
+      group,
+    ),
   updateGroup: (id: number, group: { name: string; description?: string; color?: string }) =>
-    requester.Patch<{ status: boolean; message: string; data: ServerGroup }>(`/servers/groups/${id}`, group),
+    requester.Patch<{ status: boolean; message: string; data: ServerGroup }>(
+      `/servers/groups/${id}`,
+      group,
+    ),
   deleteGroup: (id: number) =>
     requester.Delete<{ status: boolean; message: string; data: null }>(`/servers/groups/${id}`),
   // 获取服务器告警规则（仅告警规则，不包括其他服务器信息）

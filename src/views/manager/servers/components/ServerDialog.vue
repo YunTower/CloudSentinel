@@ -235,7 +235,6 @@ const loadServerDetail = async () => {
   }
 }
 
-
 // 加载全局通知渠道配置
 const loadGlobalNotificationChannels = async () => {
   try {
@@ -763,7 +762,9 @@ const handleResetAgentKey = () => {
                   </h3>
                   <div class="grid grid-cols-3 gap-4 items-start">
                     <!-- CPU 告警 -->
-                    <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                    <div
+                      class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
+                    >
                       <div class="flex items-center justify-between">
                         <label class="text-sm font-medium text-color">CPU 使用率</label>
                         <InputSwitch v-model="alertRules.cpu.enabled" />
@@ -793,7 +794,9 @@ const handleResetAgentKey = () => {
                     </div>
 
                     <!-- 内存告警 -->
-                    <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                    <div
+                      class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
+                    >
                       <div class="flex items-center justify-between">
                         <label class="text-sm font-medium text-color">内存使用率</label>
                         <InputSwitch v-model="alertRules.memory.enabled" />
@@ -823,7 +826,9 @@ const handleResetAgentKey = () => {
                     </div>
 
                     <!-- 磁盘告警 -->
-                    <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                    <div
+                      class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
+                    >
                       <div class="flex items-center justify-between">
                         <label class="text-sm font-medium text-color">磁盘使用率</label>
                         <InputSwitch v-model="alertRules.disk.enabled" />
@@ -862,7 +867,9 @@ const handleResetAgentKey = () => {
                   </h3>
                   <div class="grid grid-cols-2 gap-4 items-start">
                     <!-- 带宽峰值告警 -->
-                    <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                    <div
+                      class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
+                    >
                       <div class="flex items-center justify-between">
                         <label class="text-sm font-medium text-color">带宽峰值</label>
                         <InputSwitch
@@ -894,7 +901,9 @@ const handleResetAgentKey = () => {
                     </div>
 
                     <!-- 流量耗尽告警 -->
-                    <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                    <div
+                      class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
+                    >
                       <div class="flex items-center justify-between">
                         <label class="text-sm font-medium text-color">流量耗尽</label>
                         <InputSwitch
@@ -936,7 +945,9 @@ const handleResetAgentKey = () => {
                   </h3>
                   <div class="grid grid-cols-1 gap-4">
                     <!-- 到期提醒 -->
-                    <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                    <div
+                      class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
+                    >
                       <div class="flex items-center justify-between">
                         <label class="text-sm font-medium text-color">服务器到期提醒</label>
                         <InputSwitch
@@ -968,7 +979,6 @@ const handleResetAgentKey = () => {
                     </div>
                   </div>
                 </div>
-
               </div>
               <div v-else class="text-center py-8 text-muted-color">无法加载告警规则</div>
 
@@ -983,7 +993,9 @@ const handleResetAgentKey = () => {
                 </p>
                 <div class="grid grid-cols-2 gap-4">
                   <!-- 邮件通知 -->
-                  <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                  <div
+                    class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
+                  >
                     <div class="flex items-center justify-between">
                       <label class="text-sm font-medium text-color">邮件通知</label>
                       <InputSwitch
@@ -994,10 +1006,13 @@ const handleResetAgentKey = () => {
                     <p v-if="!globalNotificationChannels.email" class="text-xs text-muted-color">
                       全局邮件通知未配置
                     </p>
+                    <p v-else class="text-xs text-muted-color">邮件通知可用</p>
                   </div>
 
                   <!-- Webhook 通知 -->
-                  <div class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg">
+                  <div
+                    class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
+                  >
                     <div class="flex items-center justify-between">
                       <label class="text-sm font-medium text-color">Webhook 通知</label>
                       <InputSwitch
@@ -1008,6 +1023,7 @@ const handleResetAgentKey = () => {
                     <p v-if="!globalNotificationChannels.webhook" class="text-xs text-muted-color">
                       全局 Webhook 通知未配置
                     </p>
+                    <p v-else class="text-xs text-muted-color">Webhook通知可用</p>
                   </div>
                 </div>
               </div>
