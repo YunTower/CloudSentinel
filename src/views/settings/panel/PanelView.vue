@@ -396,7 +396,7 @@ onMounted(() => {
               <!-- 无更新状态 -->
               <div
                 v-else
-                class="flex flex-col items-center justify-center py-10 text-center border border-dashed border-surface-200 dark:border-surface-700 rounded-xl bg-surface-50/50 dark:bg-surface-800/50"
+                class="flex flex-col items-center justify-center py-10 text-center rounded-xl bg-surface-50 dark:bg-surface-800"
               >
                 <div
                   class="w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4"
