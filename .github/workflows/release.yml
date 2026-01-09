@@ -220,15 +220,13 @@ jobs:
           FRONTEND_COMMITS="${{ steps.frontend_changelog.outputs.frontend_commits }}"
           BACKEND_COMMITS="${{ steps.backend_changelog.outputs.backend_commits }}"
           
-          NOTES="[$TAG_NAME]
-面板前端变更：
-$FRONTEND_COMMITS
-
-面板后端变更：
-$BACKEND_COMMITS"
-          
           echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "[$TAG_NAME]" >> $GITHUB_OUTPUT
+          echo "面板前端变更：" >> $GITHUB_OUTPUT
+          echo "$FRONTEND_COMMITS" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "面板后端变更：" >> $GITHUB_OUTPUT
+          echo "$BACKEND_COMMITS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       
       - name: Create Release
