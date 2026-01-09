@@ -11,7 +11,7 @@ jobs:
     permissions:
       contents: write
     env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || env.GITHUB_TOKEN || github.token }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
       BACKEND_REPO: YunTower/CloudSentinel-Backend
       FRONTEND_REPO: ${{ github.repository }}
     
@@ -243,4 +243,4 @@ jobs:
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || env.GITHUB_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
