@@ -62,7 +62,7 @@ jobs:
       - name: Clone backend repository
         run: |
           if [ -n "$GITHUB_TOKEN" ]; then
-            git clone https://$GITHUB_TOKEN@github.com/$BACKEND_REPO.git backend-repo
+            git clone https://x-access-token:$GITHUB_TOKEN@github.com/$BACKEND_REPO.git backend-repo
           else
             git clone https://github.com/$BACKEND_REPO.git backend-repo
           fi
@@ -200,8 +200,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
+          # 配置 git 使用 token 进行认证
           if [ -n "$GITHUB_TOKEN" ]; then
-            git remote set-url origin https://$GITHUB_TOKEN@github.com/$BACKEND_REPO.git
+            git remote set-url origin https://x-access-token:$GITHUB_TOKEN@github.com/$BACKEND_REPO.git
           fi
           
           # 检查 tag 是否已存在
