@@ -1,0 +1,246 @@
+name: Release Build and Publish
+
+on:
+  create:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
+      BACKEND_REPO: YunTower/CloudSentinel-Backend
+      FRONTEND_REPO: ${{ github.repository }}
+    
+    steps:
+      - name: Checkout frontend repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install pnpm
+        run: npm install -g pnpm
+      
+      - name: Install frontend dependencies
+        run: pnpm install
+      
+      - name: Build frontend
+        run: |
+          # 临时修改 vite.config.ts 输出目录为 dist
+          sed -i "s|outDir: '../backend/public'|outDir: 'dist'|" vite.config.ts
+          pnpm run build
+        env:
+          VITE_API_URL_PREFIX: /api
+          VITE_API_SERVER: http://localhost:8080
+      
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      
+      - name: Get tag name
+        id: tag
+        run: |
+          # 对于 create 事件，使用 github.event.ref 获取 tag 名称
+          TAG_NAME="${{ github.event.ref }}"
+          # 如果 TAG_NAME 包含 refs/tags/，则去掉前缀
+          TAG_NAME=${TAG_NAME#refs/tags/}
+          VERSION=${TAG_NAME#v}
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Tag: $TAG_NAME"
+          echo "Version: $VERSION"
+      
+      - name: Clone backend repository
+        run: |
+          if [ -n "$GITHUB_TOKEN" ]; then
+            git clone https://$GITHUB_TOKEN@github.com/$BACKEND_REPO.git backend-repo
+          else
+            git clone https://github.com/$BACKEND_REPO.git backend-repo
+          fi
+      
+      - name: Copy frontend build to backend
+        run: |
+          mkdir -p backend-repo/public
+          if [ -d "dist" ] && [ "$(ls -A dist 2>/dev/null)" ]; then
+            cp -r dist/* backend-repo/public/
+            echo "Frontend build copied to backend/public"
+          else
+            echo "Error: dist directory is empty or does not exist"
+            exit 1
+          fi
+      
+      - name: Update backend version
+        run: |
+          VERSION="${{ steps.tag.outputs.version }}"
+          cd backend-repo
+          # 使用 sed 修改 config/app.go 中的 version 字段
+          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" config/app.go
+          echo "Updated version to: $VERSION"
+          # 验证修改
+          grep -n "version" config/app.go
+      
+      - name: Build backend for Linux AMD64
+        run: |
+          cd backend-repo
+          export GOOS=linux
+          export GOARCH=amd64
+          export CGO_ENABLED=0
+          go build -ldflags "-s -w" -trimpath -o dashboard .
+          mv dashboard dashboard-linux-amd64
+          tar -czf dashboard-linux-amd64.tar.gz dashboard-linux-amd64
+          sha256sum dashboard-linux-amd64.tar.gz > dashboard-linux-amd64.sha256
+          echo "Built Linux AMD64"
+      
+      - name: Build backend for Linux ARM64
+        run: |
+          cd backend-repo
+          export GOOS=linux
+          export GOARCH=arm64
+          export CGO_ENABLED=0
+          go build -ldflags "-s -w" -trimpath -o dashboard .
+          mv dashboard dashboard-linux-arm64
+          tar -czf dashboard-linux-arm64.tar.gz dashboard-linux-arm64
+          sha256sum dashboard-linux-arm64.tar.gz > dashboard-linux-arm64.sha256
+          echo "Built Linux ARM64"
+      
+      - name: Get frontend changelog
+        id: frontend_changelog
+        run: |
+          TAG_NAME="${{ steps.tag.outputs.tag_name }}"
+          cd ${{ github.workspace }}
+          
+          # 获取所有 tags
+          git fetch --tags
+          
+          # 获取所有 tag 列表，按版本排序
+          ALL_TAGS=$(git tag -l "v*" | sort -V)
+          
+          # 查找当前 tag 的上一个 tag
+          PREV_TAG=""
+          for tag in $ALL_TAGS; do
+            if [ "$tag" = "$TAG_NAME" ]; then
+              break
+            fi
+            PREV_TAG=$tag
+          done
+          
+          if [ -z "$PREV_TAG" ]; then
+            # 如果没有上一个 tag，获取所有提交
+            echo "No previous tag found, getting all commits"
+            COMMITS=$(git log --pretty=format:"- %s" --reverse)
+          else
+            # 获取两个 tag 之间的提交
+            echo "Previous tag: $PREV_TAG"
+            COMMITS=$(git log ${PREV_TAG}..${TAG_NAME} --pretty=format:"- %s")
+          fi
+          
+          # 如果没有提交，设置默认值
+          if [ -z "$COMMITS" ]; then
+            COMMITS="- 无变更"
+          fi
+          
+          echo "frontend_commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Get backend changelog
+        id: backend_changelog
+        run: |
+          TAG_NAME="${{ steps.tag.outputs.tag_name }}"
+          cd backend-repo
+          
+          # 获取所有 tags
+          git fetch --tags
+          
+          # 获取所有 tag 列表，按版本排序
+          ALL_TAGS=$(git tag -l "v*" | sort -V)
+          
+          # 查找当前 tag 的上一个 tag
+          PREV_TAG=""
+          for tag in $ALL_TAGS; do
+            if [ "$tag" = "$TAG_NAME" ]; then
+              break
+            fi
+            PREV_TAG=$tag
+          done
+          
+          if [ -z "$PREV_TAG" ]; then
+            # 如果没有上一个 tag，获取所有提交
+            echo "No previous tag found, getting all commits"
+            COMMITS=$(git log --pretty=format:"- %s" --reverse)
+          else
+            # 获取两个 tag 之间的提交
+            echo "Previous tag: $PREV_TAG"
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s")
+          fi
+          
+          # 如果没有提交，设置默认值
+          if [ -z "$COMMITS" ]; then
+            COMMITS="- 无变更"
+          fi
+          
+          echo "backend_commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create tag in backend repository
+        run: |
+          TAG_NAME="${{ steps.tag.outputs.tag_name }}"
+          cd backend-repo
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if [ -n "$GITHUB_TOKEN" ]; then
+            git remote set-url origin https://$GITHUB_TOKEN@github.com/$BACKEND_REPO.git
+          fi
+          
+          # 检查 tag 是否已存在
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists in backend repository"
+          else
+            git tag "$TAG_NAME"
+            git push origin "$TAG_NAME"
+            echo "Created and pushed tag $TAG_NAME to backend repository"
+          fi
+      
+      - name: Prepare release notes
+        id: release_notes
+        run: |
+          TAG_NAME="${{ steps.tag.outputs.tag_name }}"
+          FRONTEND_COMMITS="${{ steps.frontend_changelog.outputs.frontend_commits }}"
+          BACKEND_COMMITS="${{ steps.backend_changelog.outputs.backend_commits }}"
+          
+          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+          echo "[$TAG_NAME]" >> $GITHUB_OUTPUT
+          echo "面板前端变更：" >> $GITHUB_OUTPUT
+          echo "$FRONTEND_COMMITS" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "面板后端变更：" >> $GITHUB_OUTPUT
+          echo "$BACKEND_COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.tag_name }}
+          name: Release ${{ steps.tag.outputs.tag_name }}
+          body: ${{ steps.release_notes.outputs.release_notes }}
+          files: |
+            backend-repo/dashboard-linux-amd64.tar.gz
+            backend-repo/dashboard-linux-amd64.sha256
+            backend-repo/dashboard-linux-arm64.tar.gz
+            backend-repo/dashboard-linux-arm64.sha256
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
