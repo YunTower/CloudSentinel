@@ -100,7 +100,7 @@ const confirmUpdateAgent = async () => {
   updatingAgentId.value = server.id
 
   try {
-    await serversApi.updateAgent(server.id, 'github')
+    await serversApi.updateAgent(server.id)
     toast.add({
       severity: 'success',
       summary: '成功',
