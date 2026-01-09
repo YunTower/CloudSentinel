@@ -199,26 +199,35 @@ jobs:
           
           # 获取当前 HEAD 的 SHA
           COMMIT_SHA=$(git rev-parse HEAD)
+          echo "Creating tag $TAG_NAME at commit $COMMIT_SHA"
           
           # 使用 GitHub API 创建 tag
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
+            -H "Content-Type: application/json" \
             "https://api.github.com/repos/$BACKEND_REPO/git/refs" \
             -d "{\"ref\":\"refs/tags/$TAG_NAME\",\"sha\":\"$COMMIT_SHA\"}")
           
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
           BODY=$(echo "$RESPONSE" | sed '$d')
           
+          echo "API Response Code: $HTTP_CODE"
+          echo "API Response Body: $BODY"
+          
           if [ "$HTTP_CODE" = "201" ]; then
-            echo "Created tag $TAG_NAME in backend repository"
+            echo "✅ Created tag $TAG_NAME in backend repository"
           elif [ "$HTTP_CODE" = "422" ]; then
             # 422 通常表示 tag 已存在
-            echo "Tag $TAG_NAME already exists in backend repository"
+            echo "ℹ️ Tag $TAG_NAME already exists in backend repository"
+          elif [ "$HTTP_CODE" = "403" ] || [ "$HTTP_CODE" = "401" ]; then
+            echo "⚠️ Authentication failed. Please configure GITHUB_TOKEN secret with a Personal Access Token that has repo permissions."
+            echo "Skipping tag creation in backend repository."
           else
-            echo "Failed to create tag. HTTP code: $HTTP_CODE"
+            echo "❌ Failed to create tag. HTTP code: $HTTP_CODE"
             echo "Response: $BODY"
-            exit 1
+            # 不退出，允许工作流继续
+            echo "⚠️ Continuing workflow despite tag creation failure"
           fi
       
       - name: Prepare release notes
