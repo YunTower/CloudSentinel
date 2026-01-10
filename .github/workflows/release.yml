@@ -15,25 +15,25 @@ jobs:
       BACKEND_PAT: ${{ secrets.BACKEND_PAT }}
       BACKEND_REPO: YunTower/CloudSentinel-Backend
       FRONTEND_REPO: ${{ github.repository }}
-    
+
     steps:
       - name: Checkout frontend repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
+
       - name: Install pnpm
         run: npm install -g pnpm
-      
+
       - name: Install frontend dependencies
         run: pnpm install
-      
+
       - name: Build frontend
         run: |
           # 临时修改 vite.config.ts 输出目录为 dist
@@ -42,12 +42,12 @@ jobs:
         env:
           VITE_API_URL_PREFIX: /api
           VITE_API_SERVER: http://localhost:8080
-      
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-      
+
       - name: Get tag name
         id: tag
         run: |
@@ -60,7 +60,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Tag: $TAG_NAME"
           echo "Version: $VERSION"
-      
+
       - name: Clone backend repository
         run: |
           if [ -n "$BACKEND_PAT" ]; then
@@ -68,7 +68,7 @@ jobs:
           else
             git clone https://github.com/$BACKEND_REPO.git backend-repo
           fi
-      
+
       - name: Copy frontend build to backend
         run: |
           mkdir -p backend-repo/public
@@ -79,7 +79,7 @@ jobs:
             echo "Error: dist directory is empty or does not exist"
             exit 1
           fi
-      
+
       - name: Update backend version
         run: |
           VERSION="${{ steps.tag.outputs.version }}"
@@ -89,7 +89,7 @@ jobs:
           echo "Updated version to: $VERSION"
           # 验证修改
           grep -n "version" config/app.go
-      
+
       - name: Build backend for Linux AMD64
         run: |
           cd backend-repo
@@ -101,7 +101,7 @@ jobs:
           tar -czf dashboard-linux-amd64.tar.gz dashboard-linux-amd64
           sha256sum dashboard-linux-amd64.tar.gz > dashboard-linux-amd64.sha256
           echo "Built Linux AMD64"
-      
+
       - name: Build backend for Linux ARM64
         run: |
           cd backend-repo
@@ -113,7 +113,7 @@ jobs:
           tar -czf dashboard-linux-arm64.tar.gz dashboard-linux-arm64
           sha256sum dashboard-linux-arm64.tar.gz > dashboard-linux-arm64.sha256
           echo "Built Linux ARM64"
-      
+
       - name: Get frontend changelog
         id: frontend_changelog
         run: |
@@ -153,7 +153,7 @@ jobs:
           echo "frontend_commits<<EOF" >> $GITHUB_OUTPUT
           echo "$COMMITS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-      
+
       - name: Get backend changelog
         id: backend_changelog
         run: |
@@ -193,35 +193,51 @@ jobs:
           echo "backend_commits<<EOF" >> $GITHUB_OUTPUT
           echo "$COMMITS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-      
-      - name: Create tag in backend repository
+
+      - name: Create tag in backend repository (GitHub API)
         run: |
-          set -e
           TAG_NAME="${{ steps.tag.outputs.tag_name }}"
-          cd backend-repo
-          
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # 检查 BACKEND_PAT 是否配置
+          VERSION="${{ steps.tag.outputs.version }}"
+
           if [ -z "$BACKEND_PAT" ]; then
             echo "❌ BACKEND_PAT is not configured"
-            echo "Please configure BACKEND_PAT secret with a Personal Access Token that has repo permissions."
             exit 1
           fi
-          
-          # 使用 PAT 配置 remote URL（正确的格式：x-access-token:token@github.com）
-          git remote set-url origin https://x-access-token:$BACKEND_PAT@github.com/$BACKEND_REPO.git
-          
-          # 检查 tag 是否已存在
-          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-            echo "ℹ️ Tag $TAG_NAME already exists in backend repository"
-          else
-            git tag "$TAG_NAME"
-            git push origin "$TAG_NAME"
-            echo "✅ Created and pushed tag $TAG_NAME in backend repository"
+
+          echo "🔍 Getting backend default branch SHA..."
+
+          SHA=$(curl -s \
+            -H "Authorization: Bearer $BACKEND_PAT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/$BACKEND_REPO/git/ref/heads/main \
+            | jq -r .object.sha)
+
+          if [ "$SHA" = "null" ] || [ -z "$SHA" ]; then
+            echo "❌ Failed to get backend HEAD SHA"
+            exit 1
           fi
-      
+
+          echo "📌 Creating tag $TAG_NAME at $SHA"
+
+          HTTP_CODE=$(curl -s -o /tmp/resp.json -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer $BACKEND_PAT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/$BACKEND_REPO/git/refs \
+            -d "{
+              \"ref\": \"refs/tags/$TAG_NAME\",
+              \"sha\": \"$SHA\"
+            }")
+
+          if [ "$HTTP_CODE" = "201" ]; then
+            echo "✅ Tag $TAG_NAME created in backend repo"
+          elif [ "$HTTP_CODE" = "422" ]; then
+            echo "ℹ️ Tag $TAG_NAME already exists in backend repo"
+          else
+            echo "❌ Failed to create tag"
+            cat /tmp/resp.json
+            exit 1
+          fi
+
       - name: Prepare release notes
         id: release_notes
         run: |
@@ -237,7 +253,7 @@ jobs:
           echo "面板后端变更：" >> $GITHUB_OUTPUT
           echo "$BACKEND_COMMITS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-      
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
