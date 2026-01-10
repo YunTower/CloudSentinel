@@ -12,6 +12,7 @@ jobs:
       contents: write
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
+      BACKEND_PAT: ${{ secrets.BACKEND_PAT }}
       BACKEND_REPO: YunTower/CloudSentinel-Backend
       FRONTEND_REPO: ${{ github.repository }}
     
@@ -61,8 +62,8 @@ jobs:
       
       - name: Clone backend repository
         run: |
-          if [ -n "$GITHUB_TOKEN" ]; then
-            git clone https://x-access-token:$GITHUB_TOKEN@github.com/$BACKEND_REPO.git backend-repo
+          if [ -n "$BACKEND_PAT" ]; then
+            git clone https://x-access-token:$BACKEND_PAT@github.com/$BACKEND_REPO.git backend-repo
           else
             git clone https://github.com/$BACKEND_REPO.git backend-repo
           fi
@@ -197,37 +198,25 @@ jobs:
           TAG_NAME="${{ steps.tag.outputs.tag_name }}"
           cd backend-repo
           
-          # 获取当前 HEAD 的 SHA
-          COMMIT_SHA=$(git rev-parse HEAD)
-          echo "Creating tag $TAG_NAME at commit $COMMIT_SHA"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # 使用 GitHub API 创建 tag
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            -H "Content-Type: application/json" \
-            "https://api.github.com/repos/$BACKEND_REPO/git/refs" \
-            -d "{\"ref\":\"refs/tags/$TAG_NAME\",\"sha\":\"$COMMIT_SHA\"}")
-          
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
-          
-          echo "API Response Code: $HTTP_CODE"
-          echo "API Response Body: $BODY"
-          
-          if [ "$HTTP_CODE" = "201" ]; then
-            echo "✅ Created tag $TAG_NAME in backend repository"
-          elif [ "$HTTP_CODE" = "422" ]; then
-            # 422 通常表示 tag 已存在
-            echo "ℹ️ Tag $TAG_NAME already exists in backend repository"
-          elif [ "$HTTP_CODE" = "403" ] || [ "$HTTP_CODE" = "401" ]; then
-            echo "⚠️ Authentication failed. Please configure GITHUB_TOKEN secret with a Personal Access Token that has repo permissions."
-            echo "Skipping tag creation in backend repository."
+          # 使用 PAT 配置 remote URL（正确的格式：x-access-token:token@github.com）
+          if [ -n "$BACKEND_PAT" ]; then
+            git remote set-url origin https://x-access-token:$BACKEND_PAT@github.com/$BACKEND_REPO.git
           else
-            echo "❌ Failed to create tag. HTTP code: $HTTP_CODE"
-            echo "Response: $BODY"
-            # 不退出，允许工作流继续
-            echo "⚠️ Continuing workflow despite tag creation failure"
+            echo "⚠️ BACKEND_PAT not configured. Skipping tag creation in backend repository."
+            echo "Please configure BACKEND_PAT secret with a Personal Access Token that has repo permissions."
+            exit 0
+          fi
+          
+          # 检查 tag 是否已存在
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "ℹ️ Tag $TAG_NAME already exists in backend repository"
+          else
+            git tag "$TAG_NAME"
+            git push origin "$TAG_NAME"
+            echo "✅ Created and pushed tag $TAG_NAME to backend repository"
           fi
       
       - name: Prepare release notes
