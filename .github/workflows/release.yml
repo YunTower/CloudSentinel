@@ -1,7 +1,7 @@
 name: Release Build and Publish
 
 on:
-  create:
+  push:
     tags:
       - 'v*'
 
@@ -196,20 +196,22 @@ jobs:
       
       - name: Create tag in backend repository
         run: |
+          set -e
           TAG_NAME="${{ steps.tag.outputs.tag_name }}"
           cd backend-repo
           
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # 使用 PAT 配置 remote URL（正确的格式：x-access-token:token@github.com）
-          if [ -n "$BACKEND_PAT" ]; then
-            git remote set-url origin https://x-access-token:$BACKEND_PAT@github.com/$BACKEND_REPO.git
-          else
-            echo "⚠️ BACKEND_PAT not configured. Skipping tag creation in backend repository."
+          # 检查 BACKEND_PAT 是否配置
+          if [ -z "$BACKEND_PAT" ]; then
+            echo "❌ BACKEND_PAT is not configured"
             echo "Please configure BACKEND_PAT secret with a Personal Access Token that has repo permissions."
-            exit 0
+            exit 1
           fi
+          
+          # 使用 PAT 配置 remote URL（正确的格式：x-access-token:token@github.com）
+          git remote set-url origin https://x-access-token:$BACKEND_PAT@github.com/$BACKEND_REPO.git
           
           # 检查 tag 是否已存在
           if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
@@ -217,7 +219,7 @@ jobs:
           else
             git tag "$TAG_NAME"
             git push origin "$TAG_NAME"
-            echo "✅ Created and pushed tag $TAG_NAME to backend repository"
+            echo "✅ Created and pushed tag $TAG_NAME in backend repository"
           fi
       
       - name: Prepare release notes
