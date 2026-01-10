@@ -194,49 +194,31 @@ jobs:
           echo "$COMMITS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Create tag in backend repository (GitHub API)
+      - name: Create tag in backend repository
         run: |
+          set -e
           TAG_NAME="${{ steps.tag.outputs.tag_name }}"
-          VERSION="${{ steps.tag.outputs.version }}"
+          cd backend-repo
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
           if [ -z "$BACKEND_PAT" ]; then
-            echo "❌ BACKEND_PAT is not configured"
+            echo "❌ BACKEND_PAT not set"
             exit 1
           fi
 
-          echo "🔍 Getting backend default branch SHA..."
+          git remote set-url origin https://x-access-token:$BACKEND_PAT@github.com/YunTower/CloudSentinel-Backend.git
 
-          SHA=$(curl -s \
-            -H "Authorization: Bearer $BACKEND_PAT" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/$BACKEND_REPO/git/ref/heads/main \
-            | jq -r .object.sha)
-
-          if [ "$SHA" = "null" ] || [ -z "$SHA" ]; then
-            echo "❌ Failed to get backend HEAD SHA"
-            exit 1
-          fi
-
-          echo "📌 Creating tag $TAG_NAME at $SHA"
-
-          HTTP_CODE=$(curl -s -o /tmp/resp.json -w "%{http_code}" -X POST \
-            -H "Authorization: Bearer $BACKEND_PAT" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/$BACKEND_REPO/git/refs \
-            -d "{
-              \"ref\": \"refs/tags/$TAG_NAME\",
-              \"sha\": \"$SHA\"
-            }")
-
-          if [ "$HTTP_CODE" = "201" ]; then
-            echo "✅ Tag $TAG_NAME created in backend repo"
-          elif [ "$HTTP_CODE" = "422" ]; then
-            echo "ℹ️ Tag $TAG_NAME already exists in backend repo"
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "ℹ️ Tag already exists"
           else
-            echo "❌ Failed to create tag"
-            cat /tmp/resp.json
-            exit 1
+            git tag "$TAG_NAME"
+            git push origin "$TAG_NAME"
+            echo "✅ Tag pushed"
           fi
+        env:
+          BACKEND_PAT: ${{ secrets.BACKEND_PAT }}
 
       - name: Prepare release notes
         id: release_notes
