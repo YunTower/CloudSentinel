@@ -228,7 +228,7 @@ jobs:
           BACKEND_COMMITS="${{ steps.backend_changelog.outputs.backend_commits }}"
           
           echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-          echo "[$TAG_NAME]" >> $GITHUB_OUTPUT
+          echo "# 新版本 $TAG_NAME" >> $GITHUB_OUTPUT
           echo "面板前端变更：" >> $GITHUB_OUTPUT
           echo "$FRONTEND_COMMITS" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
