@@ -120,8 +120,8 @@ jobs:
           TAG_NAME="${{ steps.tag.outputs.tag_name }}"
           cd ${{ github.workspace }}
           
-          # 获取所有 tags
-          git fetch --tags
+          # 获取所有 tags（强制更新以覆盖可能存在的本地标签）
+          git fetch origin +refs/tags/*:refs/tags/*
           
           # 获取所有 tag 列表，按版本排序
           ALL_TAGS=$(git tag -l "v*" | sort -V)
@@ -160,8 +160,8 @@ jobs:
           TAG_NAME="${{ steps.tag.outputs.tag_name }}"
           cd backend-repo
           
-          # 获取所有 tags
-          git fetch --tags
+          # 获取所有 tags（强制更新以覆盖可能存在的本地标签）
+          git fetch origin +refs/tags/*:refs/tags/*
           
           # 获取所有 tag 列表，按版本排序
           ALL_TAGS=$(git tag -l "v*" | sort -V)
