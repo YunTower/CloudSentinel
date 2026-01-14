@@ -21,6 +21,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: false
           persist-credentials: false
 
       - name: Setup Node.js
@@ -120,8 +121,8 @@ jobs:
           TAG_NAME="${{ steps.tag.outputs.tag_name }}"
           cd ${{ github.workspace }}
           
-          # 获取所有 tags
-          git fetch --tags
+          # 获取所有 tags（使用 --force 避免标签冲突）
+          git fetch --tags --force
           
           # 获取所有 tag 列表，按版本排序
           ALL_TAGS=$(git tag -l "v*" | sort -V)
@@ -160,8 +161,8 @@ jobs:
           TAG_NAME="${{ steps.tag.outputs.tag_name }}"
           cd backend-repo
           
-          # 获取所有 tags
-          git fetch --tags
+          # 获取所有 tags（使用 --force 避免标签冲突）
+          git fetch --tags --force
           
           # 获取所有 tag 列表，按版本排序
           ALL_TAGS=$(git tag -l "v*" | sort -V)
