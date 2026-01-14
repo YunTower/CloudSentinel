@@ -47,8 +47,8 @@ const groupBy = ref<'none' | number | 'status' | 'location' | 'os'>('none')
 
 // 视图选项
 const viewOptions = [
-  { value: 'card', icon: 'pi pi-table' },
-  { value: 'table', icon: 'pi pi-list' },
+  { value: 'card', icon: 'pi pi-table', label: '' },
+  { value: 'table', icon: 'pi pi-list', label: '' },
 ]
 
 // 分组选项
@@ -318,7 +318,12 @@ const getGroupColor = (groupName: string): string | undefined => {
             placeholder="分组方式"
             class="w-[140px]"
           />
-          <SelectButton v-model="viewMode" :options="viewOptions" option-value="value">
+          <SelectButton
+            v-model="viewMode"
+            :options="viewOptions"
+            option-value="value"
+            option-label="label"
+          >
             <template #option="slotProps">
               <i :class="slotProps.option.icon"></i>
             </template>
