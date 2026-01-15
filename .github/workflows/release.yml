@@ -97,7 +97,7 @@ jobs:
           export GOOS=linux
           export GOARCH=amd64
           export CGO_ENABLED=0
-          go build -ldflags "-s -w" -trimpath -o dashboard .
+          go build -tags production -ldflags "-s -w" -trimpath -o dashboard .
           mv dashboard dashboard-linux-amd64
           tar -czf dashboard-linux-amd64.tar.gz dashboard-linux-amd64
           sha256sum dashboard-linux-amd64.tar.gz > dashboard-linux-amd64.sha256
@@ -109,7 +109,7 @@ jobs:
           export GOOS=linux
           export GOARCH=arm64
           export CGO_ENABLED=0
-          go build -ldflags "-s -w" -trimpath -o dashboard .
+          go build -tags production -ldflags "-s -w" -trimpath -o dashboard .
           mv dashboard dashboard-linux-arm64
           tar -czf dashboard-linux-arm64.tar.gz dashboard-linux-arm64
           sha256sum dashboard-linux-arm64.tar.gz > dashboard-linux-arm64.sha256
