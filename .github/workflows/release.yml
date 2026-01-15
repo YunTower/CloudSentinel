@@ -70,50 +70,17 @@ jobs:
             git clone https://github.com/$BACKEND_REPO.git backend-repo
           fi
 
-      - name: Copy frontend build to backend
-        run: |
-          mkdir -p backend-repo/public
-          if [ -d "dist" ] && [ "$(ls -A dist 2>/dev/null)" ]; then
-            cp -r dist/* backend-repo/public/
-            echo "Frontend build copied to backend/public"
-          else
-            echo "Error: dist directory is empty or does not exist"
-            exit 1
-          fi
-
-      - name: Update backend version
-        run: |
-          VERSION="${{ steps.tag.outputs.version }}"
-          cd backend-repo
-          # 使用 sed 修改 config/app.go 中的 version 字段
-          sed -i "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" config/app.go
-          echo "Updated version to: $VERSION"
-          # 验证修改
-          grep -n "version" config/app.go
-
-      - name: Build backend for Linux AMD64
+      - name: Build backend for Linux AMD64 using script
         run: |
           cd backend-repo
-          export GOOS=linux
-          export GOARCH=amd64
-          export CGO_ENABLED=0
-          go build -tags production -ldflags "-s -w" -trimpath -o dashboard .
-          mv dashboard dashboard-linux-amd64
-          tar -czf dashboard-linux-amd64.tar.gz dashboard-linux-amd64
-          sha256sum dashboard-linux-amd64.tar.gz > dashboard-linux-amd64.sha256
-          echo "Built Linux AMD64"
+          chmod +x scripts/build_ci.sh
+          ./scripts/build_ci.sh "${{ github.workspace }}/dist" "${{ steps.tag.outputs.version }}" linux amd64
 
-      - name: Build backend for Linux ARM64
+      - name: Build backend for Linux ARM64 using script
         run: |
           cd backend-repo
-          export GOOS=linux
-          export GOARCH=arm64
-          export CGO_ENABLED=0
-          go build -tags production -ldflags "-s -w" -trimpath -o dashboard .
-          mv dashboard dashboard-linux-arm64
-          tar -czf dashboard-linux-arm64.tar.gz dashboard-linux-arm64
-          sha256sum dashboard-linux-arm64.tar.gz > dashboard-linux-arm64.sha256
-          echo "Built Linux ARM64"
+          chmod +x scripts/build_ci.sh
+          ./scripts/build_ci.sh "${{ github.workspace }}/dist" "${{ steps.tag.outputs.version }}" linux arm64
 
       - name: Get frontend changelog
         id: frontend_changelog
