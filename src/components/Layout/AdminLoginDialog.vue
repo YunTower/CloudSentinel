@@ -139,18 +139,15 @@ const handleCancel = () => {
           :binary="true"
           class="w-5 h-5"
         />
-        <label for="adminRememberMe" class="text-sm text-muted-color cursor-pointer">记住登录状态</label>
+        <label for="adminRememberMe" class="text-sm text-muted-color cursor-pointer"
+          >记住登录状态</label
+        >
       </div>
     </div>
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <Button
-          label="取消"
-          severity="secondary"
-          @click="handleCancel"
-          :disabled="isLoading"
-        />
+        <Button label="取消" severity="secondary" @click="handleCancel" :disabled="isLoading" />
         <Button
           label="登录"
           icon="pi pi-sign-in"
@@ -162,4 +159,3 @@ const handleCancel = () => {
     </template>
   </Dialog>
 </template>
-

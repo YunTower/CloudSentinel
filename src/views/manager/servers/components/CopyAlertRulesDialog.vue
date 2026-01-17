@@ -18,7 +18,7 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
-  'success': []
+  success: []
 }>()
 
 const toast = useToast()
@@ -198,9 +198,7 @@ watch(
     <Loading :loading="loading" text="加载告警规则中..." :overlay="false" />
 
     <template v-if="!loading">
-      <div v-if="!sourceServer" class="py-8 text-center text-muted-color">
-        请先选择一个源服务器
-      </div>
+      <div v-if="!sourceServer" class="py-8 text-center text-muted-color">请先选择一个源服务器</div>
 
       <div v-else-if="enabledRuleTypes.length === 0" class="py-8 text-center">
         <p class="text-muted-color mb-2">源服务器 "{{ sourceServer.name }}" 没有配置告警规则</p>
@@ -208,81 +206,76 @@ watch(
       </div>
 
       <div v-else class="space-y-6">
-      <!-- 源服务器信息 -->
-      <div class="p-4 bg-surface-100 dark:bg-surface-800 rounded-lg">
-        <p class="text-sm font-medium text-color mb-1">源服务器</p>
-        <p class="text-lg font-semibold text-color">
-          {{ sourceServer.name }} ({{ sourceServer.ip }})
-        </p>
-      </div>
+        <!-- 源服务器信息 -->
+        <div class="p-4 bg-surface-100 dark:bg-surface-800 rounded-lg">
+          <p class="text-sm font-medium text-color mb-1">源服务器</p>
+          <p class="text-lg font-semibold text-color">
+            {{ sourceServer.name }} ({{ sourceServer.ip }})
+          </p>
+        </div>
 
-      <div class="grid grid-cols-2 gap-6">
-        <!-- 左侧：选择规则 -->
-        <div class="space-y-4">
-          <div>
-            <p class="text-sm font-medium text-color mb-3">选择要复制的规则</p>
-            <div class="space-y-2">
-              <div
-                v-for="ruleType in enabledRuleTypes"
-                :key="ruleType"
-                class="flex items-start gap-3 p-3 border border-surface-200 dark:border-surface-700 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800"
-              >
-                <Checkbox
-                  :inputId="`rule-${ruleType}`"
-                  v-model="selectedRuleTypes"
-                  :value="ruleType"
-                  :binary="false"
-                />
-                <label :for="`rule-${ruleType}`" class="flex-1 cursor-pointer">
-                  <div class="font-medium text-color">{{ ruleTypeLabels[ruleType] }}</div>
-                  <div class="text-sm text-muted-color mt-1">
-                    {{ getRuleDisplayText(ruleType) }}
-                  </div>
-                </label>
+        <div class="grid grid-cols-2 gap-6">
+          <!-- 左侧：选择规则 -->
+          <div class="space-y-4">
+            <div>
+              <p class="text-sm font-medium text-color mb-3">选择要复制的规则</p>
+              <div class="space-y-2">
+                <div
+                  v-for="ruleType in enabledRuleTypes"
+                  :key="ruleType"
+                  class="flex items-start gap-3 p-3 border border-surface-200 dark:border-surface-700 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800"
+                >
+                  <Checkbox
+                    :inputId="`rule-${ruleType}`"
+                    v-model="selectedRuleTypes"
+                    :value="ruleType"
+                    :binary="false"
+                  />
+                  <label :for="`rule-${ruleType}`" class="flex-1 cursor-pointer">
+                    <div class="font-medium text-color">{{ ruleTypeLabels[ruleType] }}</div>
+                    <div class="text-sm text-muted-color mt-1">
+                      {{ getRuleDisplayText(ruleType) }}
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右侧：选择目标服务器 -->
+          <div class="space-y-4">
+            <div>
+              <p class="text-sm font-medium text-color mb-3">选择目标服务器</p>
+              <div v-if="targetServers.length === 0" class="text-sm text-muted-color py-4">
+                没有可用的目标服务器
+              </div>
+              <div v-else class="space-y-2 max-h-[400px] overflow-y-auto">
+                <div
+                  v-for="server in targetServers"
+                  :key="server.id"
+                  class="flex items-center gap-3 p-3 border border-surface-200 dark:border-surface-700 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800"
+                >
+                  <Checkbox
+                    :inputId="`target-${server.id}`"
+                    v-model="selectedTargetServerIds"
+                    :value="server.id"
+                    :binary="false"
+                  />
+                  <label :for="`target-${server.id}`" class="flex-1 cursor-pointer">
+                    <div class="font-medium text-color">{{ server.name }}</div>
+                    <div class="text-sm text-muted-color">{{ server.ip }}</div>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
         </div>
-
-        <!-- 右侧：选择目标服务器 -->
-        <div class="space-y-4">
-          <div>
-            <p class="text-sm font-medium text-color mb-3">选择目标服务器</p>
-            <div v-if="targetServers.length === 0" class="text-sm text-muted-color py-4">
-              没有可用的目标服务器
-            </div>
-            <div v-else class="space-y-2 max-h-[400px] overflow-y-auto">
-              <div
-                v-for="server in targetServers"
-                :key="server.id"
-                class="flex items-center gap-3 p-3 border border-surface-200 dark:border-surface-700 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800"
-              >
-                <Checkbox
-                  :inputId="`target-${server.id}`"
-                  v-model="selectedTargetServerIds"
-                  :value="server.id"
-                  :binary="false"
-                />
-                <label :for="`target-${server.id}`" class="flex-1 cursor-pointer">
-                  <div class="font-medium text-color">{{ server.name }}</div>
-                  <div class="text-sm text-muted-color">{{ server.ip }}</div>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
       </div>
     </template>
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <Button
-          label="取消"
-          text
-          @click="emit('update:visible', false)"
-          :disabled="saving"
-        />
+        <Button label="取消" text @click="emit('update:visible', false)" :disabled="saving" />
         <Button
           label="确认复制"
           icon="pi pi-check"
@@ -294,4 +287,3 @@ watch(
     </template>
   </Dialog>
 </template>
-

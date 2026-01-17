@@ -150,7 +150,11 @@ const handleCancel = () => {
 
     <template #footer>
       <Button label="取消" severity="secondary" @click="handleCancel" />
-      <Button :label="props.group ? '保存修改' : '创建分组'" :loading="loading" @click="handleSubmit" />
+      <Button
+        :label="props.group ? '保存修改' : '创建分组'"
+        :loading="loading"
+        @click="handleSubmit"
+      />
     </template>
   </Dialog>
 </template>

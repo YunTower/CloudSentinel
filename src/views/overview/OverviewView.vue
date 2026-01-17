@@ -200,9 +200,7 @@ onUnmounted(() => {
 })
 
 // 类型守卫函数
-const isNumberGroup = (
-  value: 'none' | number | 'status' | 'location' | 'os',
-): value is number => {
+const isNumberGroup = (value: 'none' | number | 'status' | 'location' | 'os'): value is number => {
   return typeof value === 'number'
 }
 

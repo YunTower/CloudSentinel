@@ -1,6 +1,6 @@
 declare module 'vue' {
   export interface GlobalComponents {
-    Loading: typeof import('./Loading.vue')['default']
+    Loading: (typeof import('./Loading.vue'))['default']
   }
 }
 

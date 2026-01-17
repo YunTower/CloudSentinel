@@ -86,7 +86,12 @@ export function mapServerListItemToServerItem(server: ServerListItemData): Serve
 
   // 处理状态，确保符合类型定义
   let status: 'online' | 'offline' | 'maintenance' | 'error' = 'offline'
-  if (server.status === 'online' || server.status === 'offline' || server.status === 'maintenance' || server.status === 'error') {
+  if (
+    server.status === 'online' ||
+    server.status === 'offline' ||
+    server.status === 'maintenance' ||
+    server.status === 'error'
+  ) {
     status = server.status
   }
 
@@ -95,8 +100,10 @@ export function mapServerListItemToServerItem(server: ServerListItemData): Serve
   const memoryUsage = typeof metrics.memory_usage === 'number' ? metrics.memory_usage : 0
   const diskUsage = typeof metrics.disk_usage === 'number' ? metrics.disk_usage : 0
   const networkUpload = typeof metrics.network_upload === 'number' ? metrics.network_upload : 0
-  const networkDownload = typeof metrics.network_download === 'number' ? metrics.network_download : 0
-  const totalStorage = typeof extendedServer.total_storage === 'string' ? extendedServer.total_storage : ''
+  const networkDownload =
+    typeof metrics.network_download === 'number' ? metrics.network_download : 0
+  const totalStorage =
+    typeof extendedServer.total_storage === 'string' ? extendedServer.total_storage : ''
 
   return {
     id: server.id,
@@ -118,4 +125,3 @@ export function mapServerListItemToServerItem(server: ServerListItemData): Serve
     group: server.group,
   }
 }
-

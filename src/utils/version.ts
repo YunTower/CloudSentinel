@@ -110,7 +110,7 @@ export const compareVersions = (version1: string, version2: string): number => {
  * @returns { version: string, versionType: VersionType, preReleaseNum: number }
  */
 export const parseVersion = (
-  version: string
+  version: string,
 ): { version: string; versionType: VersionType; preReleaseNum: number } => {
   // 移除开头的 'v' 前缀
   let normalizedVersion = version
@@ -157,7 +157,7 @@ export const hasUpdate = (
   currentVersion: string | undefined,
   latestVersion: string | undefined,
   currentVersionType?: VersionType,
-  latestVersionType?: VersionType
+  latestVersionType?: VersionType,
 ): boolean => {
   if (!currentVersion || !latestVersion) return false
 
@@ -223,7 +223,7 @@ export const hasUpdate = (
 export const hasAgentUpdate = (
   currentVersion: string | undefined,
   latestVersion: string | undefined,
-  latestVersionType: VersionType = 'release'
+  latestVersionType: VersionType = 'release',
 ): boolean => {
   return hasUpdate(currentVersion, latestVersion, undefined, latestVersionType)
 }

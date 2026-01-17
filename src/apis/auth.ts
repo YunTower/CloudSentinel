@@ -1,7 +1,12 @@
 import { requester } from '@/utils/requester.ts'
 
 // 登录请求
-const loginMethod = (type: 'admin' | 'guest', password: string, username?: string, remember?: boolean) => {
+const loginMethod = (
+  type: 'admin' | 'guest',
+  password: string,
+  username?: string,
+  remember?: boolean,
+) => {
   const method = requester.Post('/auth/login', { type, password, username, remember })
   method.meta = {
     authRole: 'login',

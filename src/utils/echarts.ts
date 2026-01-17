@@ -72,4 +72,3 @@ export const initChart = (dom: HTMLElement): echarts.ECharts => {
 }
 
 export { echarts }
-

@@ -5,4 +5,3 @@ export default {
     return requester.Get(`/update/agent/check?type=${type}`)
   },
 }
-

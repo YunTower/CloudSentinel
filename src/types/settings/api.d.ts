@@ -109,4 +109,3 @@ export interface TestAlertSettingsBody {
   type: 'email' | 'webhook'
   config: Record<string, any>
 }
-

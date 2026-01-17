@@ -18,7 +18,10 @@ export function setupRouteGuards(router: Router) {
             return
           }
         } catch {}
-        next({ name: 'overview', query: from.fullPath ? { redirect_uri: from.fullPath } : undefined })
+        next({
+          name: 'overview',
+          query: from.fullPath ? { redirect_uri: from.fullPath } : undefined,
+        })
         return
       }
       next()
