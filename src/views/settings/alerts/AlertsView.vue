@@ -13,6 +13,7 @@ const notifications = ref<Notifications>({
     from: '',
     to: '',
     password: '',
+    hasPassword: false,
   },
   webhook: {
     enabled: false,
@@ -158,6 +159,7 @@ const loadAlertSettings = async () => {
         from: String(email.from || ''),
         to: String(email.to || ''),
         password: '',
+        hasPassword: email.hasPassword || false,
       })
     }
 
@@ -352,6 +354,7 @@ const saveAlertSettings = async () => {
         detail: '告警设置已更新',
         life: 3000,
       })
+      await loadAlertSettings()
     } else {
       const errorMsg =
         res && typeof res === 'object' && 'message' in res ? String(res.message) : '保存失败'
@@ -451,7 +454,7 @@ onMounted(() => {
                     v-model="notifications.email.password"
                     :feedback="false"
                     toggleMask
-                    placeholder="若已设置，留空则不修改"
+                    :placeholder="notifications.email.hasPassword ? '已设置，留空则不修改' : '请输入 SMTP 密码'"
                     inputClass="w-full"
                   />
                 </div>
