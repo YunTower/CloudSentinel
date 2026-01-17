@@ -21,7 +21,7 @@ export interface EmailNotification {
   from: string
   to: string
   password?: string
-  hasPassword?: boolean、
+  hasPassword?: boolean
 }
 
 // Webhook通知
