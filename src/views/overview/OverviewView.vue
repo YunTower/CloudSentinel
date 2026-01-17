@@ -5,6 +5,7 @@ import { useToast } from 'primevue/usetoast'
 import ServerCard from './components/ServerCard.vue'
 import ServerTable from './components/ServerTable.vue'
 import GroupHeader from './components/GroupHeader.vue'
+import Loading from '@/components/Loading/Loading.vue'
 import Dropdown from 'primevue/dropdown'
 import SelectButton from 'primevue/selectbutton'
 import Button from 'primevue/button'
@@ -278,9 +279,7 @@ const getGroupColor = (groupName: string): string | undefined => {
     </div>
 
     <!-- 加载状态 -->
-    <div v-else-if="loading" class="flex items-center justify-center py-12">
-      <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
-    </div>
+    <Loading v-else-if="loading" :loading="loading" :overlay="false" />
 
     <!-- 错误状态 -->
     <div
@@ -296,7 +295,6 @@ const getGroupColor = (groupName: string): string | undefined => {
       v-else-if="servers.length === 0 && !initializing"
       class="flex flex-col items-center justify-center py-12"
     >
-      <i class="pi pi-server text-4xl text-muted-color mb-4"></i>
       <p class="text-lg text-muted-color">暂无服务器</p>
     </div>
 

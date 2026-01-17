@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import ProgressSpinner from 'primevue/progressspinner'
 
 interface Props {
   loading?: boolean
