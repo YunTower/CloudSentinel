@@ -184,10 +184,12 @@ onMounted(async () => {
                         >
                         <Password
                           id="guestPassword"
+                          name="guestPassword"
                           v-model="loginForm.password"
                           placeholder="请输入访客访问密码"
                           toggleMask
                           :feedback="false"
+                          autocomplete="current-password"
                           class="w-full"
                           :pt="{
                             root: { class: 'w-full' },
@@ -229,8 +231,10 @@ onMounted(async () => {
                       >
                       <InputText
                         id="adminUsername"
+                        name="username"
                         v-model="loginForm.username"
                         placeholder="请输入用户名"
+                        autocomplete="username"
                         class="w-full py-3 px-4 text-base"
                         @keyup.enter="handleLogin"
                       />
@@ -242,10 +246,12 @@ onMounted(async () => {
                       >
                       <Password
                         id="adminPassword"
+                        name="password"
                         v-model="loginForm.password"
                         placeholder="请输入密码"
                         toggleMask
                         :feedback="false"
+                        autocomplete="current-password"
                         class="w-full"
                         :pt="{
                           root: { class: 'w-full' },

@@ -108,8 +108,10 @@ const handleCancel = () => {
         <label for="adminUsername" class="block text-sm font-medium text-color mb-3">用户名</label>
         <InputText
           id="adminUsername"
+          name="username"
           v-model="loginForm.username"
           placeholder="请输入用户名"
+          autocomplete="username"
           class="w-full py-3 px-4 text-base"
           @keyup.enter="handleLogin"
         />
@@ -119,10 +121,12 @@ const handleCancel = () => {
         <label for="adminPassword" class="block text-sm font-medium text-color mb-3">密码</label>
         <Password
           id="adminPassword"
+          name="password"
           v-model="loginForm.password"
           placeholder="请输入密码"
           toggleMask
           :feedback="false"
+          autocomplete="current-password"
           class="w-full"
           :pt="{
             root: { class: 'w-full' },
@@ -139,15 +143,18 @@ const handleCancel = () => {
           :binary="true"
           class="w-5 h-5"
         />
-        <label for="adminRememberMe" class="text-sm text-muted-color cursor-pointer"
-          >记住登录状态</label
-        >
+        <label for="adminRememberMe" class="text-sm text-muted-color cursor-pointer">记住登录状态</label>
       </div>
     </div>
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <Button label="取消" severity="secondary" @click="handleCancel" :disabled="isLoading" />
+        <Button
+          label="取消"
+          severity="secondary"
+          @click="handleCancel"
+          :disabled="isLoading"
+        />
         <Button
           label="登录"
           icon="pi pi-sign-in"
@@ -159,3 +166,4 @@ const handleCancel = () => {
     </template>
   </Dialog>
 </template>
+
