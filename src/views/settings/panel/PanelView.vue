@@ -114,12 +114,35 @@ const executeUpdate = async () => {
   updateProgress.value = 0
   updateStep.value = '正在初始化更新...'
 
+  // 标记是否进入重启阶段
+  let isRestarting = false
+  // 记录连续失败次数
+  let consecutiveFailures = 0
+  // 最大允许的连续失败次数
+  const maxConsecutiveFailures = 120
+  // 服务恢复后的检查次数
+  let recoveryChecks = 0
+  const maxRecoveryChecks = 2
+
   try {
     await panelApi.updatePanel()
 
     const pollInterval = setInterval(async () => {
       try {
         const res = await panelApi.getUpdateStatus()
+        // 请求成功，重置失败计数
+        consecutiveFailures = 0
+
+        // 如果之前在重启阶段，现在请求成功了，说明服务可能已恢复
+        if (isRestarting) {
+          recoveryChecks++
+          if (recoveryChecks >= maxRecoveryChecks) {
+            // 服务已恢复，检查更新状态
+            isRestarting = false
+            updateStep.value = '服务已恢复，正在验证更新结果...'
+          }
+        }
+
         if (res.status && res.data) {
           const { step, progress, message } = res.data
           updateStep.value = message
@@ -127,6 +150,13 @@ const executeUpdate = async () => {
 
           // 记录当前步骤，用于UI控制
           currentStep.value = step
+
+          // 检测是否进入重启阶段
+          if (step === 'restarting') {
+            isRestarting = true
+            recoveryChecks = 0 // 重置恢复检查计数
+            updateStep.value = '服务正在重启，请稍候...'
+          }
 
           if (step === 'completed') {
             clearInterval(pollInterval)
@@ -144,18 +174,59 @@ const executeUpdate = async () => {
             }, 1500)
           } else if (step === 'error') {
             clearInterval(pollInterval)
-            throw new Error(message)
+            updating.value = false
+            toast.add({
+              severity: 'error',
+              summary: '更新失败',
+              detail: message || '更新过程中发生错误',
+              life: 6000,
+            })
           }
+        } else if (isRestarting && recoveryChecks >= maxRecoveryChecks) {
+          // 服务已恢复，但没有更新状态（可能已被清除），说明更新已完成
+          clearInterval(pollInterval)
+          updating.value = false
+
+          toast.add({
+            severity: 'success',
+            summary: '更新完成',
+            detail: '服务已重启，页面即将刷新以加载新版本',
+            life: 3000,
+          })
+
+          setTimeout(() => {
+            window.location.reload()
+          }, 1500)
         }
       } catch (error) {
-        console.error('Polling update status failed:', error)
+        consecutiveFailures++
+        // 如果服务已恢复但再次失败，重置恢复检查计数
+        if (isRestarting && recoveryChecks > 0) {
+          recoveryChecks = 0
+        }
+
+        // 如果已经进入重启阶段，或者失败次数未超过限制，继续轮询
+        if (isRestarting || consecutiveFailures <= maxConsecutiveFailures) {
+          if (isRestarting) {
+            // 在重启阶段，更新提示信息
+            updateStep.value = `服务正在重启中，请稍候... (已等待 ${consecutiveFailures} 秒)`
+            console.log(`服务重启中，继续等待... (${consecutiveFailures}/${maxConsecutiveFailures})`)
+          } else {
+            // 还未进入重启阶段，可能是网络临时问题
+            console.warn(`获取更新状态失败，继续重试... (${consecutiveFailures}/${maxConsecutiveFailures}):`, error)
+          }
+          return
+        }
+
+        // 失败次数超过限制，停止轮询
+        console.error('Polling update status failed after max retries:', error)
         clearInterval(pollInterval)
         updating.value = false
         toast.add({
           severity: 'error',
           summary: '更新失败',
-          detail: `获取更新状态失败（${error}）`,
-          life: 6000,
+          detail: `获取更新状态失败，已重试 ${maxConsecutiveFailures} 次。如果服务正在重启，请稍后手动刷新页面。`,
+          life: 8000,
         })
       }
     }, 1000)

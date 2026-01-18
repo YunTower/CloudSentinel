@@ -397,10 +397,7 @@ const addDataPoint = (dataPoint: {
 
     chartInstance.setOption(
       {
-        series: [
-          { data: uploadData },
-          { data: downloadData },
-        ],
+        series: [{ data: uploadData }, { data: downloadData }],
       },
       { notMerge: false },
     )
@@ -422,10 +419,7 @@ const addDataPoint = (dataPoint: {
 
     chartInstance.setOption(
       {
-        series: [
-          { data: readData },
-          { data: writeData },
-        ],
+        series: [{ data: readData }, { data: writeData }],
       },
       { notMerge: false },
     )

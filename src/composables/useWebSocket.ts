@@ -72,9 +72,11 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
     unregisterCallbacks = websocketManager.registerCallbacks(instanceId.value, callbacks)
 
     // 注册消息处理器
-    unregisterMessageHandler = websocketManager.registerMessageHandler((message: WebSocketMessage) => {
-      handleMessage(message)
-    })
+    unregisterMessageHandler = websocketManager.registerMessageHandler(
+      (message: WebSocketMessage) => {
+        handleMessage(message)
+      },
+    )
 
     // 连接到全局WebSocket
     websocketManager.connect(token)
@@ -136,12 +138,20 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
       if (data.server_id && data.metrics) {
         callbacks.onMetricsUpdate?.({
           server_id: data.server_id,
-          cpu_usage: typeof data.metrics.cpu_usage === 'number' ? data.metrics.cpu_usage : undefined,
-          memory_usage: typeof data.metrics.memory_usage === 'number' ? data.metrics.memory_usage : undefined,
-          disk_usage: typeof data.metrics.disk_usage === 'number' ? data.metrics.disk_usage : undefined,
-          network_upload: typeof data.metrics.network_upload === 'number' ? data.metrics.network_upload : undefined,
+          cpu_usage:
+            typeof data.metrics.cpu_usage === 'number' ? data.metrics.cpu_usage : undefined,
+          memory_usage:
+            typeof data.metrics.memory_usage === 'number' ? data.metrics.memory_usage : undefined,
+          disk_usage:
+            typeof data.metrics.disk_usage === 'number' ? data.metrics.disk_usage : undefined,
+          network_upload:
+            typeof data.metrics.network_upload === 'number'
+              ? data.metrics.network_upload
+              : undefined,
           network_download:
-            typeof data.metrics.network_download === 'number' ? data.metrics.network_download : undefined,
+            typeof data.metrics.network_download === 'number'
+              ? data.metrics.network_download
+              : undefined,
           uptime: typeof data.uptime === 'string' ? data.uptime : undefined,
         })
       }
@@ -163,14 +173,24 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
         callbacks.onMetricsRealtime?.({
           server_id: data.server_id,
           timestamp: data.timestamp,
-          cpu_usage: typeof data.metrics.cpu_usage === 'number' ? data.metrics.cpu_usage : undefined,
-          memory_usage: typeof data.metrics.memory_usage === 'number' ? data.metrics.memory_usage : undefined,
-          disk_usage: typeof data.metrics.disk_usage === 'number' ? data.metrics.disk_usage : undefined,
-          disk_read: typeof data.metrics.disk_read === 'number' ? data.metrics.disk_read : undefined,
-          disk_write: typeof data.metrics.disk_write === 'number' ? data.metrics.disk_write : undefined,
-          network_upload: typeof data.metrics.network_upload === 'number' ? data.metrics.network_upload : undefined,
+          cpu_usage:
+            typeof data.metrics.cpu_usage === 'number' ? data.metrics.cpu_usage : undefined,
+          memory_usage:
+            typeof data.metrics.memory_usage === 'number' ? data.metrics.memory_usage : undefined,
+          disk_usage:
+            typeof data.metrics.disk_usage === 'number' ? data.metrics.disk_usage : undefined,
+          disk_read:
+            typeof data.metrics.disk_read === 'number' ? data.metrics.disk_read : undefined,
+          disk_write:
+            typeof data.metrics.disk_write === 'number' ? data.metrics.disk_write : undefined,
+          network_upload:
+            typeof data.metrics.network_upload === 'number'
+              ? data.metrics.network_upload
+              : undefined,
           network_download:
-            typeof data.metrics.network_download === 'number' ? data.metrics.network_download : undefined,
+            typeof data.metrics.network_download === 'number'
+              ? data.metrics.network_download
+              : undefined,
         })
       }
     } else if (message.type === 'system_info_update' && message.data) {

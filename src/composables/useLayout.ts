@@ -5,7 +5,7 @@ interface AppState {
 }
 
 const appState = ref<AppState>({
-  darkMode: false
+  darkMode: false,
 })
 
 export interface UseLayoutReturn {
@@ -69,6 +69,6 @@ export function useLayout(): UseLayoutReturn {
     toggleDarkMode,
     setDarkMode,
     initializeTheme,
-    setupThemeListener
+    setupThemeListener,
   }
 }

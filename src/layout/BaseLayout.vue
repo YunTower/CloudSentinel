@@ -23,5 +23,4 @@
   margin-top: 65px;
 }
 </style>
-<script setup lang="ts">
-</script>
+<script setup lang="ts"></script>

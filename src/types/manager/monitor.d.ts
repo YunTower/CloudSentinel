@@ -106,7 +106,7 @@ export const STATUS_COLORS = {
   online: 'success',
   offline: 'secondary',
   error: 'danger',
-  warning: 'warn'
+  warning: 'warn',
 } as const
 
 // 资源使用率颜色类
@@ -114,7 +114,7 @@ export const USAGE_COLOR_CLASSES = {
   low: 'text-green-600 dark:text-green-400',
   medium: 'text-yellow-600 dark:text-yellow-400',
   high: 'text-orange-600 dark:text-orange-400',
-  critical: 'text-red-600 dark:text-red-400'
+  critical: 'text-red-600 dark:text-red-400',
 } as const
 
 // 工具函数类型

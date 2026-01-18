@@ -65,9 +65,11 @@ const swapUsage = computed(() => {
         <span class="font-medium text-color">{{ formatBytes(swapInfo.swap_free) }}</span>
       </div>
     </div>
-    <div v-else class="mt-3 pt-3 border-t border-surface-200 dark:border-surface-700 text-sm text-muted-color">
+    <div
+      v-else
+      class="mt-3 pt-3 border-t border-surface-200 dark:border-surface-700 text-sm text-muted-color"
+    >
       <p>系统未配置Swap分区</p>
     </div>
   </div>
 </template>
-

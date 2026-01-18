@@ -454,7 +454,9 @@ onMounted(() => {
                     v-model="notifications.email.password"
                     :feedback="false"
                     toggleMask
-                    :placeholder="notifications.email.hasPassword ? '已设置，留空则不修改' : '请输入 SMTP 密码'"
+                    :placeholder="
+                      notifications.email.hasPassword ? '已设置，留空则不修改' : '请输入 SMTP 密码'
+                    "
                     inputClass="w-full"
                   />
                 </div>

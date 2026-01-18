@@ -17,16 +17,16 @@ const props = withDefaults(defineProps<Props>(), {
   strokeWidth: 8,
   animationDuration: '0.5s',
   overlay: true,
-  text: ''
+  text: '',
 })
 
 const spinnerStyle = computed(() => ({
   width: typeof props.size === 'number' ? `${props.size}px` : props.size,
-  height: typeof props.size === 'number' ? `${props.size}px` : props.size
+  height: typeof props.size === 'number' ? `${props.size}px` : props.size,
 }))
 
 const strokeWidthValue = computed(() =>
-  typeof props.strokeWidth === 'number' ? String(props.strokeWidth) : props.strokeWidth
+  typeof props.strokeWidth === 'number' ? String(props.strokeWidth) : props.strokeWidth,
 )
 </script>
 

@@ -200,9 +200,7 @@ onUnmounted(() => {
 })
 
 // 类型守卫函数
-const isNumberGroup = (
-  value: 'none' | number | 'status' | 'location' | 'os',
-): value is number => {
+const isNumberGroup = (value: 'none' | number | 'status' | 'location' | 'os'): value is number => {
   return typeof value === 'number'
 }
 
@@ -279,7 +277,7 @@ const getGroupColor = (groupName: string): string | undefined => {
     </div>
 
     <!-- 加载状态 -->
-    <Loading v-else-if="loading" :loading="loading" :overlay="false" />
+    <Loading v-else-if="loading" :size="25" :loading="loading" :overlay="false" />
 
     <!-- 错误状态 -->
     <div

@@ -58,7 +58,9 @@ const statusText = computed(() => getStatusTextUtil(props.status))
           <div class="grid grid-cols-3 gap-2 text-xs">
             <div class="text-center">
               <div class="text-muted-color">系统</div>
-              <div class="font-semibold text-color truncate" :title="props.os">{{ formatOS(props.os) }}</div>
+              <div class="font-semibold text-color truncate" :title="props.os">
+                {{ formatOS(props.os) }}
+              </div>
             </div>
             <div class="text-center">
               <div class="text-muted-color">架构</div>
@@ -111,7 +113,9 @@ const statusText = computed(() => getStatusTextUtil(props.status))
             <div class="flex items-center gap-2">
               <i class="pi pi-database text-sm text-muted-color"></i>
               <span class="text-sm font-medium text-color">磁盘</span>
-              <span v-if="props.totalStorage" class="text-xs text-muted-color">({{ props.totalStorage }})</span>
+              <span v-if="props.totalStorage" class="text-xs text-muted-color"
+                >({{ props.totalStorage }})</span
+              >
             </div>
             <span class="text-sm font-bold" :class="getProgressTextColor(props.diskUsage)">
               {{ props.diskUsage }}%
