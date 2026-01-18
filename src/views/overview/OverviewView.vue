@@ -277,7 +277,7 @@ const getGroupColor = (groupName: string): string | undefined => {
     </div>
 
     <!-- 加载状态 -->
-    <Loading v-else-if="loading" :loading="loading" :overlay="false" />
+    <Loading v-else-if="loading" :size="25" :loading="loading" :overlay="false" />
 
     <!-- 错误状态 -->
     <div
