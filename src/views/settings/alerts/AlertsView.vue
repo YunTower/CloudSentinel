@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { useToast } from 'primevue/usetoast'
+import { useNotifications } from '@/composables/useNotifications'
 import type { Notifications } from '@/types/settings/alerts'
 import alertsApi from '@/apis/settings/alerts'
 
@@ -62,7 +62,7 @@ const testing = ref({
   email: false,
   webhook: false,
 })
-const toast = useToast()
+const { toast } = useNotifications()
 
 // 提及用户列表
 const mentionedUsers = ref<string[]>([])

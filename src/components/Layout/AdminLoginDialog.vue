@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useToast } from 'primevue/usetoast'
+import { useNotifications } from '@/composables/useNotifications'
 import { useAuthStore } from '@/stores/auth'
 
 interface Props {
@@ -15,7 +15,7 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const toast = useToast()
+const { toast } = useNotifications()
 const router = useRouter()
 const authStore = useAuthStore()
 

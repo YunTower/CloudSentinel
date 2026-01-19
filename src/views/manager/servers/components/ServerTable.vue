@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, nextTick, computed } from 'vue'
-import { useConfirm } from 'primevue/useconfirm'
+import { useNotifications } from '@/composables/useNotifications'
 import { useAuthStore } from '@/stores/auth'
 import type { Server, MetricsData } from '@/types/manager/servers'
 import serversApi from '@/apis/servers'
@@ -18,10 +18,6 @@ import {
   getVersionTypeConfig,
   parseVersion,
 } from '@/utils/version.ts'
-import { useToast } from 'primevue/usetoast'
-import Tag from 'primevue/tag'
-import Dialog from 'primevue/dialog'
-import Button from 'primevue/button'
 import type { VersionType } from '@/utils/version.ts'
 
 // 计算到期天数
@@ -46,7 +42,7 @@ const getExpireStatus = (expireTime?: string): { severity: string; label: string
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.role === 'admin')
-const toast = useToast()
+const { toast, confirm } = useNotifications()
 
 interface Props {
   servers: Server[]
@@ -123,7 +119,6 @@ const confirmUpdateAgent = async () => {
   }
 }
 
-const confirm = useConfirm()
 const expandedRows = ref<{ [key: string]: boolean }>({})
 const pendingExpandServerId = ref<string>('')
 const selectedServers = computed({

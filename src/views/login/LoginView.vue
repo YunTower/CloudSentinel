@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useToast } from 'primevue/usetoast'
+import { useNotifications } from '@/composables/useNotifications'
 import { useAuthStore } from '@/stores/auth'
-import Toast from 'primevue/toast'
 
-const toast = useToast()
+const { toast } = useNotifications()
 const router = useRouter()
 const authStore = useAuthStore()
 const activeTab = ref('0') // 当前激活的标签页

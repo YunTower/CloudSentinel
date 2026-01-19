@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { useToast } from 'primevue/usetoast'
+import { useNotifications } from '@/composables/useNotifications'
 import ServerTable from './components/ServerTable.vue'
 import ServerDialog from './components/ServerDialog.vue'
 import ServerGroupDialog from './components/ServerGroupDialog.vue'
@@ -56,7 +56,7 @@ const serverForm = ref<ServerForm>({
   hostname: '',
 })
 
-const toast = useToast()
+const { toast } = useNotifications()
 
 // 服务器数据
 const servers = ref<Server[]>([])

@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useToast } from 'primevue/usetoast'
-import Dialog from 'primevue/dialog'
-import Button from 'primevue/button'
-import Checkbox from 'primevue/checkbox'
+import { useNotifications } from '@/composables/useNotifications'
 import { Loading } from '@/components/Loading'
 import type { Server, ServerAlertRules } from '@/types/manager/servers'
 import serversApi from '@/apis/servers'
@@ -21,7 +18,7 @@ const emit = defineEmits<{
   success: []
 }>()
 
-const toast = useToast()
+const { toast } = useNotifications()
 const loading = ref(false)
 const saving = ref(false)
 
