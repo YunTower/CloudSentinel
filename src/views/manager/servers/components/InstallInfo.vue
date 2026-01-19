@@ -41,6 +41,47 @@ const currentAgentKey = computed(() => {
   return props.server?.agent_key || props.agentKey || '未设置'
 })
 
+/**
+ * 通用复制到剪贴板函数
+ * 优先使用现代 Clipboard API，失败时降级到传统方法
+ * @param text 要复制的文本
+ * @returns 是否复制成功
+ */
+const copyToClipboard = async (text: string): Promise<boolean> => {
+  // 尝试使用现代 Clipboard API
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch (error) {
+      console.warn('Clipboard API 失败，尝试降级方案:', error)
+    }
+  }
+
+  // 降级到传统 execCommand 方法
+  try {
+    const textArea = document.createElement('textarea')
+    textArea.value = text
+    textArea.style.position = 'fixed'
+    textArea.style.left = '-9999px'
+    textArea.style.top = '-9999px'
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+
+    const successful = document.execCommand('copy')
+    document.body.removeChild(textArea)
+
+    if (successful) {
+      return true
+    }
+  } catch (error) {
+    console.error('传统复制方法也失败:', error)
+  }
+
+  return false
+}
+
 // 复制 Agent Key
 const copyAgentKey = async () => {
   const key = currentAgentKey.value
@@ -53,16 +94,16 @@ const copyAgentKey = async () => {
     })
     return
   }
-  try {
-    await navigator.clipboard.writeText(key)
+
+  const success = await copyToClipboard(key)
+  if (success) {
     toast.add({
       severity: 'success',
       summary: '复制成功',
       detail: 'Agent Key已复制到剪贴板',
       life: 2000,
     })
-  } catch (error) {
-    console.error('复制失败:', error)
+  } else {
     toast.add({
       severity: 'error',
       summary: '复制失败',
@@ -74,15 +115,15 @@ const copyAgentKey = async () => {
 
 // 复制安装命令
 const copyInstallCommand = async () => {
-  try {
-    await navigator.clipboard.writeText(installCommand.value)
+  const success = await copyToClipboard(installCommand.value)
+  if (success) {
     toast.add({
       severity: 'success',
       summary: '复制成功',
       detail: '安装命令已复制到剪贴板',
       life: 2000,
     })
-  } catch {
+  } else {
     toast.add({
       severity: 'error',
       summary: '复制失败',
