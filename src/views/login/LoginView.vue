@@ -288,7 +288,7 @@ onMounted(async () => {
         </Card>
 
         <div class="text-center mt-8">
-          <p class="text-sm text-muted-color">© 2024 CloudSentinel. 服务器状态监测系统</p>
+          <span class="text-sm text-muted-color">由 <a class="hover:underline" href="https://github.com/YunTower/CloudSentinel" target="_blank">CloudSentinel</a> 提供服务器监测支持</span>
         </div>
       </div>
     </div>
