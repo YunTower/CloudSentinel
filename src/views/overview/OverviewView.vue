@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useToast } from 'primevue/usetoast'
+import { useNotifications } from '@/composables/useNotifications'
 import ServerCard from './components/ServerCard.vue'
 import ServerTable from './components/ServerTable.vue'
 import GroupHeader from './components/GroupHeader.vue'
 import Loading from '@/components/Loading/Loading.vue'
-import Dropdown from 'primevue/dropdown'
-import SelectButton from 'primevue/selectbutton'
-import Button from 'primevue/button'
 import serversApi from '@/apis/servers'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useAuthStore } from '@/stores/auth'
@@ -16,7 +13,7 @@ import type { ServerItem } from '@/types/server'
 import type { GetServersResponse, ServerGroup } from '@/types/manager/servers'
 import { mapServerListItemToServerItem, getStatusText, formatOS } from './utils'
 
-const toast = useToast()
+const { toast } = useNotifications()
 const router = useRouter()
 const authStore = useAuthStore()
 

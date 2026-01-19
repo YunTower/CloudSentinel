@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useToast } from 'primevue/usetoast'
-import { useConfirm } from 'primevue/useconfirm'
-import ProgressSpinner from 'primevue/progressspinner'
+import { useNotifications } from '@/composables/useNotifications'
 import ServerGroupSelector from './ServerGroupSelector.vue'
 import InstallInfo from './InstallInfo.vue'
 import serversApi from '@/apis/servers'
@@ -35,8 +33,7 @@ const emit = defineEmits<{
   'save-success': []
 }>()
 
-const toast = useToast()
-const confirm = useConfirm()
+const { toast, confirm } = useNotifications()
 const activeTab = ref('0')
 const restarting = ref(false)
 const resettingKey = ref(false)

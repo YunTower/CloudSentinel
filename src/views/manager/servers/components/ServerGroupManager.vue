@@ -1,13 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useToast } from 'primevue/usetoast'
-import { useConfirm } from 'primevue/useconfirm'
-import Dialog from 'primevue/dialog'
-import Button from 'primevue/button'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
-import Tag from 'primevue/tag'
-import ProgressSpinner from 'primevue/progressspinner'
+import { useNotifications } from '@/composables/useNotifications'
 import serversApi from '@/apis/servers'
 import type { ServerGroup, Server } from '@/types/manager/servers'
 
@@ -28,8 +21,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
-const toast = useToast()
-const confirm = useConfirm()
+const { toast, confirm } = useNotifications()
 const loading = ref(false)
 const groups = ref<ServerGroup[]>([])
 

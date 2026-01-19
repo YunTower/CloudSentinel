@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useToast } from 'primevue/usetoast'
-import { useConfirm } from 'primevue/useconfirm'
+import { useNotifications } from '@/composables/useNotifications'
 import { marked } from 'marked'
-import Tag from 'primevue/tag'
-import ProgressBar from 'primevue/progressbar'
-import ConfirmDialog from 'primevue/confirmdialog'
 import panelApi from '@/apis/settings/panel'
 import { useAuthStore } from '@/stores/auth'
 import type { PanelSettings } from '@/types/settings/panel'
@@ -30,8 +26,7 @@ const hasUpdate = computed(() => {
 
   return checkHasUpdate(current_version, latest_version, current_version_type, latest_version_type)
 })
-const toast = useToast()
-const confirm = useConfirm()
+const { toast, confirm } = useNotifications()
 const authStore = useAuthStore()
 const panelSettings = ref<PanelSettings>({
   title: 'CloudSentinel',

@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useToast } from 'primevue/usetoast'
-import Dialog from 'primevue/dialog'
-import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
-import Button from 'primevue/button'
+import { useNotifications } from '@/composables/useNotifications'
 import serversApi from '@/apis/servers'
 import type { ServerGroup } from '@/types/manager/servers'
 
@@ -21,7 +17,7 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const toast = useToast()
+const { toast } = useNotifications()
 const loading = ref(false)
 
 const isVisible = computed({

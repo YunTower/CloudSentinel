@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import ProgressBar from 'primevue/progressbar'
 import type { ServerItem } from '@/types/server'
 import { getProgressBarColor, getProgressTextColor } from '@/utils/version.ts'
 import { formatSpeed, formatOS, getStatusColor, getStatusText as getStatusTextUtil } from '../utils'

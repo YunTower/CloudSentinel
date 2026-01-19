@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useToast } from 'primevue/usetoast'
+import { useNotifications } from '@/composables/useNotifications'
 import { useAuthStore } from '@/stores/auth'
-import Toast from 'primevue/toast'
 
-const toast = useToast()
+const { toast } = useNotifications()
 const router = useRouter()
 const authStore = useAuthStore()
 const activeTab = ref('0') // 当前激活的标签页
@@ -184,10 +183,12 @@ onMounted(async () => {
                         >
                         <Password
                           id="guestPassword"
+                          name="guestPassword"
                           v-model="loginForm.password"
                           placeholder="请输入访客访问密码"
                           toggleMask
                           :feedback="false"
+                          autocomplete="current-password"
                           class="w-full"
                           :pt="{
                             root: { class: 'w-full' },
@@ -229,8 +230,10 @@ onMounted(async () => {
                       >
                       <InputText
                         id="adminUsername"
+                        name="username"
                         v-model="loginForm.username"
                         placeholder="请输入用户名"
+                        autocomplete="username"
                         class="w-full py-3 px-4 text-base"
                         @keyup.enter="handleLogin"
                       />
@@ -242,10 +245,12 @@ onMounted(async () => {
                       >
                       <Password
                         id="adminPassword"
+                        name="password"
                         v-model="loginForm.password"
                         placeholder="请输入密码"
                         toggleMask
                         :feedback="false"
+                        autocomplete="current-password"
                         class="w-full"
                         :pt="{
                           root: { class: 'w-full' },
@@ -283,7 +288,7 @@ onMounted(async () => {
         </Card>
 
         <div class="text-center mt-8">
-          <p class="text-sm text-muted-color">© 2024 CloudSentinel. 服务器状态监测系统</p>
+          <span class="text-sm text-muted-color">由 <a class="hover:underline" href="https://github.com/YunTower/CloudSentinel" target="_blank">CloudSentinel</a> 提供服务器监测支持</span>
         </div>
       </div>
     </div>
