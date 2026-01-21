@@ -107,11 +107,13 @@ jobs:
           if [ -z "$PREV_TAG" ]; then
             # 如果没有上一个 tag，获取所有提交
             echo "No previous tag found, getting all commits"
+            # 格式：完整hash|短hash|commit message
             RAW_COMMITS=$(git log --pretty=format:"%H|%h|%s" --reverse)
           else
             # 获取两个 tag 之间的提交
             echo "Previous tag: $PREV_TAG"
-            RAW_COMMITS=$(git log ${PREV_TAG}..${TAG_NAME} --pretty=format:"%H|%h|%s")
+            # 格式：完整hash|短hash|commit message（使用 --reverse 保持时间顺序）
+            RAW_COMMITS=$(git log ${PREV_TAG}..${TAG_NAME} --pretty=format:"%H|%h|%s" --reverse)
           fi
           
           # 如果没有提交，设置默认值
@@ -120,10 +122,14 @@ jobs:
           else
             # 处理每个提交，将 hash 和 PR 编号转换为链接
             COMMITS=$(echo "$RAW_COMMITS" | while IFS='|' read -r full_hash short_hash message; do
+              # 跳过空行
+              [ -z "$full_hash" ] && continue
+              
               # 将 hash 转换为链接
               hash_link="[${short_hash}](${REPO_URL}/commit/${full_hash})"
               # 将 PR 编号转换为链接（匹配 #数字 格式）
               linked_message=$(echo "$message" | sed -E "s/#([0-9]+)/[#\1](${REPO_URL}\/pull\/\1)/g")
+              # 输出格式：hash + commit message（确保两者都显示）
               echo "- ${hash_link} ${linked_message}"
             done)
           fi
@@ -157,11 +163,14 @@ jobs:
           if [ -z "$PREV_TAG" ]; then
             # 如果没有上一个 tag，获取所有提交
             echo "No previous tag found, getting all commits"
+            # 格式：完整hash|短hash|commit message
             RAW_COMMITS=$(git log --pretty=format:"%H|%h|%s" --reverse)
           else
             # 获取两个 tag 之间的提交
             echo "Previous tag: $PREV_TAG"
-            RAW_COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%H|%h|%s")
+            # 格式：完整hash|短hash|commit message（使用 --reverse 保持时间顺序）
+            # 注意：backend 仓库可能还没有当前 tag，使用 HEAD 作为结束点
+            RAW_COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%H|%h|%s" --reverse)
           fi
           
           # 如果没有提交，设置默认值
@@ -170,10 +179,14 @@ jobs:
           else
             # 处理每个提交，将 hash 和 PR 编号转换为链接
             COMMITS=$(echo "$RAW_COMMITS" | while IFS='|' read -r full_hash short_hash message; do
+              # 跳过空行
+              [ -z "$full_hash" ] && continue
+              
               # 将 hash 转换为链接
               hash_link="[${short_hash}](${REPO_URL}/commit/${full_hash})"
               # 将 PR 编号转换为链接（匹配 #数字 格式）
               linked_message=$(echo "$message" | sed -E "s/#([0-9]+)/[#\1](${REPO_URL}\/pull\/\1)/g")
+              # 输出格式：hash + commit message（确保两者都显示）
               echo "- ${hash_link} ${linked_message}"
             done)
           fi
