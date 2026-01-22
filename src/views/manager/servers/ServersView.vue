@@ -530,7 +530,7 @@ const handleExpandServer = async (serverId: string) => {
 // 获取 Agent 最新版本信息
 const loadAgentVersion = async () => {
   try {
-    const response = (await updateApi.checkAgentVersion('github')) as {
+    const response = (await updateApi.checkAgentVersion()) as {
       status: boolean
       data?: {
         latest_version?: string
