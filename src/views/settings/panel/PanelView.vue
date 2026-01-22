@@ -111,10 +111,14 @@ const executeUpdate = async () => {
 
   // 标记是否进入重启阶段
   let isRestarting = false
-  // 记录连续失败次数
+  // 记录连续失败次数（非重启阶段）
   let consecutiveFailures = 0
-  // 最大允许的连续失败次数
+  // 最大允许的连续失败次数（非重启阶段）
   const maxConsecutiveFailures = 120
+  // 重启阶段的等待时间（秒）
+  let restartingWaitTime = 0
+  // 重启阶段最大等待时间（秒）
+  const maxRestartingWaitTime = 180
   // 服务恢复后的检查次数
   let recoveryChecks = 0
   const maxRecoveryChecks = 2
@@ -150,6 +154,8 @@ const executeUpdate = async () => {
           if (step === 'restarting') {
             isRestarting = true
             recoveryChecks = 0 // 重置恢复检查计数
+            restartingWaitTime = 0 // 重置重启等待时间
+            consecutiveFailures = 0 // 重置失败计数，因为重启阶段的失败是正常的
             updateStep.value = '服务正在重启，请稍候...'
           }
 
@@ -194,22 +200,37 @@ const executeUpdate = async () => {
           }, 1500)
         }
       } catch (error) {
+        if (isRestarting) {
+          // 重启阶段：网络请求失败是正常的，不累计失败次数
+          restartingWaitTime++
+          updateStep.value = `服务正在重启中，请稍候... (已等待 ${restartingWaitTime} 秒)`
+          console.log(`服务重启中，继续等待... (${restartingWaitTime}/${maxRestartingWaitTime})`)
+
+          // 如果重启等待时间超过限制，停止轮询
+          if (restartingWaitTime >= maxRestartingWaitTime) {
+            console.warn('服务重启等待时间超过限制，停止轮询')
+            clearInterval(pollInterval)
+            updating.value = false
+            toast.add({
+              severity: 'warn',
+              summary: '等待重启超时',
+              detail: `服务重启已等待 ${maxRestartingWaitTime} 秒。如果服务已重启，请手动刷新页面。`,
+              life: 8000,
+            })
+          }
+          return
+        }
+
+        // 非重启阶段：累计失败次数
         consecutiveFailures++
         // 如果服务已恢复但再次失败，重置恢复检查计数
-        if (isRestarting && recoveryChecks > 0) {
+        if (recoveryChecks > 0) {
           recoveryChecks = 0
         }
 
-        // 如果已经进入重启阶段，或者失败次数未超过限制，继续轮询
-        if (isRestarting || consecutiveFailures <= maxConsecutiveFailures) {
-          if (isRestarting) {
-            // 在重启阶段，更新提示信息
-            updateStep.value = `服务正在重启中，请稍候... (已等待 ${consecutiveFailures} 秒)`
-            console.log(`服务重启中，继续等待... (${consecutiveFailures}/${maxConsecutiveFailures})`)
-          } else {
-            // 还未进入重启阶段，可能是网络临时问题
-            console.warn(`获取更新状态失败，继续重试... (${consecutiveFailures}/${maxConsecutiveFailures}):`, error)
-          }
+        // 如果失败次数未超过限制，继续轮询
+        if (consecutiveFailures <= maxConsecutiveFailures) {
+          console.warn(`获取更新状态失败，继续重试... (${consecutiveFailures}/${maxConsecutiveFailures}):`, error)
           return
         }
 
@@ -220,7 +241,7 @@ const executeUpdate = async () => {
         toast.add({
           severity: 'error',
           summary: '更新失败',
-          detail: `获取更新状态失败，已重试 ${maxConsecutiveFailures} 次。如果服务正在重启，请稍后手动刷新页面。`,
+          detail: `获取更新状态失败，已重试 ${maxConsecutiveFailures} 次。请检查网络连接或稍后重试。`,
           life: 8000,
         })
       }
