@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useToast } from 'primevue/usetoast'
+import { useNotifications } from '@/composables/useNotifications'
 import type { PermissionSettings, AdminAccount } from '@/types/settings/permissions'
 import settingsApi from '@/apis/settings/permissions'
 
-const toast = useToast()
+const { toast } = useNotifications()
 const permissions = ref<PermissionSettings>({
   allowGuest: true,
   enablePassword: false,

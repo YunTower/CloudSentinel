@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useToast } from 'primevue/usetoast'
-import { useConfirm } from 'primevue/useconfirm'
-import ProgressSpinner from 'primevue/progressspinner'
+import { useNotifications } from '@/composables/useNotifications'
 import ServerGroupSelector from './ServerGroupSelector.vue'
 import InstallInfo from './InstallInfo.vue'
 import serversApi from '@/apis/servers'
@@ -35,8 +33,7 @@ const emit = defineEmits<{
   'save-success': []
 }>()
 
-const toast = useToast()
-const confirm = useConfirm()
+const { toast, confirm } = useNotifications()
 const activeTab = ref('0')
 const restarting = ref(false)
 const resettingKey = ref(false)
@@ -79,6 +76,20 @@ const trafficResetCycleOptions = [
   { label: '每季度', value: 'quarterly' },
   { label: '每年', value: 'yearly' },
   { label: '自定义', value: 'custom' },
+]
+
+// 时区选项
+const timezoneOptions = [
+  { label: 'UTC', value: 'UTC' },
+  { label: 'Asia/Shanghai (中国标准时间)', value: 'Asia/Shanghai' },
+  { label: 'Asia/Tokyo (日本标准时间)', value: 'Asia/Tokyo' },
+  { label: 'Asia/Hong_Kong (香港标准时间)', value: 'Asia/Hong_Kong' },
+  { label: 'Asia/Singapore (新加坡标准时间)', value: 'Asia/Singapore' },
+  { label: 'America/New_York (美国东部时间)', value: 'America/New_York' },
+  { label: 'America/Los_Angeles (美国西部时间)', value: 'America/Los_Angeles' },
+  { label: 'Europe/London (英国标准时间)', value: 'Europe/London' },
+  { label: 'Europe/Paris (中欧时间)', value: 'Europe/Paris' },
+  { label: 'Australia/Sydney (澳大利亚东部时间)', value: 'Australia/Sydney' },
 ]
 
 const showCustomCycleDays = computed(() => form.value.billing_cycle === 'custom')
@@ -142,6 +153,17 @@ const form = defineModel<ServerForm>('form', {
     traffic_limit_bytes: 0,
     traffic_reset_cycle: undefined,
     traffic_custom_cycle_days: undefined,
+    // Agent配置字段
+    agent_timezone: 'Asia/Shanghai',
+    agent_metrics_interval: undefined,
+    agent_detail_interval: undefined,
+    agent_system_interval: undefined,
+    agent_heartbeat_interval: undefined,
+    agent_log_path: undefined,
+    // 显示开关字段
+    show_billing_cycle: false,
+    show_traffic_limit: false,
+    show_traffic_reset_cycle: false,
   }),
 })
 
@@ -180,6 +202,17 @@ const loadServerDetail = async () => {
         traffic_limit_bytes: detail.traffic_limit_bytes || 0,
         traffic_reset_cycle: detail.traffic_reset_cycle,
         traffic_custom_cycle_days: detail.traffic_custom_cycle_days,
+        // Agent配置字段
+        agent_timezone: detail.agent_timezone,
+        agent_metrics_interval: detail.agent_metrics_interval,
+        agent_detail_interval: detail.agent_detail_interval,
+        agent_system_interval: detail.agent_system_interval,
+        agent_heartbeat_interval: detail.agent_heartbeat_interval,
+        agent_log_path: detail.agent_log_path,
+        // 显示开关字段
+        show_billing_cycle: detail.show_billing_cycle ?? false,
+        show_traffic_limit: detail.show_traffic_limit ?? false,
+        show_traffic_reset_cycle: detail.show_traffic_reset_cycle ?? false,
       }
       // 从服务器详情中获取告警规则
       if (detail.alert_rules) {
@@ -228,6 +261,17 @@ const loadServerDetail = async () => {
         traffic_limit_bytes: props.editingServer.traffic_limit_bytes || 0,
         traffic_reset_cycle: props.editingServer.traffic_reset_cycle,
         traffic_custom_cycle_days: props.editingServer.traffic_custom_cycle_days,
+        // Agent配置字段
+        agent_timezone: props.editingServer.agent_timezone,
+        agent_metrics_interval: props.editingServer.agent_metrics_interval,
+        agent_detail_interval: props.editingServer.agent_detail_interval,
+        agent_system_interval: props.editingServer.agent_system_interval,
+        agent_heartbeat_interval: props.editingServer.agent_heartbeat_interval,
+        agent_log_path: props.editingServer.agent_log_path,
+        // 显示开关字段
+        show_billing_cycle: props.editingServer.show_billing_cycle ?? false,
+        show_traffic_limit: props.editingServer.show_traffic_limit ?? false,
+        show_traffic_reset_cycle: props.editingServer.show_traffic_reset_cycle ?? false,
       }
     }
   } finally {
@@ -305,6 +349,17 @@ watch(
         traffic_limit_bytes: server.traffic_limit_bytes || 0,
         traffic_reset_cycle: server.traffic_reset_cycle,
         traffic_custom_cycle_days: server.traffic_custom_cycle_days,
+        // Agent配置字段
+        agent_timezone: server.agent_timezone,
+        agent_metrics_interval: server.agent_metrics_interval,
+        agent_detail_interval: server.agent_detail_interval,
+        agent_system_interval: server.agent_system_interval,
+        agent_heartbeat_interval: server.agent_heartbeat_interval,
+        agent_log_path: server.agent_log_path,
+        // 显示开关字段
+        show_billing_cycle: server.show_billing_cycle ?? false,
+        show_traffic_limit: server.show_traffic_limit ?? false,
+        show_traffic_reset_cycle: server.show_traffic_reset_cycle ?? false,
       }
     }
   },
@@ -501,6 +556,7 @@ const handleResetAgentKey = () => {
           <Tab value="0">基础</Tab>
           <Tab value="1">计费</Tab>
           <Tab value="2">网络</Tab>
+          <Tab v-if="isEditing" value="5">Agent配置</Tab>
           <Tab v-if="isEditing" value="4">告警</Tab>
           <Tab v-if="isEditing" value="3">操作</Tab>
         </TabList>
@@ -622,6 +678,21 @@ const handleResetAgentKey = () => {
                     class="w-full"
                   />
                 </div>
+
+                <div class="space-y-3">
+                  <label class="text-sm font-medium text-color flex items-center gap-2">
+                    <i class="pi pi-eye text-primary text-xs"></i>
+                    显示付费周期
+                  </label>
+                  <div
+                    class="flex items-center gap-2 p-2 border border-[var(--p-select-border-color)] rounded-[var(--p-select-border-radius)]"
+                  >
+                    <span class="text-sm text-muted-color flex-1"
+                      >在概览和详情中显示付费周期信息</span
+                    >
+                    <InputSwitch v-model="form.show_billing_cycle" />
+                  </div>
+                </div>
               </div>
             </div>
           </TabPanel>
@@ -690,6 +761,36 @@ const handleResetAgentKey = () => {
                   />
                 </div>
 
+                <div class="space-y-3">
+                  <label class="text-sm font-medium text-color flex items-center gap-2">
+                    <i class="pi pi-eye text-primary text-xs"></i>
+                    显示流量限制
+                  </label>
+                  <div
+                    class="flex items-center gap-2 p-2 border border-[var(--p-select-border-color)] rounded-[var(--p-select-border-radius)]"
+                  >
+                    <span class="text-sm text-muted-color flex-1"
+                      >在概览和详情中显示流量限制信息</span
+                    >
+                    <InputSwitch v-model="form.show_traffic_limit" />
+                  </div>
+                </div>
+
+                <div v-if="showTrafficResetCycle" class="space-y-3">
+                  <label class="text-sm font-medium text-color flex items-center gap-2">
+                    <i class="pi pi-eye text-primary text-xs"></i>
+                    显示流量重置周期
+                  </label>
+                  <div
+                    class="flex items-center gap-2 p-2 border border-[var(--p-select-border-color)] rounded-[var(--p-select-border-radius)]"
+                  >
+                    <span class="text-sm text-muted-color flex-1"
+                      >在概览和详情中显示流量重置周期信息</span
+                    >
+                    <InputSwitch v-model="form.show_traffic_reset_cycle" />
+                  </div>
+                </div>
+
                 <div v-if="showTrafficCustomCycleDays" class="space-y-3">
                   <label class="text-sm font-medium text-color flex items-center gap-2">
                     <i class="pi pi-clock text-primary text-xs"></i>
@@ -699,6 +800,96 @@ const handleResetAgentKey = () => {
                     v-model="form.traffic_custom_cycle_days"
                     :min="1"
                     placeholder="请输入天数"
+                    class="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+          </TabPanel>
+
+          <!-- Agent配置 Tab -->
+          <TabPanel v-if="isEditing" value="5">
+            <div class="space-y-4 pt-4">
+              <div class="grid grid-cols-2 gap-6">
+                <div class="space-y-3">
+                  <label class="text-sm font-medium text-color flex items-center gap-2">
+                    <i class="pi pi-globe text-primary text-xs"></i>
+                    时区
+                  </label>
+                  <Select
+                    v-model="form.agent_timezone"
+                    :options="timezoneOptions"
+                    option-label="label"
+                    option-value="value"
+                    placeholder="请选择时区（留空使用默认）"
+                    class="w-full"
+                  />
+                </div>
+
+                <div class="space-y-3">
+                  <label class="text-sm font-medium text-color flex items-center gap-2">
+                    <i class="pi pi-chart-line text-primary text-xs"></i>
+                    性能指标上报间隔
+                  </label>
+                  <InputNumber
+                    v-model="form.agent_metrics_interval"
+                    :min="1"
+                    placeholder="秒（默认30）"
+                    suffix=" 秒"
+                    class="w-full"
+                  />
+                </div>
+
+                <div class="space-y-3">
+                  <label class="text-sm font-medium text-color flex items-center gap-2">
+                    <i class="pi pi-info-circle text-primary text-xs"></i>
+                    详细信息上报间隔
+                  </label>
+                  <InputNumber
+                    v-model="form.agent_detail_interval"
+                    :min="1"
+                    placeholder="秒（默认30）"
+                    suffix=" 秒"
+                    class="w-full"
+                  />
+                </div>
+
+                <div class="space-y-3">
+                  <label class="text-sm font-medium text-color flex items-center gap-2">
+                    <i class="pi pi-server text-primary text-xs"></i>
+                    系统信息上报间隔
+                  </label>
+                  <InputNumber
+                    v-model="form.agent_system_interval"
+                    :min="1"
+                    placeholder="秒（默认30）"
+                    suffix=" 秒"
+                    class="w-full"
+                  />
+                </div>
+
+                <div class="space-y-3">
+                  <label class="text-sm font-medium text-color flex items-center gap-2">
+                    <i class="pi pi-heart text-primary text-xs"></i>
+                    心跳间隔
+                  </label>
+                  <InputNumber
+                    v-model="form.agent_heartbeat_interval"
+                    :min="1"
+                    placeholder="秒（默认20）"
+                    suffix=" 秒"
+                    class="w-full"
+                  />
+                </div>
+
+                <div class="space-y-3">
+                  <label class="text-sm font-medium text-color flex items-center gap-2">
+                    <i class="pi pi-folder text-primary text-xs"></i>
+                    日志路径
+                  </label>
+                  <InputText
+                    v-model="form.agent_log_path"
+                    placeholder="logs（默认）"
                     class="w-full"
                   />
                 </div>

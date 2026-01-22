@@ -12,5 +12,3 @@ export default {
   testAlertSettings: (payload: TestAlertSettingsBody) =>
     requester.Post('/settings/alerts/test', payload),
 }
-
-

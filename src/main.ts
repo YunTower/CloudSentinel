@@ -13,13 +13,13 @@ import App from './App.vue'
 import router from './router'
 import { role, auth } from './directives/permission'
 import { useAuthStore } from '@/stores/auth'
-import Tooltip from 'primevue/tooltip';
+import Tooltip from 'primevue/tooltip'
 
 const app = createApp(App)
 
 app.directive('role', role)
 app.directive('auth', auth)
-app.directive('tooltip', Tooltip);
+app.directive('tooltip', Tooltip)
 
 const Noir = definePreset(Aura, {
   semantic: {

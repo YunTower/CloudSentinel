@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLayout } from '@/composables/useLayout'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from 'primevue/usetoast'
+import { useNotifications } from '@/composables/useNotifications'
 import websocketManager from '@/services/websocket-manager'
 import AdminLoginDialog from './AdminLoginDialog.vue'
 
@@ -15,7 +15,7 @@ interface MenuItem {
   roles?: string[]
 }
 
-const toast = useToast()
+const { toast } = useNotifications()
 const router = useRouter()
 const authStore = useAuthStore()
 const { isDarkMode, toggleDarkMode, initializeTheme, setupThemeListener } = useLayout()

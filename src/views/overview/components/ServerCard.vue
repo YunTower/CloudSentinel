@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import ProgressBar from 'primevue/progressbar'
 import type { ServerItem } from '@/types/server'
 import { getProgressBarColor, getProgressTextColor } from '@/utils/version.ts'
 import { formatSpeed, formatOS, getStatusColor, getStatusText as getStatusTextUtil } from '../utils'
@@ -10,6 +9,38 @@ const props = defineProps<ServerItem>()
 const statusClass = computed(() => getStatusColor(props.status))
 
 const statusText = computed(() => getStatusTextUtil(props.status))
+
+// 付费周期标签
+const getBillingCycleLabel = (cycle?: string): string => {
+  const options: Record<string, string> = {
+    monthly: '月付',
+    quarterly: '季付',
+    yearly: '年付',
+    one_time: '一次性',
+    custom: '自定义',
+  }
+  return cycle ? options[cycle] || cycle : '-'
+}
+
+// 流量限制类型标签
+const getTrafficLimitTypeLabel = (type?: string): string => {
+  const options: Record<string, string> = {
+    unlimited: '无限制',
+    periodic: '周期',
+  }
+  return type ? options[type] || type : '-'
+}
+
+// 流量重置周期标签
+const getTrafficResetCycleLabel = (cycle?: string): string => {
+  const options: Record<string, string> = {
+    monthly: '每月',
+    quarterly: '每季度',
+    yearly: '每年',
+    custom: '自定义',
+  }
+  return cycle ? options[cycle] || cycle : '-'
+}
 </script>
 <template>
   <Card class="h-full">
@@ -58,7 +89,9 @@ const statusText = computed(() => getStatusTextUtil(props.status))
           <div class="grid grid-cols-3 gap-2 text-xs">
             <div class="text-center">
               <div class="text-muted-color">系统</div>
-              <div class="font-semibold text-color truncate" :title="props.os">{{ formatOS(props.os) }}</div>
+              <div class="font-semibold text-color truncate" :title="props.os">
+                {{ formatOS(props.os) }}
+              </div>
             </div>
             <div class="text-center">
               <div class="text-muted-color">架构</div>
@@ -111,7 +144,9 @@ const statusText = computed(() => getStatusTextUtil(props.status))
             <div class="flex items-center gap-2">
               <i class="pi pi-database text-sm text-muted-color"></i>
               <span class="text-sm font-medium text-color">磁盘</span>
-              <span v-if="props.totalStorage" class="text-xs text-muted-color">({{ props.totalStorage }})</span>
+              <span v-if="props.totalStorage" class="text-xs text-muted-color"
+                >({{ props.totalStorage }})</span
+              >
             </div>
             <span class="text-sm font-bold" :class="getProgressTextColor(props.diskUsage)">
               {{ props.diskUsage }}%
@@ -126,6 +161,81 @@ const statusText = computed(() => getStatusTextUtil(props.status))
               },
             }"
           />
+        </div>
+
+        <!-- 付费周期信息 -->
+        <div
+          v-if="props.show_billing_cycle && (props.billing_cycle || props.price || props.expire_time)"
+          class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800"
+        >
+          <div class="flex items-center gap-2 mb-2">
+            <i class="pi pi-calendar text-sm text-muted-color"></i>
+            <span class="text-sm font-medium text-color">付费周期</span>
+          </div>
+          <div class="space-y-1 text-xs">
+            <div v-if="props.billing_cycle" class="flex justify-between">
+              <span class="text-muted-color">周期</span>
+              <span class="font-medium text-color">{{ getBillingCycleLabel(props.billing_cycle) }}</span>
+            </div>
+            <div v-if="props.price !== undefined && props.price !== null" class="flex justify-between">
+              <span class="text-muted-color">价格</span>
+              <span class="font-medium text-color">¥{{ props.price.toFixed(2) }}</span>
+            </div>
+            <div v-if="props.expire_time" class="flex justify-between">
+              <span class="text-muted-color">到期</span>
+              <span class="font-medium text-color">{{
+                new Date(props.expire_time).toLocaleDateString('zh-CN')
+              }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 流量限制信息 -->
+        <div
+          v-if="props.show_traffic_limit && (props.traffic_limit_type || props.traffic_limit_bytes)"
+          class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800"
+        >
+          <div class="flex items-center gap-2 mb-2">
+            <i class="pi pi-chart-line text-sm text-muted-color"></i>
+            <span class="text-sm font-medium text-color">流量限制</span>
+          </div>
+          <div class="space-y-1 text-xs">
+            <div v-if="props.traffic_limit_type" class="flex justify-between">
+              <span class="text-muted-color">类型</span>
+              <span class="font-medium text-color">{{ getTrafficLimitTypeLabel(props.traffic_limit_type) }}</span>
+            </div>
+            <div
+              v-if="props.traffic_limit_bytes && props.traffic_limit_bytes > 0"
+              class="flex justify-between"
+            >
+              <span class="text-muted-color">限制</span>
+              <span class="font-medium text-color">{{
+                (props.traffic_limit_bytes / (1024 * 1024 * 1024)).toFixed(2)
+              }}
+                GB</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 流量重置周期信息 -->
+        <div
+          v-if="props.show_traffic_reset_cycle && props.traffic_reset_cycle"
+          class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800"
+        >
+          <div class="flex items-center gap-2 mb-2">
+            <i class="pi pi-refresh text-sm text-muted-color"></i>
+            <span class="text-sm font-medium text-color">重置周期</span>
+          </div>
+          <div class="space-y-1 text-xs">
+            <div class="flex justify-between">
+              <span class="text-muted-color">周期</span>
+              <span class="font-medium text-color">{{ getTrafficResetCycleLabel(props.traffic_reset_cycle) }}</span>
+            </div>
+            <div v-if="props.traffic_custom_cycle_days" class="flex justify-between">
+              <span class="text-muted-color">自定义</span>
+              <span class="font-medium text-color">{{ props.traffic_custom_cycle_days }} 天</span>
+            </div>
+          </div>
         </div>
       </div>
     </template>

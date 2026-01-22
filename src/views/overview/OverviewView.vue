@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useToast } from 'primevue/usetoast'
+import { useNotifications } from '@/composables/useNotifications'
 import ServerCard from './components/ServerCard.vue'
 import ServerTable from './components/ServerTable.vue'
 import GroupHeader from './components/GroupHeader.vue'
-import Dropdown from 'primevue/dropdown'
-import SelectButton from 'primevue/selectbutton'
-import Button from 'primevue/button'
+import Loading from '@/components/Loading/Loading.vue'
 import serversApi from '@/apis/servers'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useAuthStore } from '@/stores/auth'
@@ -15,7 +13,7 @@ import type { ServerItem } from '@/types/server'
 import type { GetServersResponse, ServerGroup } from '@/types/manager/servers'
 import { mapServerListItemToServerItem, getStatusText, formatOS } from './utils'
 
-const toast = useToast()
+const { toast } = useNotifications()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -199,9 +197,7 @@ onUnmounted(() => {
 })
 
 // 类型守卫函数
-const isNumberGroup = (
-  value: 'none' | number | 'status' | 'location' | 'os',
-): value is number => {
+const isNumberGroup = (value: 'none' | number | 'status' | 'location' | 'os'): value is number => {
   return typeof value === 'number'
 }
 
@@ -278,9 +274,7 @@ const getGroupColor = (groupName: string): string | undefined => {
     </div>
 
     <!-- 加载状态 -->
-    <div v-else-if="loading" class="flex items-center justify-center py-12">
-      <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
-    </div>
+    <Loading v-else-if="loading" :size="25" :loading="loading" :overlay="false" />
 
     <!-- 错误状态 -->
     <div
@@ -296,7 +290,6 @@ const getGroupColor = (groupName: string): string | undefined => {
       v-else-if="servers.length === 0 && !initializing"
       class="flex flex-col items-center justify-center py-12"
     >
-      <i class="pi pi-server text-4xl text-muted-color mb-4"></i>
       <p class="text-lg text-muted-color">暂无服务器</p>
     </div>
 

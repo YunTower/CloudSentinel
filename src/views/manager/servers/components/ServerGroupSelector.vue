@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import Select from 'primevue/select'
 import serversApi from '@/apis/servers'
 import type { ServerGroup } from '@/types/manager/servers'
 
@@ -73,4 +72,3 @@ defineExpose({
     </template>
   </Select>
 </template>
-

@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
-import ProgressBar from 'primevue/progressbar'
 import type { ServerItem } from '@/types/server'
 import { formatSpeed, formatOS, getStatusColor } from '../utils'
 import { getProgressBarColor, getProgressTextColor } from '@/utils/version.ts'

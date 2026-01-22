@@ -11,6 +11,7 @@
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
+    "build:analyze": "vite build --mode analyze",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
     "format": "prettier --write src/"
@@ -20,7 +21,6 @@
     "@primevue/themes": "^4.3.7",
     "@tailwindcss/vite": "^4.1.11",
     "alova": "^3.3.4",
-    "chart.js": "^4.5.0",
     "echarts": "^5.6.0",
     "jwt-decode": "^4.0.0",
     "marked": "^17.0.0",
@@ -47,6 +47,7 @@
     "jiti": "^2.4.2",
     "npm-run-all2": "^8.0.4",
     "prettier": "3.6.2",
+    "rollup-plugin-visualizer": "^6.0.5",
     "typescript": "~5.8.0",
     "unplugin-vue-components": "^29.0.0",
     "vite": "^7.0.6",

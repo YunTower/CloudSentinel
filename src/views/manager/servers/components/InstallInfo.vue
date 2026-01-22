@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useToast } from 'primevue/usetoast'
-import Button from 'primevue/button'
+import { useNotifications } from '@/composables/useNotifications'
 import type { Server } from '@/types/manager/servers'
 
 interface Props {
@@ -18,7 +17,7 @@ const props = withDefaults(defineProps<Props>(), {
   websocketURL: '',
 })
 
-const toast = useToast()
+const { toast } = useNotifications()
 
 // 计算安装命令
 const installCommand = computed(() => {

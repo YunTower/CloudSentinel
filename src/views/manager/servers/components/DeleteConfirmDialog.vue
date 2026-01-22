@@ -12,13 +12,13 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
-  'confirm': []
-  'cancel': []
+  confirm: []
+  cancel: []
 }>()
 
 const isVisible = computed({
   get: () => props.visible,
-  set: (value) => emit('update:visible', value)
+  set: (value) => emit('update:visible', value),
 })
 
 const handleConfirm = () => {
@@ -30,12 +30,7 @@ const handleCancel = () => {
 }
 </script>
 <template>
-  <Dialog
-    v-model:visible="isVisible"
-    header="确认删除"
-    modal
-    class="w-md"
-  >
+  <Dialog v-model:visible="isVisible" header="确认删除" modal class="w-md">
     <div class="space-y-4">
       <div class="flex items-center gap-3">
         <i class="pi pi-exclamation-triangle text-red-500 text-xl"></i>
@@ -52,12 +47,7 @@ const handleCancel = () => {
     <template #footer>
       <div class="flex justify-end gap-2">
         <Button label="取消" text @click="handleCancel" />
-        <Button
-          label="删除"
-          severity="danger"
-          @click="handleConfirm"
-          :loading="deleting"
-        />
+        <Button label="删除" severity="danger" @click="handleConfirm" :loading="deleting" />
       </div>
     </template>
   </Dialog>

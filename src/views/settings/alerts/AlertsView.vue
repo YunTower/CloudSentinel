@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { useToast } from 'primevue/usetoast'
+import { useNotifications } from '@/composables/useNotifications'
 import type { Notifications } from '@/types/settings/alerts'
 import alertsApi from '@/apis/settings/alerts'
 
@@ -13,6 +13,7 @@ const notifications = ref<Notifications>({
     from: '',
     to: '',
     password: '',
+    hasPassword: false,
   },
   webhook: {
     enabled: false,
@@ -61,7 +62,7 @@ const testing = ref({
   email: false,
   webhook: false,
 })
-const toast = useToast()
+const { toast } = useNotifications()
 
 // 提及用户列表
 const mentionedUsers = ref<string[]>([])
@@ -158,6 +159,7 @@ const loadAlertSettings = async () => {
         from: String(email.from || ''),
         to: String(email.to || ''),
         password: '',
+        hasPassword: email.hasPassword || false,
       })
     }
 
@@ -352,6 +354,7 @@ const saveAlertSettings = async () => {
         detail: '告警设置已更新',
         life: 3000,
       })
+      await loadAlertSettings()
     } else {
       const errorMsg =
         res && typeof res === 'object' && 'message' in res ? String(res.message) : '保存失败'
@@ -451,7 +454,9 @@ onMounted(() => {
                     v-model="notifications.email.password"
                     :feedback="false"
                     toggleMask
-                    placeholder="若已设置，留空则不修改"
+                    :placeholder="
+                      notifications.email.hasPassword ? '已设置，留空则不修改' : '请输入 SMTP 密码'
+                    "
                     inputClass="w-full"
                   />
                 </div>
