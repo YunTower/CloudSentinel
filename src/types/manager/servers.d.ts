@@ -73,6 +73,9 @@ export interface ServerListItemData {
   traffic_limit_bytes?: number
   traffic_reset_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
   traffic_custom_cycle_days?: number
+  show_billing_cycle?: boolean
+  show_traffic_limit?: boolean
+  show_traffic_reset_cycle?: boolean
 }
 
 // 获取服务器列表响应类型
@@ -131,6 +134,17 @@ export interface Server {
   traffic_limit_bytes?: number
   traffic_reset_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
   traffic_custom_cycle_days?: number
+  // Agent配置字段
+  agent_timezone?: string
+  agent_metrics_interval?: number
+  agent_detail_interval?: number
+  agent_system_interval?: number
+  agent_heartbeat_interval?: number
+  agent_log_path?: string
+  // 显示开关字段
+  show_billing_cycle?: boolean
+  show_traffic_limit?: boolean
+  show_traffic_reset_cycle?: boolean
   createdAt: string
   updatedAt: string
   _detailLoaded?: boolean // 标记详细信息是否已加载
@@ -157,6 +171,17 @@ export interface ServerForm {
   traffic_limit_bytes?: number
   traffic_reset_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
   traffic_custom_cycle_days?: number
+  // Agent配置字段
+  agent_timezone?: string
+  agent_metrics_interval?: number
+  agent_detail_interval?: number
+  agent_system_interval?: number
+  agent_heartbeat_interval?: number
+  agent_log_path?: string
+  // 显示开关字段
+  show_billing_cycle?: boolean
+  show_traffic_limit?: boolean
+  show_traffic_reset_cycle?: boolean
 }
 
 // 状态选项接口定义
@@ -240,6 +265,17 @@ export interface ExtendedServerDetailData extends ServerDetailData {
   traffic_limit_bytes?: number
   traffic_reset_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
   traffic_custom_cycle_days?: number
+  // Agent配置字段
+  agent_timezone?: string
+  agent_metrics_interval?: number
+  agent_detail_interval?: number
+  agent_system_interval?: number
+  agent_heartbeat_interval?: number
+  agent_log_path?: string
+  // 显示开关字段
+  show_billing_cycle?: boolean
+  show_traffic_limit?: boolean
+  show_traffic_reset_cycle?: boolean
   alert_rules?: ServerAlertRules
   notification_channels?: ServerNotificationChannels
 }

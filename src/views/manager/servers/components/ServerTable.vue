@@ -44,6 +44,29 @@ const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.role === 'admin')
 const { toast, confirm } = useNotifications()
 
+// 付费周期选项
+const billingCycleOptions = [
+  { label: '月付', value: 'monthly' },
+  { label: '季付', value: 'quarterly' },
+  { label: '年付', value: 'yearly' },
+  { label: '一次性', value: 'one_time' },
+  { label: '自定义', value: 'custom' },
+]
+
+// 流量限制类型选项
+const trafficLimitTypeOptions = [
+  { label: '无限制', value: 'unlimited' },
+  { label: '周期', value: 'periodic' },
+]
+
+// 流量重置周期选项
+const trafficResetCycleOptions = [
+  { label: '每月', value: 'monthly' },
+  { label: '每季度', value: 'quarterly' },
+  { label: '每年', value: 'yearly' },
+  { label: '自定义', value: 'custom' },
+]
+
 interface Props {
   servers: Server[]
   loading?: boolean
@@ -426,6 +449,7 @@ defineExpose({
             header: { class: 'bg-surface-50 dark:bg-surface-800' },
             tbody: { class: 'bg-surface-0 dark:bg-surface-900' },
             row: { class: 'hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' },
+            scrollableWrapper: { class: 'relative' },
           }"
         >
           <!-- 空数据占位 -->
@@ -449,19 +473,19 @@ defineExpose({
           <Column expander style="width: 3rem" />
 
           <!-- 服务器名称列 -->
-          <Column field="name" header="服务器名称" sortable class="w-fil">
+          <Column field="name" header="服务器名称" sortable style="min-width: 200px">
             <template #body="{ data }">
               <div class="flex items-center gap-3">
                 <p class="flex-1 min-w-0 space-x-1">
-                  <span class="font-medium text-color truncate">{{ data.name || '-' }}</span>
-                  <span class="text-muted-color truncate"> ({{ data.ip || '-' }}) </span>
+                  <span class="font-medium text-color">{{ data.name || '-' }}</span>
+                  <span class="text-muted-color"> ({{ data.ip || '-' }}) </span>
                 </p>
               </div>
             </template>
           </Column>
 
           <!-- 状态列 -->
-          <Column field="status" header="状态" sortable class="w-24">
+          <Column field="status" header="状态" sortable style="min-width: 100px">
             <template #body="{ data }">
               <Tag
                 :value="getStatusText(data.status)"
@@ -472,7 +496,7 @@ defineExpose({
           </Column>
 
           <!-- 分组列 -->
-          <Column field="group" header="分组" sortable class="w-32">
+          <Column field="group" header="分组" sortable style="min-width: 120px">
             <template #body="{ data }">
               <div v-if="data.group" class="flex items-center gap-2">
                 <span
@@ -480,27 +504,27 @@ defineExpose({
                   class="w-3 h-3 rounded-full"
                   :style="{ backgroundColor: data.group.color }"
                 />
-                <span class="text-sm truncate">{{ data.group.name }}</span>
+                <span class="text-sm">{{ data.group.name }}</span>
               </div>
               <span v-else class="text-sm text-muted-color">-</span>
             </template>
           </Column>
 
           <!-- 地域列 -->
-          <Column field="location" header="地域" sortable class="w-32">
+          <Column field="location" header="地域" sortable style="min-width: 120px">
             <template #body="{ data }">
               <div class="flex items-center gap-2">
                 <i
                   v-if="data.location !== ''"
                   class="pi pi-map-marker text-muted-color text-xs"
                 ></i>
-                <span class="text-sm truncate">{{ data.location || '-' }}</span>
+                <span class="text-sm">{{ data.location || '-' }}</span>
               </div>
             </template>
           </Column>
 
           <!-- 系统列 -->
-          <Column field="os" header="系统" sortable class="w-40">
+          <Column field="os" header="系统" sortable style="min-width: 180px">
             <template #body="{ data }">
               <div class="space-y-1">
                 <div class="text-sm font-medium text-color">
@@ -511,7 +535,7 @@ defineExpose({
           </Column>
 
           <!-- Agent版本列 -->
-          <Column v-if="isAdmin" field="agent_version" header="版本" sortable>
+          <Column v-if="isAdmin" field="agent_version" header="版本" sortable style="min-width: 150px">
             <template #body="{ data }">
               <div class="text-left flex gap-2 items-center">
                 <div class="text-sm font-medium text-color">{{ data.agent_version || '-' }}</div>
@@ -532,7 +556,7 @@ defineExpose({
           </Column>
 
           <!-- 运行时间列 -->
-          <Column field="uptime" header="运行时间" sortable class="w-32">
+          <Column field="uptime" header="运行时间" sortable style="min-width: 120px">
             <template #body="{ data }">
               <div class="text-left">
                 <div class="text-sm font-medium text-color">{{ data.uptime || '-' }}</div>
@@ -541,7 +565,7 @@ defineExpose({
           </Column>
 
           <!-- 到期时间列 -->
-          <Column field="expire_time" header="到期时间" sortable class="w-40">
+          <Column field="expire_time" header="到期时间" sortable style="min-width: 150px">
             <template #body="{ data }">
               <div v-if="data.expire_time" class="text-left">
                 <div class="text-sm font-medium text-color">
@@ -559,9 +583,9 @@ defineExpose({
           </Column>
 
           <!-- 操作列 -->
-          <Column header="操作" class="w-24">
+          <Column header="操作" style="width: 120px">
             <template #body="{ data }">
-              <div class="flex items-center gap-1">
+              <div class="flex items-center gap-1 justify-end">
                 <Button
                   icon="pi pi-pen-to-square"
                   size="small"
@@ -626,6 +650,112 @@ defineExpose({
                 <!-- 网络资源卡片 -->
                 <div class="break-inside-avoid mb-2 w-full inline-block">
                   <ServerNetworkCard :networkIO="data.networkIO" :traffic="data.traffic" />
+                </div>
+
+                <!-- 付费周期信息卡片 -->
+                <div
+                  v-if="data.show_billing_cycle && (data.billing_cycle || data.price || data.expire_time)"
+                  class="break-inside-avoid mb-2 w-full inline-block"
+                >
+                  <Card>
+                    <template #content>
+                      <div class="space-y-3">
+                        <div class="flex items-center gap-2 mb-3">
+                          <i class="pi pi-calendar text-primary"></i>
+                          <span class="text-sm font-semibold text-color">付费周期</span>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                          <div v-if="data.billing_cycle" class="flex justify-between">
+                            <span class="text-muted-color">周期类型</span>
+                            <span class="font-medium text-color">{{
+                              billingCycleOptions.find((opt) => opt.value === data.billing_cycle)?.label ||
+                              data.billing_cycle
+                            }}</span>
+                          </div>
+                          <div v-if="data.custom_cycle_days" class="flex justify-between">
+                            <span class="text-muted-color">自定义天数</span>
+                            <span class="font-medium text-color">{{ data.custom_cycle_days }} 天</span>
+                          </div>
+                          <div v-if="data.price !== undefined && data.price !== null" class="flex justify-between">
+                            <span class="text-muted-color">价格</span>
+                            <span class="font-medium text-color">¥{{ data.price.toFixed(2) }}</span>
+                          </div>
+                          <div v-if="data.expire_time" class="flex justify-between">
+                            <span class="text-muted-color">到期时间</span>
+                            <span class="font-medium text-color">{{
+                              new Date(data.expire_time).toLocaleDateString('zh-CN')
+                            }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                  </Card>
+                </div>
+
+                <!-- 流量限制信息卡片 -->
+                <div
+                  v-if="data.show_traffic_limit && (data.traffic_limit_type || data.traffic_limit_bytes)"
+                  class="break-inside-avoid mb-2 w-full inline-block"
+                >
+                  <Card>
+                    <template #content>
+                      <div class="space-y-3">
+                        <div class="flex items-center gap-2 mb-3">
+                          <i class="pi pi-chart-line text-primary"></i>
+                          <span class="text-sm font-semibold text-color">流量限制</span>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                          <div v-if="data.traffic_limit_type" class="flex justify-between">
+                            <span class="text-muted-color">限制类型</span>
+                            <span class="font-medium text-color">{{
+                              trafficLimitTypeOptions.find((opt) => opt.value === data.traffic_limit_type)?.label ||
+                              data.traffic_limit_type
+                            }}</span>
+                          </div>
+                          <div
+                            v-if="data.traffic_limit_bytes && data.traffic_limit_bytes > 0"
+                            class="flex justify-between"
+                          >
+                            <span class="text-muted-color">限制大小</span>
+                            <span class="font-medium text-color">{{
+                              (data.traffic_limit_bytes / (1024 * 1024 * 1024)).toFixed(2)
+                            }}
+                              GB</span>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                  </Card>
+                </div>
+
+                <!-- 流量重置周期信息卡片 -->
+                <div
+                  v-if="data.show_traffic_reset_cycle && data.traffic_reset_cycle"
+                  class="break-inside-avoid mb-2 w-full inline-block"
+                >
+                  <Card>
+                    <template #content>
+                      <div class="space-y-3">
+                        <div class="flex items-center gap-2 mb-3">
+                          <i class="pi pi-refresh text-primary"></i>
+                          <span class="text-sm font-semibold text-color">流量重置周期</span>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                          <div class="flex justify-between">
+                            <span class="text-muted-color">重置周期</span>
+                            <span class="font-medium text-color">{{
+                              trafficResetCycleOptions.find((opt) => opt.value === data.traffic_reset_cycle)?.label ||
+                              data.traffic_reset_cycle
+                            }}</span>
+                          </div>
+                          <div v-if="data.traffic_custom_cycle_days" class="flex justify-between">
+                            <span class="text-muted-color">自定义天数</span>
+                            <span class="font-medium text-color">{{ data.traffic_custom_cycle_days }} 天</span>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                  </Card>
                 </div>
 
                 <!-- CPU负载图表 -->
@@ -800,3 +930,20 @@ defineExpose({
     </Dialog>
   </div>
 </template>
+<style scoped>
+/* 固定操作列在右侧 */
+:deep(.p-datatable-scrollable) {
+  position: relative;
+}
+
+:deep(.p-datatable-scrollable-header table thead tr th:last-child),
+:deep(.p-datatable-scrollable-body table tbody tr td:last-child) {
+  position: sticky !important;
+  right: 0 !important;
+  z-index: 10;
+}
+
+:deep(.p-datatable-scrollable-header table thead tr th:last-child) {
+  z-index: 20;
+}
+</style>
