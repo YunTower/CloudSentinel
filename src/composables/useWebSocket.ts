@@ -59,6 +59,21 @@ export interface WebSocketCallbacks {
       memory: number
     }>
   }) => void
+  onGPUInfoUpdate?: (data: {
+    server_id: string
+    gpuInfo: {
+      available: boolean
+      gpus: Array<{
+        index: number
+        name: string
+        temperature: number
+        memory_used: number
+        memory_total: number
+        memory_util: number
+        gpu_util: number
+      }>
+    }
+  }) => void
   onError?: (error: Event | Error) => void
   onOpen?: () => void
   onClose?: () => void
@@ -259,6 +274,28 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
         callbacks.onProcessInfoUpdate?.({
           server_id: data.server_id,
           data: data.data,
+        })
+      }
+    } else if (message.type === 'gpu_info_update' && message.data) {
+      const data = message.data as {
+        server_id?: string
+        gpuInfo?: {
+          available: boolean
+          gpus: Array<{
+            index: number
+            name: string
+            temperature: number
+            memory_used: number
+            memory_total: number
+            memory_util: number
+            gpu_util: number
+          }>
+        }
+      }
+      if (data.server_id && data.gpuInfo) {
+        callbacks.onGPUInfoUpdate?.({
+          server_id: data.server_id,
+          gpuInfo: data.gpuInfo,
         })
       }
     }

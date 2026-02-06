@@ -10,6 +10,7 @@ import ServerMemoryCard from './ServerMemoryCard.vue'
 import ServerSwapCard from './ServerSwapCard.vue'
 import ServerDiskCard from './ServerDiskCard.vue'
 import ServerNetworkCard from './ServerNetworkCard.vue'
+import ServerGPUCard from './ServerGPUCard.vue'
 import ServerMetricsChart from './ServerMetricsChart.vue'
 import {
   getStatusText,
@@ -612,6 +613,11 @@ defineExpose({
                 <!-- 网络资源卡片 -->
                 <div class="break-inside-avoid mb-2 w-full inline-block">
                   <ServerNetworkCard :networkIO="data.networkIO" :traffic="data.traffic" />
+                </div>
+
+                <!-- GPU 资源卡片 -->
+                <div v-if="data.gpuInfo" class="break-inside-avoid mb-2 w-full inline-block">
+                  <ServerGPUCard :gpu-info="data.gpuInfo" />
                 </div>
 
                 <!-- 进程监控卡片 -->

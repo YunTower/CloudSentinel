@@ -131,6 +131,7 @@ export interface Server {
   memoryInfo?: MemoryInfo
   swapInfo?: SwapInfo
   traffic?: TrafficInfo
+  gpuInfo?: GPUData
   agent_key?: string
   agent_version?: string // Agent版本（仅管理员可见）
   // 分组和付费相关字段
@@ -245,6 +246,23 @@ export interface TrafficInfo {
   download_bytes: number
 }
 
+// GPU信息接口
+export interface GPUInfo {
+  index: number
+  name: string
+  temperature: number
+  memory_used: number
+  memory_total: number
+  memory_util: number
+  gpu_util: number
+}
+
+// GPU数据接口
+export interface GPUData {
+  available: boolean
+  gpus: GPUInfo[]
+}
+
 // 性能指标数据接口
 export interface MetricsData {
   timestamp: number
@@ -268,6 +286,7 @@ export interface ExtendedServerDetailData extends ServerDetailData {
   memory?: MemoryInfo
   swap?: SwapInfo
   traffic?: TrafficInfo
+  gpuInfo?: GPUData
   group_id?: number
   group?: ServerGroup
   billing_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'one_time' | 'custom'

@@ -145,6 +145,12 @@ const websocket = useWebSocket({
       }
     }
   },
+  onGPUInfoUpdate: (data) => {
+    const server = servers.value.find((s) => s.id === data.server_id)
+    if (server && data.gpuInfo) {
+      server.gpuInfo = data.gpuInfo
+    }
+  },
 })
 
 // 加载分组列表
