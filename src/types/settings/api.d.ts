@@ -9,6 +9,7 @@ export interface GetPanelSettingsData {
   panel_title: string
   current_version: string
   current_version_type: VersionType
+  log_retention_days?: number
 }
 
 export type GetCheckUpdateResponse = ApiResponse<GetUpdateData>
@@ -33,6 +34,7 @@ export type GetPanelSettingsResponse = ApiResponse<GetPanelSettingsData>
 
 export interface SavePanelSettingsBody {
   title: string
+  log_retention_days?: number
 }
 
 // Permissions

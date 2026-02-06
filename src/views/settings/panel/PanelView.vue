@@ -263,12 +263,19 @@ const loadPanelSettings = async () => {
   try {
     const res = await panelApi.getPanelSettings()
     const title = res?.data?.panel_title
+    const logRetentionDays = res?.data?.log_retention_days
+
     if (typeof title === 'string' && title.length > 0) {
       panelSettings.value.title = title
-      if (versionInfo.value) {
-        versionInfo.value.current_version = res?.data?.current_version || ''
-        versionInfo.value.current_version_type = res?.data?.current_version_type || ''
-      }
+    }
+
+    if (logRetentionDays !== undefined) {
+      panelSettings.value.log_retention_days = Number(logRetentionDays)
+    }
+
+    if (versionInfo.value) {
+      versionInfo.value.current_version = res?.data?.current_version || ''
+      versionInfo.value.current_version_type = res?.data?.current_version_type || ''
     }
   } catch (error) {
     console.error('Failed to load panel settings:', error)
@@ -279,7 +286,10 @@ const loadPanelSettings = async () => {
 const savePanelSettings = async () => {
   saving.value = true
   try {
-    await panelApi.savePanelSettings({ title: panelSettings.value.title })
+    await panelApi.savePanelSettings({
+      title: panelSettings.value.title,
+      log_retention_days: panelSettings.value.log_retention_days
+    })
 
     const publicSettings = authStore.getPublicSettings()
     if (publicSettings) {
@@ -343,9 +353,24 @@ onMounted(() => {
               <InputText
                 id="panelTitle"
                 v-model="panelSettings.title"
-                placeholder="请输入面板p标题"
+                placeholder="请输入面板标题"
                 class="w-full"
               />
+            </div>
+
+            <!-- 日志保留时间 -->
+            <div class="flex flex-col gap-2">
+              <label for="logRetentionDays" class="text-sm font-medium text-color">日志保留天数</label>
+              <InputNumber
+                id="logRetentionDays"
+                v-model="panelSettings.log_retention_days"
+                placeholder="30"
+                class="w-full"
+                :min="1"
+                :max="365"
+                suffix=" 天"
+              />
+              <small class="text-muted-color">Agent 日志在数据库中保留的天数，默认 30 天</small>
             </div>
           </div>
         </template>
