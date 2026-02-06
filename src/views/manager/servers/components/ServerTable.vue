@@ -441,7 +441,6 @@ defineExpose({
           v-model:expandedRows="expandedRows"
           v-model:selection="selectedServers"
           dataKey="id"
-          scrollable
           @row-expand="onRowExpand"
           @selection-change="(e: { data: Server[] }) => emit('selection-change', e.data)"
           :pt="{
@@ -449,7 +448,6 @@ defineExpose({
             header: { class: 'bg-surface-50 dark:bg-surface-800' },
             tbody: { class: 'bg-surface-0 dark:bg-surface-900' },
             row: { class: 'hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' },
-            scrollableWrapper: { class: 'relative' },
           }"
         >
           <!-- 空数据占位 -->
@@ -510,32 +508,14 @@ defineExpose({
             </template>
           </Column>
 
-          <!-- 地域列 -->
-          <Column field="location" header="地域" sortable style="min-width: 120px">
-            <template #body="{ data }">
-              <div class="flex items-center gap-2">
-                <i
-                  v-if="data.location !== ''"
-                  class="pi pi-map-marker text-muted-color text-xs"
-                ></i>
-                <span class="text-sm">{{ data.location || '-' }}</span>
-              </div>
-            </template>
-          </Column>
-
-          <!-- 系统列 -->
-          <Column field="os" header="系统" sortable style="min-width: 180px">
-            <template #body="{ data }">
-              <div class="space-y-1">
-                <div class="text-sm font-medium text-color">
-                  {{ data.os || '-' }} ({{ data.architecture || '-' }})
-                </div>
-              </div>
-            </template>
-          </Column>
-
           <!-- Agent版本列 -->
-          <Column v-if="isAdmin" field="agent_version" header="版本" sortable style="min-width: 150px">
+          <Column
+            v-if="isAdmin"
+            field="agent_version"
+            header="版本"
+            sortable
+            style="min-width: 150px"
+          >
             <template #body="{ data }">
               <div class="text-left flex gap-2 items-center">
                 <div class="text-sm font-medium text-color">{{ data.agent_version || '-' }}</div>
@@ -564,28 +544,10 @@ defineExpose({
             </template>
           </Column>
 
-          <!-- 到期时间列 -->
-          <Column field="expire_time" header="到期时间" sortable style="min-width: 150px">
-            <template #body="{ data }">
-              <div v-if="data.expire_time" class="text-left">
-                <div class="text-sm font-medium text-color">
-                  {{ new Date(data.expire_time).toLocaleDateString('zh-CN') }}
-                </div>
-                <Tag
-                  v-if="getExpireStatus(data.expire_time)"
-                  :value="getExpireStatus(data.expire_time)?.label"
-                  :severity="getExpireStatus(data.expire_time)?.severity"
-                  class="text-xs mt-1"
-                />
-              </div>
-              <span v-else class="text-sm text-muted-color">-</span>
-            </template>
-          </Column>
-
           <!-- 操作列 -->
           <Column header="操作" style="width: 120px">
             <template #body="{ data }">
-              <div class="flex items-center gap-1 justify-end">
+              <div class="flex items-center gap-1">
                 <Button
                   icon="pi pi-pen-to-square"
                   size="small"
@@ -652,9 +614,43 @@ defineExpose({
                   <ServerNetworkCard :networkIO="data.networkIO" :traffic="data.traffic" />
                 </div>
 
+                <!-- 进程监控卡片 -->
+                <div class="break-inside-avoid mb-2 w-full inline-block">
+                  <div
+                    class="bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700 shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div class="space-y-3">
+                      <div class="flex items-center gap-2 mb-3">
+                        <i class="pi pi-server text-primary"></i>
+                        <span class="text-sm font-semibold text-color">进程监控</span>
+                      </div>
+                      <div
+                        v-if="data.process_status && Object.keys(data.process_status).length > 0"
+                        class="flex flex-wrap gap-2"
+                      >
+                        <Tag
+                          v-for="(status, name) in data.process_status"
+                          :key="name"
+                          :value="name"
+                          :severity="status.running ? 'success' : 'danger'"
+                          :icon="status.running ? 'pi pi-check-circle' : 'pi pi-times-circle'"
+                          class="cursor-help"
+                          v-tooltip.top="
+                            `CPU: ${status.cpu.toFixed(1)}%, Mem: ${status.memory.toFixed(1)}%`
+                          "
+                        />
+                      </div>
+                      <div v-else class="text-sm text-muted-color text-center">暂无进程监控数据</div>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- 付费周期信息卡片 -->
                 <div
-                  v-if="data.show_billing_cycle && (data.billing_cycle || data.price || data.expire_time)"
+                  v-if="
+                    data.show_billing_cycle &&
+                    (data.billing_cycle || data.price || data.expire_time)
+                  "
                   class="break-inside-avoid mb-2 w-full inline-block"
                 >
                   <Card>
@@ -668,15 +664,20 @@ defineExpose({
                           <div v-if="data.billing_cycle" class="flex justify-between">
                             <span class="text-muted-color">周期类型</span>
                             <span class="font-medium text-color">{{
-                              billingCycleOptions.find((opt) => opt.value === data.billing_cycle)?.label ||
-                              data.billing_cycle
+                              billingCycleOptions.find((opt) => opt.value === data.billing_cycle)
+                                ?.label || data.billing_cycle
                             }}</span>
                           </div>
                           <div v-if="data.custom_cycle_days" class="flex justify-between">
                             <span class="text-muted-color">自定义天数</span>
-                            <span class="font-medium text-color">{{ data.custom_cycle_days }} 天</span>
+                            <span class="font-medium text-color"
+                              >{{ data.custom_cycle_days }} 天</span
+                            >
                           </div>
-                          <div v-if="data.price !== undefined && data.price !== null" class="flex justify-between">
+                          <div
+                            v-if="data.price !== undefined && data.price !== null"
+                            class="flex justify-between"
+                          >
                             <span class="text-muted-color">价格</span>
                             <span class="font-medium text-color">¥{{ data.price.toFixed(2) }}</span>
                           </div>
@@ -694,7 +695,9 @@ defineExpose({
 
                 <!-- 流量限制信息卡片 -->
                 <div
-                  v-if="data.show_traffic_limit && (data.traffic_limit_type || data.traffic_limit_bytes)"
+                  v-if="
+                    data.show_traffic_limit && (data.traffic_limit_type || data.traffic_limit_bytes)
+                  "
                   class="break-inside-avoid mb-2 w-full inline-block"
                 >
                   <Card>
@@ -708,8 +711,9 @@ defineExpose({
                           <div v-if="data.traffic_limit_type" class="flex justify-between">
                             <span class="text-muted-color">限制类型</span>
                             <span class="font-medium text-color">{{
-                              trafficLimitTypeOptions.find((opt) => opt.value === data.traffic_limit_type)?.label ||
-                              data.traffic_limit_type
+                              trafficLimitTypeOptions.find(
+                                (opt) => opt.value === data.traffic_limit_type,
+                              )?.label || data.traffic_limit_type
                             }}</span>
                           </div>
                           <div
@@ -717,10 +721,12 @@ defineExpose({
                             class="flex justify-between"
                           >
                             <span class="text-muted-color">限制大小</span>
-                            <span class="font-medium text-color">{{
-                              (data.traffic_limit_bytes / (1024 * 1024 * 1024)).toFixed(2)
-                            }}
-                              GB</span>
+                            <span class="font-medium text-color"
+                              >{{
+                                (data.traffic_limit_bytes / (1024 * 1024 * 1024)).toFixed(2)
+                              }}
+                              GB</span
+                            >
                           </div>
                         </div>
                       </div>
@@ -744,13 +750,16 @@ defineExpose({
                           <div class="flex justify-between">
                             <span class="text-muted-color">重置周期</span>
                             <span class="font-medium text-color">{{
-                              trafficResetCycleOptions.find((opt) => opt.value === data.traffic_reset_cycle)?.label ||
-                              data.traffic_reset_cycle
+                              trafficResetCycleOptions.find(
+                                (opt) => opt.value === data.traffic_reset_cycle,
+                              )?.label || data.traffic_reset_cycle
                             }}</span>
                           </div>
                           <div v-if="data.traffic_custom_cycle_days" class="flex justify-between">
                             <span class="text-muted-color">自定义天数</span>
-                            <span class="font-medium text-color">{{ data.traffic_custom_cycle_days }} 天</span>
+                            <span class="font-medium text-color"
+                              >{{ data.traffic_custom_cycle_days }} 天</span
+                            >
                           </div>
                         </div>
                       </div>

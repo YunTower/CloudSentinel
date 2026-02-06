@@ -164,6 +164,7 @@ const form = defineModel<ServerForm>('form', {
     show_billing_cycle: false,
     show_traffic_limit: false,
     show_traffic_reset_cycle: false,
+    monitored_services: [],
   }),
 })
 
@@ -209,8 +210,8 @@ const loadServerDetail = async () => {
         agent_system_interval: detail.agent_system_interval,
         agent_heartbeat_interval: detail.agent_heartbeat_interval,
         agent_log_path: detail.agent_log_path,
-        // 显示开关字段
-        show_billing_cycle: detail.show_billing_cycle ?? false,
+        monitored_services: detail.monitored_services || [],
+        show_billing_cycle: detail.show_billing_cycle || false,
         show_traffic_limit: detail.show_traffic_limit ?? false,
         show_traffic_reset_cycle: detail.show_traffic_reset_cycle ?? false,
       }
@@ -523,6 +524,50 @@ const handleResetAgentKey = () => {
     },
   })
 }
+
+// 监控服务相关逻辑
+const newServiceName = ref('')
+
+const monitoredServicesList = computed(() => {
+  return (form.value.monitored_services || []).map((serviceName) => {
+    // 尝试从编辑的服务器对象中获取实时状态
+    const status = props.editingServer?.process_status?.[serviceName]
+    return {
+      name: serviceName,
+      status: status,
+      running: status?.running ?? false,
+      cpu: status?.cpu ?? 0,
+      memory: status?.memory ?? 0,
+    }
+  })
+})
+
+const addMonitoredService = () => {
+  const name = newServiceName.value.trim()
+  if (!name) return
+
+  if (!form.value.monitored_services) {
+    form.value.monitored_services = []
+  }
+
+  if (form.value.monitored_services.includes(name)) {
+    toast.add({
+      severity: 'warn',
+      summary: '提示',
+      detail: '该服务已在监控列表中',
+      life: 3000,
+    })
+    return
+  }
+
+  form.value.monitored_services.push(name)
+  newServiceName.value = ''
+}
+
+const removeMonitoredService = (name: string) => {
+  if (!form.value.monitored_services) return
+  form.value.monitored_services = form.value.monitored_services.filter((s) => s !== name)
+}
 </script>
 <template>
   <Dialog
@@ -557,6 +602,7 @@ const handleResetAgentKey = () => {
           <Tab value="1">计费</Tab>
           <Tab value="2">网络</Tab>
           <Tab v-if="isEditing" value="5">Agent配置</Tab>
+          <Tab value="6">进程监控</Tab>
           <Tab v-if="isEditing" value="4">告警</Tab>
           <Tab v-if="isEditing" value="3">操作</Tab>
         </TabList>
@@ -894,6 +940,64 @@ const handleResetAgentKey = () => {
                   />
                 </div>
               </div>
+            </div>
+          </TabPanel>
+
+          <!-- 进程监控 Tab -->
+          <TabPanel value="6">
+            <div class="space-y-4 pt-4">
+              <div class="flex gap-2">
+                <InputText
+                  v-model="newServiceName"
+                  placeholder="输入服务名称，如: nginx, mysql"
+                  class="flex-1"
+                  @keydown.enter.prevent="addMonitoredService"
+                />
+                <Button
+                  label="添加服务"
+                  icon="pi pi-plus"
+                  @click="addMonitoredService"
+                  :disabled="!newServiceName.trim()"
+                />
+              </div>
+
+              <DataTable :value="monitoredServicesList" class="overflow-x-hidden overflow-y-auto max-h-[400px]" stripedRows>
+                <Column field="name" header="服务名称"></Column>
+                <Column header="状态">
+                  <template #body="{ data }">
+                    <Tag
+                      v-if="data.status"
+                      :severity="data.running ? 'success' : 'danger'"
+                      :value="data.running ? '运行中' : '已停止'"
+                      :icon="data.running ? 'pi pi-check-circle' : 'pi pi-times-circle'"
+                    />
+                    <Tag v-else severity="secondary" value="未知" icon="pi pi-question-circle" />
+                  </template>
+                </Column>
+                <Column header="资源占用">
+                  <template #body="{ data }">
+                    <div v-if="data.status" class="text-sm">
+                      <div>CPU: {{ data.cpu.toFixed(1) }}%</div>
+                      <div>MEM: {{ data.memory.toFixed(1) }}%</div>
+                    </div>
+                    <span v-else class="text-muted-color">-</span>
+                  </template>
+                </Column>
+                <Column header="操作" style="width: 100px">
+                  <template #body="{ data }">
+                    <Button
+                      icon="pi pi-trash"
+                      text
+                      severity="danger"
+                      @click="removeMonitoredService(data.name)"
+                      v-tooltip="'删除监控'"
+                    />
+                  </template>
+                </Column>
+                <template #empty>
+                  <div class="text-center p-4 text-muted-color">暂无监控服务，请在上方添加</div>
+                </template>
+              </DataTable>
             </div>
           </TabPanel>
 

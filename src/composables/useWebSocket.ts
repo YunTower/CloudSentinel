@@ -50,6 +50,15 @@ export interface WebSocketCallbacks {
     server_id: string
     status: 'online' | 'offline' | 'maintenance' | 'error'
   }) => void
+  onProcessInfoUpdate?: (data: {
+    server_id: string
+    data: Record<string, {
+      running: boolean
+      pids: number[]
+      cpu: number
+      memory: number
+    }>
+  }) => void
   onError?: (error: Event | Error) => void
   onOpen?: () => void
   onClose?: () => void
@@ -234,6 +243,22 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
         callbacks.onServerStatusUpdate?.({
           server_id: data.server_id,
           status: data.status,
+        })
+      }
+    } else if (message.type === 'process_info_update' && message.data) {
+      const data = message.data as {
+        server_id?: string
+        data?: Record<string, {
+          running: boolean
+          pids: number[]
+          cpu: number
+          memory: number
+        }>
+      }
+      if (data.server_id && data.data) {
+        callbacks.onProcessInfoUpdate?.({
+          server_id: data.server_id,
+          data: data.data,
         })
       }
     }
