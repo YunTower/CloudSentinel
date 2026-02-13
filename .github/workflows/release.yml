@@ -127,10 +127,8 @@ jobs:
               echo "- ${hash_link} ${linked_message}"
             done)
           fi
-          
-          echo "frontend_commits<<EOF" >> $GITHUB_OUTPUT
-          echo "$COMMITS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # 写入文件，避免 GITHUB_OUTPUT 多行/特殊字符导致 release body 丢失（见官方文档：任意内容应写文件）
+          echo "$COMMITS" > "$GITHUB_WORKSPACE/frontend_changelog.txt"
 
       - name: Get backend changelog
         id: backend_changelog
@@ -172,10 +170,7 @@ jobs:
               echo "- ${hash_link} ${linked_message}"
             done)
           fi
-          
-          echo "backend_commits<<EOF" >> $GITHUB_OUTPUT
-          echo "$COMMITS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" > "$GITHUB_WORKSPACE/backend_changelog.txt"
 
       - name: Create tag in backend repository
         run: |
@@ -204,27 +199,24 @@ jobs:
           BACKEND_PAT: ${{ secrets.BACKEND_PAT }}
 
       - name: Prepare release notes
-        id: release_notes
         run: |
           TAG_NAME="${{ steps.tag.outputs.tag_name }}"
-          FRONTEND_COMMITS="${{ steps.frontend_changelog.outputs.frontend_commits }}"
-          BACKEND_COMMITS="${{ steps.backend_changelog.outputs.backend_commits }}"
-          
-          echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-          echo "# 🎉 $TAG_NAME" >> $GITHUB_OUTPUT
-          echo "Panel Frontend Changes：" >> $GITHUB_OUTPUT
-          echo "$FRONTEND_COMMITS" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "Panel Backend Changes：" >> $GITHUB_OUTPUT
-          echo "$BACKEND_COMMITS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          {
+            echo "# 🎉 $TAG_NAME"
+            echo ""
+            echo "## Panel Frontend Changes"
+            cat "$GITHUB_WORKSPACE/frontend_changelog.txt"
+            echo ""
+            echo "## Panel Backend Changes"
+            cat "$GITHUB_WORKSPACE/backend_changelog.txt"
+          } > "$GITHUB_WORKSPACE/release_notes.md"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.tag.outputs.tag_name }}
           name: Release ${{ steps.tag.outputs.tag_name }}
-          body: ${{ steps.release_notes.outputs.release_notes }}
+          body_path: ${{ github.workspace }}/release_notes.md
           files: |
             backend-repo/dashboard-linux-amd64.tar.gz
             backend-repo/dashboard-linux-amd64.sha256
