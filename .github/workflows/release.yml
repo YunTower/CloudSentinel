@@ -104,30 +104,31 @@ jobs:
             PREV_TAG=$tag
           done
           
+          DELIM=":::CL:::"
           if [ -z "$PREV_TAG" ]; then
-            # 如果没有上一个 tag，获取所有提交
             echo "No previous tag found, getting all commits"
-            # 格式：完整hash TAB 短hash TAB subject（%s 为 message 第一行），用 TAB 分隔避免 subject 中的 | 被误分割
-            RAW_COMMITS=$(git log --pretty=format:"%H%x09%h%x09%s" --reverse)
+            RAW_COMMITS=$(git log --pretty=format:"%H${DELIM}%h${DELIM}%s" --reverse)
           else
-            # 获取两个 tag 之间的提交
             echo "Previous tag: $PREV_TAG"
-            RAW_COMMITS=$(git log ${PREV_TAG}..${TAG_NAME} --pretty=format:"%H%x09%h%x09%s" --reverse)
+            RAW_COMMITS=$(git log ${PREV_TAG}..${TAG_NAME} --pretty=format:"%H${DELIM}%h${DELIM}%s" --reverse)
           fi
           
-          # 如果没有提交，设置默认值
           if [ -z "$RAW_COMMITS" ]; then
             COMMITS="- 无变更"
           else
-            # 处理每个提交：- [hash](url) message（message 取 subject 第一行）
-            COMMITS=$(echo "$RAW_COMMITS" | while IFS=$'\t' read -r full_hash short_hash message; do
+            # 格式：- [hash](url) message（用显式分隔符解析，避免 IFS/$'\t' 在 runner 下失效）
+            COMMITS=$(echo "$RAW_COMMITS" | while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              full_hash="${line%%${DELIM}*}"
+              rest="${line#*${DELIM}}"
+              short_hash="${rest%%${DELIM}*}"
+              message="${rest#*${DELIM}}"
               [ -z "$full_hash" ] && continue
               hash_link="[${short_hash}](${REPO_URL}/commit/${full_hash})"
               linked_message=$(echo "$message" | sed -E "s/#([0-9]+)/[#\1](${REPO_URL}\/pull\/\1)/g")
               echo "- ${hash_link} ${linked_message}"
             done)
           fi
-          # 写入文件，避免 GITHUB_OUTPUT 多行/特殊字符导致 release body 丢失（见官方文档：任意内容应写文件）
           echo "$COMMITS" > "$GITHUB_WORKSPACE/frontend_changelog.txt"
 
       - name: Get backend changelog
@@ -152,18 +153,24 @@ jobs:
             PREV_TAG=$tag
           done
           
+          DELIM=":::CL:::"
           if [ -z "$PREV_TAG" ]; then
             echo "No previous tag found, getting all commits"
-            RAW_COMMITS=$(git log --pretty=format:"%H%x09%h%x09%s" --reverse)
+            RAW_COMMITS=$(git log --pretty=format:"%H${DELIM}%h${DELIM}%s" --reverse)
           else
             echo "Previous tag: $PREV_TAG"
-            RAW_COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%H%x09%h%x09%s" --reverse)
+            RAW_COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%H${DELIM}%h${DELIM}%s" --reverse)
           fi
           
           if [ -z "$RAW_COMMITS" ]; then
             COMMITS="- 无变更"
           else
-            COMMITS=$(echo "$RAW_COMMITS" | while IFS=$'\t' read -r full_hash short_hash message; do
+            COMMITS=$(echo "$RAW_COMMITS" | while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              full_hash="${line%%${DELIM}*}"
+              rest="${line#*${DELIM}}"
+              short_hash="${rest%%${DELIM}*}"
+              message="${rest#*${DELIM}}"
               [ -z "$full_hash" ] && continue
               hash_link="[${short_hash}](${REPO_URL}/commit/${full_hash})"
               linked_message=$(echo "$message" | sed -E "s/#([0-9]+)/[#\1](${REPO_URL}\/pull\/\1)/g")
