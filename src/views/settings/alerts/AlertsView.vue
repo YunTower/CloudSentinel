@@ -64,6 +64,11 @@ const testing = ref({
 })
 const { toast } = useNotifications()
 
+// 服务器离线/上线告警开关
+const hasNotificationChannel = ref(false)
+const alertServerOfflineEnabled = ref(false)
+const alertServerOnlineEnabled = ref(false)
+
 // 提及用户列表
 const mentionedUsers = ref<string[]>([])
 // 当前输入的提及用户ID
@@ -176,6 +181,11 @@ const loadAlertSettings = async () => {
       // 加载提及用户列表
       loadMentionedUsers()
     }
+
+    // 服务器离线/上线告警开关
+    hasNotificationChannel.value = res.data.hasNotificationChannel ?? false
+    alertServerOfflineEnabled.value = res.data.alertServerOfflineEnabled ?? false
+    alertServerOnlineEnabled.value = res.data.alertServerOnlineEnabled ?? false
   } catch (error: unknown) {
     console.error('Failed to load alert settings:', error)
     const errorMessage = error instanceof Error ? error.message : '加载告警设置失败，请刷新页面重试'
@@ -345,6 +355,8 @@ const saveAlertSettings = async () => {
   try {
     const res = await alertsApi.saveAlertsSettings({
       notifications: notifications.value,
+      alertServerOfflineEnabled: alertServerOfflineEnabled.value,
+      alertServerOnlineEnabled: alertServerOnlineEnabled.value,
     })
 
     if (res && typeof res === 'object' && 'status' in res && res.status) {
@@ -403,6 +415,47 @@ onMounted(() => {
     </div>
 
     <div v-else class="space-y-6">
+      <!-- 服务器离线/上线告警 -->
+      <Card>
+        <template #title>
+          <div class="flex items-center gap-2">
+            <i class="pi pi-desktop text-primary"></i>
+            <span>服务器状态告警</span>
+          </div>
+        </template>
+        <template #content>
+          <Message v-if="!hasNotificationChannel" severity="info" variant="simple" class="mb-4">
+            请先在上方「通知设置」中配置并启用至少一个通知渠道（邮件或 Webhook）后，方可开启以下告警。
+          </Message>
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-color">开启服务器离线告警</label>
+                <Message size="small" severity="secondary" variant="simple">
+                  当服务器 Agent 断开连接时发送告警通知
+                </Message>
+              </div>
+              <ToggleSwitch
+                v-model="alertServerOfflineEnabled"
+                :disabled="!hasNotificationChannel"
+              />
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-color">开启服务器上线告警</label>
+                <Message size="small" severity="secondary" variant="simple">
+                  当服务器从离线恢复上线时发送通知
+                </Message>
+              </div>
+              <ToggleSwitch
+                v-model="alertServerOnlineEnabled"
+                :disabled="!hasNotificationChannel"
+              />
+            </div>
+          </div>
+        </template>
+      </Card>
+
       <!-- 通知设置 -->
       <Card>
         <template #title>

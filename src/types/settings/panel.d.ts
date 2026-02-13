@@ -1,6 +1,7 @@
 // 面板设置
 export interface PanelSettings {
   title: string
+  log_retention_days?: number
 }
 
 // 更新源信息

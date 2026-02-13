@@ -130,6 +130,27 @@ const websocket = useWebSocket({
       server.status = data.status
     }
   },
+  onProcessInfoUpdate: (data) => {
+    const server = servers.value.find((s) => s.id === data.server_id)
+    if (server && data.data) {
+      server.process_status = {}
+      for (const [name, info] of Object.entries(data.data)) {
+        server.process_status[name] = {
+          name,
+          running: info.running,
+          pids: info.pids,
+          cpu: info.cpu,
+          memory: info.memory,
+        }
+      }
+    }
+  },
+  onGPUInfoUpdate: (data) => {
+    const server = servers.value.find((s) => s.id === data.server_id)
+    if (server && data.gpuInfo) {
+      server.gpuInfo = data.gpuInfo
+    }
+  },
 })
 
 // 加载分组列表
@@ -374,6 +395,7 @@ const loadServers = async () => {
           networkIO: { upload: networkUpload, download: networkDownload },
           agent_key: server.agent_key,
           agent_version: server.agent_version || '',
+          process_status: server.service_status || {},
           createdAt: server.created_at || '',
           updatedAt: server.updated_at || '',
           _detailLoaded: false, // 标记详细信息是否已加载
@@ -431,6 +453,9 @@ const loadServerDetail = async (serverId: string) => {
   }
   if (detailWithUptime.traffic) {
     server.traffic = detailWithUptime.traffic
+  }
+  if (detailWithUptime.service_status) {
+    server.process_status = detailWithUptime.service_status
   }
 
   server._detailLoaded = true

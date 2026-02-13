@@ -25,6 +25,16 @@ export interface ServerDetailData {
   agent_key?: string
   created_at?: string
   updated_at?: string
+  monitored_services?: string[]
+}
+
+// 进程状态接口
+export interface ProcessStatus {
+  name: string
+  running: boolean
+  pids: number[]
+  cpu: number
+  memory: number
 }
 
 // 服务器详情响应类型
@@ -76,6 +86,7 @@ export interface ServerListItemData {
   show_billing_cycle?: boolean
   show_traffic_limit?: boolean
   show_traffic_reset_cycle?: boolean
+  service_status?: Record<string, ProcessStatus>
 }
 
 // 获取服务器列表响应类型
@@ -120,6 +131,7 @@ export interface Server {
   memoryInfo?: MemoryInfo
   swapInfo?: SwapInfo
   traffic?: TrafficInfo
+  gpuInfo?: GPUData
   agent_key?: string
   agent_version?: string // Agent版本（仅管理员可见）
   // 分组和付费相关字段
@@ -145,6 +157,8 @@ export interface Server {
   show_billing_cycle?: boolean
   show_traffic_limit?: boolean
   show_traffic_reset_cycle?: boolean
+  monitored_services?: string[]
+  process_status?: Record<string, ProcessStatus>
   createdAt: string
   updatedAt: string
   _detailLoaded?: boolean // 标记详细信息是否已加载
@@ -182,6 +196,7 @@ export interface ServerForm {
   show_billing_cycle?: boolean
   show_traffic_limit?: boolean
   show_traffic_reset_cycle?: boolean
+  monitored_services?: string[]
 }
 
 // 状态选项接口定义
@@ -231,6 +246,23 @@ export interface TrafficInfo {
   download_bytes: number
 }
 
+// GPU信息接口
+export interface GPUInfo {
+  index: number
+  name: string
+  temperature: number
+  memory_used: number
+  memory_total: number
+  memory_util: number
+  gpu_util: number
+}
+
+// GPU数据接口
+export interface GPUData {
+  available: boolean
+  gpus: GPUInfo[]
+}
+
 // 性能指标数据接口
 export interface MetricsData {
   timestamp: number
@@ -254,6 +286,7 @@ export interface ExtendedServerDetailData extends ServerDetailData {
   memory?: MemoryInfo
   swap?: SwapInfo
   traffic?: TrafficInfo
+  gpuInfo?: GPUData
   group_id?: number
   group?: ServerGroup
   billing_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'one_time' | 'custom'
@@ -278,6 +311,7 @@ export interface ExtendedServerDetailData extends ServerDetailData {
   show_traffic_reset_cycle?: boolean
   alert_rules?: ServerAlertRules
   notification_channels?: ServerNotificationChannels
+  service_status?: Record<string, ProcessStatus>
 }
 
 // 告警规则接口

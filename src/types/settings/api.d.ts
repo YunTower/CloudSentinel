@@ -9,6 +9,7 @@ export interface GetPanelSettingsData {
   panel_title: string
   current_version: string
   current_version_type: VersionType
+  log_retention_days?: number
 }
 
 export type GetCheckUpdateResponse = ApiResponse<GetUpdateData>
@@ -33,6 +34,7 @@ export type GetPanelSettingsResponse = ApiResponse<GetPanelSettingsData>
 
 export interface SavePanelSettingsBody {
   title: string
+  log_retention_days?: number
 }
 
 // Permissions
@@ -97,15 +99,23 @@ export interface AlertsNotificationsDto {
 
 export interface GetAlertsSettingsData {
   notifications: AlertsNotificationsDto
+  /** 是否已配置至少一个通知渠道 */
+  hasNotificationChannel?: boolean
+  /** 开启服务器离线告警 */
+  alertServerOfflineEnabled?: boolean
+  /** 开启服务器上线告警 */
+  alertServerOnlineEnabled?: boolean
 }
 
 export type GetAlertsSettingsResponse = ApiResponse<GetAlertsSettingsData>
 
 export interface SaveAlertsSettingsBody {
   notifications: AlertsNotificationsDto
+  alertServerOfflineEnabled?: boolean
+  alertServerOnlineEnabled?: boolean
 }
 
 export interface TestAlertSettingsBody {
   type: 'email' | 'webhook'
-  config: Record<string, any>
+  config: AlertsNotificationsDto['email'] | AlertsNotificationsDto['webhook']
 }
