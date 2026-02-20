@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotifications } from '@/composables/useNotifications'
 import { useAuthStore } from '@/stores/auth'
+import { RiLogoutBoxLine } from '@remixicon/vue'
 
 interface Props {
   visible: boolean
@@ -24,6 +25,11 @@ const loginForm = ref({
   username: '',
   password: '',
   rememberMe: true, // 默认勾选记住登录状态
+})
+
+const isVisible = computed({
+  get: () => props.visible,
+  set: (value: boolean) => emit('update:visible', value),
 })
 
 watch(
@@ -49,7 +55,7 @@ const handleLogin = async () => {
       toast.add({
         severity: 'success',
         summary: '登录成功',
-        detail: `欢迎回来，${result.userSession.username}`,
+        detail: `欢迎回来`,
         life: 3000,
       })
 
@@ -94,76 +100,66 @@ const handleCancel = () => {
 </script>
 
 <template>
-  <Dialog
-    :visible="props.visible"
-    @update:visible="(value) => emit('update:visible', value)"
-    modal
-    :closable="true"
-    :draggable="false"
-    class="w-full max-w-md"
-    header="管理员登录"
-  >
-    <div class="space-y-6 pt-4">
-      <div>
-        <label for="adminUsername" class="block text-sm font-medium text-color mb-3">用户名</label>
-        <InputText
-          id="adminUsername"
-          name="username"
-          v-model="loginForm.username"
-          placeholder="请输入用户名"
-          autocomplete="username"
-          class="w-full py-3 px-4 text-base"
-          @keyup.enter="handleLogin"
-        />
+  <n-modal v-model:show="isVisible" :mask-closable="false">
+    <n-card
+      style="width: 448px"
+      title="管理员登录"
+      :bordered="false"
+      size="huge"
+      role="dialog"
+      aria-modal="true"
+      @close="handleCancel"
+    >
+      <div class="space-y-6 pt-2">
+        <div>
+          <label for="adminUsername" class="block text-sm font-medium mb-2">用户名</label>
+          <n-input
+            id="adminUsername"
+            v-model:value="loginForm.username"
+            placeholder="请输入用户名"
+            autocomplete="username"
+            size="large"
+            @keyup.enter="handleLogin"
+          />
+        </div>
+
+        <div>
+          <label for="adminPassword" class="block text-sm font-medium mb-2">密码</label>
+          <n-input
+            id="adminPassword"
+            v-model:value="loginForm.password"
+            type="password"
+            show-password-on="click"
+            placeholder="请输入密码"
+            autocomplete="current-password"
+            size="large"
+            @keyup.enter="handleLogin"
+          />
+        </div>
+
+        <div class="flex items-center gap-3">
+          <n-checkbox id="adminRememberMe" v-model:checked="loginForm.rememberMe">
+            记住登录状态
+          </n-checkbox>
+        </div>
       </div>
 
-      <div>
-        <label for="adminPassword" class="block text-sm font-medium text-color mb-3">密码</label>
-        <Password
-          id="adminPassword"
-          name="password"
-          v-model="loginForm.password"
-          placeholder="请输入密码"
-          toggleMask
-          :feedback="false"
-          autocomplete="current-password"
-          class="w-full"
-          :pt="{
-            root: { class: 'w-full' },
-            input: { class: 'w-full py-3 px-4 text-base' },
-          }"
-          @keyup.enter="handleLogin"
-        />
-      </div>
-
-      <div class="flex items-center gap-3">
-        <Checkbox
-          id="adminRememberMe"
-          v-model="loginForm.rememberMe"
-          :binary="true"
-          class="w-5 h-5"
-        />
-        <label for="adminRememberMe" class="text-sm text-muted-color cursor-pointer">记住登录状态</label>
-      </div>
-    </div>
-
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <Button
-          label="取消"
-          severity="secondary"
-          @click="handleCancel"
-          :disabled="isLoading"
-        />
-        <Button
-          label="登录"
-          icon="pi pi-sign-in"
-          @click="handleLogin"
-          :loading="isLoading"
-          :disabled="!loginForm.username || !loginForm.password"
-        />
-      </div>
-    </template>
-  </Dialog>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <n-button type="default" :disabled="isLoading" @click="handleCancel"> 取消 </n-button>
+          <n-button
+            type="primary"
+            :loading="isLoading"
+            :disabled="!loginForm.username || !loginForm.password"
+            @click="handleLogin"
+          >
+            <template #icon>
+              <ri-logout-box-line />
+            </template>
+            登录
+          </n-button>
+        </div>
+      </template>
+    </n-card>
+  </n-modal>
 </template>
-
