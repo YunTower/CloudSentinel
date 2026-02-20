@@ -31,10 +31,7 @@ defineProps<Props>()
       :height="12"
       :border-radius="9999"
     />
-    <div
-      v-if="memoryInfo"
-      class="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 text-sm"
-    >
+    <div v-if="memoryInfo" class="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 text-sm">
       <div class="flex items-center justify-between text-muted-color">
         <span>已使用:</span>
         <span class="font-medium text-color">{{ formatBytes(memoryInfo.memory_used) }}</span>

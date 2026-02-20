@@ -477,10 +477,9 @@ const handleResetAgentKey = () => {
         const response = await serversApi.resetAgentKey(props.editingServer!.id)
 
         if (response.status && response.data) {
-          message.success(
-            `服务器 "${props.editingServer!.name}" 的通信密钥和指纹已重置。`,
-            { duration: 5000 }
-          )
+          message.success(`服务器 "${props.editingServer!.name}" 的通信密钥和指纹已重置。`, {
+            duration: 5000,
+          })
           if (props.editingServer) {
             await loadServerDetail()
           }

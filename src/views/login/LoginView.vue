@@ -138,7 +138,9 @@ onMounted(async () => {
                 <div class="space-y-6">
                   <!-- 访客密码验证 -->
                   <div v-if="permissions.enablePassword">
-                    <label for="guestPassword" class="block text-sm font-medium text-color mb-3">访问密码</label>
+                    <label for="guestPassword" class="block text-sm font-medium text-color mb-3"
+                      >访问密码</label
+                    >
                     <n-input
                       id="guestPassword"
                       v-model:value="loginForm.password"
@@ -150,11 +152,10 @@ onMounted(async () => {
                     />
                   </div>
                   <div class="flex items-center gap-3">
-                    <n-checkbox
-                      id="guestRememberMe"
-                      v-model:checked="loginForm.rememberMe"
-                    />
-                    <label for="guestRememberMe" class="text-sm text-muted-color cursor-pointer">记住登录状态</label>
+                    <n-checkbox id="guestRememberMe" v-model:checked="loginForm.rememberMe" />
+                    <label for="guestRememberMe" class="text-sm text-muted-color cursor-pointer"
+                      >记住登录状态</label
+                    >
                   </div>
 
                   <n-button
@@ -174,7 +175,9 @@ onMounted(async () => {
             <n-tab-pane name="1" tab="管理员登录">
               <div class="space-y-6 pt-4">
                 <div>
-                  <label for="adminUsername" class="block text-sm font-medium text-color mb-3">用户名</label>
+                  <label for="adminUsername" class="block text-sm font-medium text-color mb-3"
+                    >用户名</label
+                  >
                   <n-input
                     id="adminUsername"
                     v-model:value="loginForm.username"
@@ -185,7 +188,9 @@ onMounted(async () => {
                 </div>
 
                 <div>
-                  <label for="adminPassword" class="block text-sm font-medium text-color mb-3">密码</label>
+                  <label for="adminPassword" class="block text-sm font-medium text-color mb-3"
+                    >密码</label
+                  >
                   <n-input
                     id="adminPassword"
                     v-model:value="loginForm.password"
@@ -198,11 +203,10 @@ onMounted(async () => {
                 </div>
 
                 <div class="flex items-center gap-3">
-                  <n-checkbox
-                    id="adminRememberMe"
-                    v-model:checked="loginForm.rememberMe"
-                  />
-                  <label for="adminRememberMe" class="text-sm text-muted-color cursor-pointer">记住登录状态</label>
+                  <n-checkbox id="adminRememberMe" v-model:checked="loginForm.rememberMe" />
+                  <label for="adminRememberMe" class="text-sm text-muted-color cursor-pointer"
+                    >记住登录状态</label
+                  >
                 </div>
 
                 <n-button
@@ -221,7 +225,16 @@ onMounted(async () => {
         </n-card>
 
         <div class="text-center mt-8">
-          <span class="text-sm text-muted-color">由 <a class="hover:underline" href="https://github.com/YunTower/CloudSentinel" target="_blank">CloudSentinel</a> 提供服务器监测支持</span>
+          <span class="text-sm text-muted-color"
+            >由
+            <a
+              class="hover:underline"
+              href="https://github.com/YunTower/CloudSentinel"
+              target="_blank"
+              >CloudSentinel</a
+            >
+            提供服务器监测支持</span
+          >
         </div>
       </div>
     </div>

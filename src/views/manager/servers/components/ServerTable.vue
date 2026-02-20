@@ -777,8 +777,7 @@ const ServerExpansion = defineComponent({
         h(
           'div',
           {
-            class:
-              'w-full columns-1 sm:columns-1 md:columns-1 lg:columns-2 xl:columns-2 gap-2',
+            class: 'w-full columns-1 sm:columns-1 md:columns-1 lg:columns-2 xl:columns-2 gap-2',
           },
           [...cards, ...chartCards],
         ),

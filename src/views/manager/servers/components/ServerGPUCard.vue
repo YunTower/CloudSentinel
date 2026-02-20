@@ -74,8 +74,9 @@ const formatMemory = (mb: number): string => {
         <div class="flex items-center justify-between mb-1">
           <span class="text-xs text-muted-color">显存使用</span>
           <span class="text-sm font-semibold" :class="getProgressTextColor(gpu.memory_util)">
-            {{ formatMemory(gpu.memory_used) }} / {{ formatMemory(gpu.memory_total) }}
-            ({{ gpu.memory_util.toFixed(1) }}%)
+            {{ formatMemory(gpu.memory_used) }} / {{ formatMemory(gpu.memory_total) }} ({{
+              gpu.memory_util.toFixed(1)
+            }}%)
           </span>
         </div>
         <n-progress

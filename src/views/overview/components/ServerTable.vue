@@ -40,7 +40,8 @@ const columns = [
   {
     key: 'os',
     title: '系统',
-    sorter: (a: ServerItem, b: ServerItem) => (formatOS(a.os) || '').localeCompare(formatOS(b.os) || ''),
+    sorter: (a: ServerItem, b: ServerItem) =>
+      (formatOS(a.os) || '').localeCompare(formatOS(b.os) || ''),
     width: 120,
     render(row: ServerItem) {
       return h('span', { class: 'text-color' }, formatOS(row.os) || '-')
@@ -52,7 +53,11 @@ const columns = [
     sorter: (a: ServerItem, b: ServerItem) => a.cpuUsage - b.cpuUsage,
     render(row: ServerItem) {
       return h('div', { class: 'flex flex-row gap-2 w-full items-center' }, [
-        h('span', { class: 'text-sm font-semibold ' + getProgressTextColor(row.cpuUsage) }, row.cpuUsage + '%'),
+        h(
+          'span',
+          { class: 'text-sm font-semibold ' + getProgressTextColor(row.cpuUsage) },
+          row.cpuUsage + '%',
+        ),
         h('div', { class: 'flex-1' }, [
           h('n-progress', {
             type: 'line',
@@ -72,7 +77,11 @@ const columns = [
     sorter: (a: ServerItem, b: ServerItem) => a.memoryUsage - b.memoryUsage,
     render(row: ServerItem) {
       return h('div', { class: 'flex flex-row gap-2 w-full items-center' }, [
-        h('span', { class: 'text-sm font-semibold ' + getProgressTextColor(row.memoryUsage) }, row.memoryUsage + '%'),
+        h(
+          'span',
+          { class: 'text-sm font-semibold ' + getProgressTextColor(row.memoryUsage) },
+          row.memoryUsage + '%',
+        ),
         h('div', { class: 'flex-1' }, [
           h('n-progress', {
             type: 'line',
@@ -92,7 +101,11 @@ const columns = [
     sorter: (a: ServerItem, b: ServerItem) => a.diskUsage - b.diskUsage,
     render(row: ServerItem) {
       return h('div', { class: 'flex flex-row gap-2 w-full items-center' }, [
-        h('span', { class: 'text-sm font-semibold ' + getProgressTextColor(row.diskUsage) }, row.diskUsage + '%'),
+        h(
+          'span',
+          { class: 'text-sm font-semibold ' + getProgressTextColor(row.diskUsage) },
+          row.diskUsage + '%',
+        ),
         h('div', { class: 'flex-1' }, [
           h('n-progress', {
             type: 'line',
@@ -127,12 +140,7 @@ const columns = [
 </script>
 
 <template>
-  <n-data-table
-    :columns="columns"
-    :data="props.servers"
-    :bordered="true"
-    :striped="true"
-  />
+  <n-data-table :columns="columns" :data="props.servers" :bordered="true" :striped="true" />
 </template>
 
 <style scoped>

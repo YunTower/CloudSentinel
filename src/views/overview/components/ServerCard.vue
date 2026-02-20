@@ -94,7 +94,7 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
           </div>
           <div class="text-center">
             <div class="text-muted-color">架构</div>
-            <div class="font-semibold text-color p-2">{{ props.architecture ||'-'}}</div>
+            <div class="font-semibold text-color p-2">{{ props.architecture || '-' }}</div>
           </div>
           <div class="text-center">
             <div class="text-muted-color">核心</div>

@@ -8,7 +8,9 @@ interface Props {
 
 defineProps<Props>()
 
-const severityToTagType = (severity: string): 'success' | 'error' | 'default' | 'warning' | 'info' => {
+const severityToTagType = (
+  severity: string,
+): 'success' | 'error' | 'default' | 'warning' | 'info' => {
   const map: Record<string, 'success' | 'error' | 'default' | 'warning' | 'info'> = {
     success: 'success',
     danger: 'error',

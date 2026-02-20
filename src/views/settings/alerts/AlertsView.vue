@@ -414,9 +414,7 @@ onMounted(() => {
                 <n-switch v-model:value="notifications.email.enabled" />
               </div>
 
-              <div
-                v-if="notifications.email.enabled"
-              >
+              <div v-if="notifications.email.enabled">
                 <n-form-item label="SMTP 服务器" path="email.smtp" required>
                   <n-input
                     v-model:value="notifications.email.smtp"
@@ -484,9 +482,7 @@ onMounted(() => {
                 <n-switch v-model:value="notifications.webhook.enabled" />
               </div>
 
-              <div
-                v-if="notifications.webhook.enabled"
-              >
+              <div v-if="notifications.webhook.enabled">
                 <n-form-item label="平台类型" path="webhook.platform">
                   <n-select
                     v-model:value="notifications.webhook.platform"
