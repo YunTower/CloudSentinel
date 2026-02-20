@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useMessage } from '@/composables/useNotifications'
+import { useMessage } from 'naive-ui'
 import serversApi from '@/apis/servers'
 import type { ServerGroup } from '@/types/manager/servers'
 import { RiAddLine } from '@remixicon/vue'

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useMessage } from '@/composables/useNotifications'
+import { useMessage } from 'naive-ui'
 import type { FormInst, FormRules } from 'naive-ui'
 import type { PermissionSettings, AdminAccount } from '@/types/settings/permissions'
 import settingsApi from '@/apis/settings/permissions'

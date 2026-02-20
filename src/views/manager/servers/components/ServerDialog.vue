@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, h } from 'vue'
-import { useMessage, useDialog } from '@/composables/useNotifications'
+import { useMessage, useDialog } from 'naive-ui'
 import ServerGroupSelector from './ServerGroupSelector.vue'
 import InstallInfo from './InstallInfo.vue'
 import serversApi from '@/apis/servers'
@@ -18,7 +18,6 @@ import type {
 import alertsApi from '@/apis/settings/alerts'
 import {
   RiAddLine,
-  RiCalculatorLine,
   RiCalendarCloseLine,
   RiCalendarLine,
   RiCheckLine,
@@ -32,11 +31,9 @@ import {
   RiKey2Line,
   RiLineChartLine,
   RiMapPinLine,
-  RiMoneyCnyBoxLine,
   RiMoneyCnyCircleLine,
   RiNotificationLine,
   RiPriceTag3Line,
-  RiPriceTagFill,
   RiRefreshLine,
   RiSendPlaneLine,
   RiServerLine,

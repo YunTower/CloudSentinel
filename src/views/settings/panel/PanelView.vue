@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useMessage, useDialog } from 'naive-ui'
 import type { FormInst, FormRules } from 'naive-ui'
-import { useMessage, useDialog } from '@/composables/useNotifications'
 import { marked } from 'marked'
 import panelApi from '@/apis/settings/panel'
 import { useAuthStore } from '@/stores/auth'

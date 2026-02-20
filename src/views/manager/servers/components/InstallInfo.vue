@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useMessage } from '@/composables/useNotifications'
+import { useMessage } from 'naive-ui'
 import type { Server } from '@/types/manager/servers'
 
 interface Props {

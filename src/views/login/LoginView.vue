@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMessage } from '@/composables/useNotifications'
+import { useMessage } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
 
 const message = useMessage()

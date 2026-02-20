@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useMessage } from '@/composables/useNotifications'
+import { useMessage } from 'naive-ui'
 import type { Server, ServerAlertRules } from '@/types/manager/servers'
 import serversApi from '@/apis/servers'
 

@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { RiLayoutGridLine, RiListCheck } from '@remixicon/vue'
-import { useMessage } from '@/composables/useNotifications'
+import { useMessage } from 'naive-ui'
 import ServerCard from './components/ServerCard.vue'
 import ServerTable from './components/ServerTable.vue'
 import GroupHeader from './components/GroupHeader.vue'

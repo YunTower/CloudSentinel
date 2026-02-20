@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useMessage, useDialog } from '@/composables/useNotifications'
+import { useMessage, useDialog } from 'naive-ui'
 import serversApi from '@/apis/servers'
 import type { ServerGroup, Server } from '@/types/manager/servers'
 

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMessage } from '@/composables/useNotifications'
+import { useMessage } from 'naive-ui'
+
 import { useAuthStore } from '@/stores/auth'
 import { RiLogoutBoxLine } from '@remixicon/vue'
 

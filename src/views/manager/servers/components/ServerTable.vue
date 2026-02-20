@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, nextTick, computed, h, defineComponent } from 'vue'
 import { NTag, NSpin, NButton, NEmpty, type PaginationInfo, type DataTableColumn } from 'naive-ui'
-import { useMessage, useDialog } from '@/composables/useNotifications'
+import { useMessage, useDialog } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
 import type { Server, MetricsData } from '@/types/manager/servers'
 import serversApi from '@/apis/servers'

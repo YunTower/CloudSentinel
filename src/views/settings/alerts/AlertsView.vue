@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import type { FormInst, FormRules } from 'naive-ui'
-import { useMessage } from '@/composables/useNotifications'
+import { useMessage } from 'naive-ui'
 import type { Notifications } from '@/types/settings/alerts'
 import alertsApi from '@/apis/settings/alerts'
 import { RiSaveLine, RiSendPlaneLine } from '@remixicon/vue'
