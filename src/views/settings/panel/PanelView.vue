@@ -79,7 +79,7 @@ const checkForUpdate = async () => {
     versionInfo.value = { ...response?.data, has_update: false }
     hasCheckedUpdate.value = true
 
-    message.info('检查到最新的版本信息喽~', { duration: 3000 })
+    message.info('有新版本了！！！', { duration: 3000 })
   } catch (error) {
     console.error('Failed to check for updates:', error)
     message.error('检查更新时出错，请稍后重试', { duration: 3000 })

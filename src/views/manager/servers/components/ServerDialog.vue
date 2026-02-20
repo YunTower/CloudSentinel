@@ -588,11 +588,11 @@ const serviceColumns = [
 </script>
 <template>
   <n-modal
-    :title="isEditing ? `编辑服务器 - ${props.editingServer?.name}` : '添加服务器'"
     v-model:show="isVisible"
+    :title="isEditing ? `编辑服务器 - ${props.editingServer?.name}` : '添加服务器'"
     :mask-closable="false"
+    class="w-[700px]!"
     preset="card"
-    style="max-width: 900px; width: 100%"
   >
     <div v-if="isEditing && loadingDetail" class="flex flex-col items-center justify-center py-20">
       <n-spin size="large" />

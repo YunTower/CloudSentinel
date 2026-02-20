@@ -113,66 +113,70 @@ watch(
 </script>
 
 <template>
-  <n-modal v-model:show="isVisible" :mask-closable="false">
-    <n-card title="分组管理" style="width: 800px">
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <n-spin size="large" />
+  <n-modal
+    v-model:show="isVisible"
+    title="分组管理"
+    :mask-closable="false"
+    class="w-[700px]!"
+    preset="card"
+  >
+    <div v-if="loading" class="flex items-center justify-center py-12">
+      <n-spin size="large" />
+    </div>
+
+    <div v-else>
+      <div v-if="groups.length === 0" class="py-12">
+        <n-empty description="暂无分组" />
       </div>
 
-      <div v-else>
-        <div v-if="groups.length === 0" class="py-12">
-          <n-empty description="暂无分组" />
-        </div>
+      <table v-else class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-surface-200 dark:border-surface-700">
+            <th class="text-left py-2 px-3 font-medium">分组名称</th>
+            <th class="text-left py-2 px-3 font-medium">描述</th>
+            <th class="text-left py-2 px-3 font-medium">服务器数量</th>
+            <th class="text-left py-2 px-3 font-medium" style="width: 150px">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="group in groups"
+            :key="group.id"
+            class="border-b border-surface-100 dark:border-surface-800 hover:bg-surface-50 dark:hover:bg-surface-800"
+          >
+            <td class="py-2 px-3">
+              <div class="flex items-center gap-2">
+                <span
+                  v-if="group.color"
+                  class="w-3 h-3 rounded-full flex-shrink-0"
+                  :style="{ backgroundColor: group.color }"
+                />
+                <span class="font-medium">{{ group.name }}</span>
+              </div>
+            </td>
+            <td class="py-2 px-3 text-muted-color">{{ group.description || '-' }}</td>
+            <td class="py-2 px-3">
+              <n-tag type="info">{{ groupServerCounts[group.id] || 0 }}</n-tag>
+            </td>
+            <td class="py-2 px-3">
+              <div class="flex gap-2">
+                <n-button text size="small" @click="handleEdit(group)">
+                  <template #icon><i class="ri-edit-line" /></template>
+                </n-button>
+                <n-button text size="small" type="error" @click="handleDelete(group)">
+                  <template #icon><i class="ri-delete-bin-line" /></template>
+                </n-button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-        <table v-else class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-surface-200 dark:border-surface-700">
-              <th class="text-left py-2 px-3 font-medium">分组名称</th>
-              <th class="text-left py-2 px-3 font-medium">描述</th>
-              <th class="text-left py-2 px-3 font-medium">服务器数量</th>
-              <th class="text-left py-2 px-3 font-medium" style="width: 150px">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="group in groups"
-              :key="group.id"
-              class="border-b border-surface-100 dark:border-surface-800 hover:bg-surface-50 dark:hover:bg-surface-800"
-            >
-              <td class="py-2 px-3">
-                <div class="flex items-center gap-2">
-                  <span
-                    v-if="group.color"
-                    class="w-3 h-3 rounded-full flex-shrink-0"
-                    :style="{ backgroundColor: group.color }"
-                  />
-                  <span class="font-medium">{{ group.name }}</span>
-                </div>
-              </td>
-              <td class="py-2 px-3 text-muted-color">{{ group.description || '-' }}</td>
-              <td class="py-2 px-3">
-                <n-tag type="info">{{ groupServerCounts[group.id] || 0 }}</n-tag>
-              </td>
-              <td class="py-2 px-3">
-                <div class="flex gap-2">
-                  <n-button text size="small" @click="handleEdit(group)">
-                    <template #icon><i class="ri-edit-line" /></template>
-                  </n-button>
-                  <n-button text size="small" type="error" @click="handleDelete(group)">
-                    <template #icon><i class="ri-delete-bin-line" /></template>
-                  </n-button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <template #footer>
+      <div class="flex justify-end">
+        <n-button secondary @click="emit('update:visible', false)">关闭</n-button>
       </div>
-
-      <template #footer>
-        <div class="flex justify-end">
-          <n-button secondary @click="emit('update:visible', false)">关闭</n-button>
-        </div>
-      </template>
-    </n-card>
+    </template>
   </n-modal>
 </template>
