@@ -2,7 +2,9 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
+import type { FormInst, FormRules } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
+import { RiLoginBoxLine } from '@remixicon/vue'
 
 const message = useMessage()
 const router = useRouter()
@@ -12,6 +14,9 @@ const isLoading = ref(false) // 加载状态
 const panelTitle = ref('CloudSentinel 云哨')
 const permissions = ref(authStore.getGuestAccessConfig()) // 权限设置
 
+const guestFormRef = ref<FormInst | null>(null)
+const adminFormRef = ref<FormInst | null>(null)
+
 const loginForm = ref({
   type: 'guest' as 'guest' | 'admin',
   username: '',
@@ -19,8 +24,51 @@ const loginForm = ref({
   rememberMe: true,
 })
 
+/** 访客表单校验：启用密码时必填 */
+const guestRules: FormRules = {
+  password: [
+    {
+      required: true,
+      message: '请输入访客访问密码',
+      trigger: ['blur', 'input'],
+    },
+  ],
+}
+
+/** 管理员表单校验 */
+const adminRules: FormRules = {
+  username: [
+    {
+      required: true,
+      message: '请输入用户名',
+      trigger: ['blur', 'input'],
+    },
+  ],
+  password: [
+    {
+      required: true,
+      message: '请输入密码',
+      trigger: ['blur', 'input'],
+    },
+  ],
+}
+
 const handleLogin = async () => {
   const { type, username, password, rememberMe } = loginForm.value
+
+  if (type === 'guest') {
+    if (permissions.value.enablePassword) {
+      const valid = await new Promise<boolean>((resolve) => {
+        guestFormRef.value?.validate((err) => resolve(!err?.length))
+      })
+      if (!valid) return
+    }
+  } else {
+    const valid = await new Promise<boolean>((resolve) => {
+      adminFormRef.value?.validate((err) => resolve(!err?.length))
+    })
+    if (!valid) return
+  }
 
   isLoading.value = true
   try {
@@ -69,16 +117,17 @@ const handleLogin = async () => {
   }
 }
 
-// 切换标签页
+/** 切换标签页并重置表单与校验 */
 const switchTab = (tabIndex: string | number) => {
   activeTab.value = tabIndex.toString()
-  // 重置表单
   loginForm.value = {
     type: tabIndex === '0' ? 'guest' : 'admin',
     username: '',
     password: '',
     rememberMe: true,
   }
+  guestFormRef.value?.restoreValidation()
+  adminFormRef.value?.restoreValidation()
 }
 
 // 加载公开设置
@@ -121,7 +170,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="login-view">
+  <div class="w-full">
     <div
       class="min-h-screen flex items-center justify-center bg-gradient-to-br from-surface-50 to-surface-100 dark:from-surface-900 dark:to-surface-800 p-4"
     >
@@ -132,67 +181,70 @@ onMounted(async () => {
         </div>
 
         <n-card class="shadow-2xl border-0">
-          <n-tabs :value="activeTab" @update:value="switchTab" class="w-full">
+          <n-tabs :value="activeTab" justify-content="center" @update:value="switchTab">
             <n-tab-pane v-if="permissions.allowGuest" name="0" tab="访客访问">
-              <div class="space-y-6 pt-4">
-                <div class="space-y-6">
-                  <!-- 访客密码验证 -->
-                  <div v-if="permissions.enablePassword">
-                    <label for="guestPassword" class="block text-sm font-medium text-color mb-3"
-                      >访问密码</label
-                    >
-                    <n-input
-                      id="guestPassword"
-                      v-model:value="loginForm.password"
-                      type="password"
-                      show-password-on="click"
-                      placeholder="请输入访客访问密码"
-                      class="w-full"
-                      @keyup.enter="handleLogin"
-                    />
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <n-checkbox id="guestRememberMe" v-model:checked="loginForm.rememberMe" />
-                    <label for="guestRememberMe" class="text-sm text-muted-color cursor-pointer"
-                      >记住登录状态</label
-                    >
-                  </div>
-
+              <n-form
+                ref="guestFormRef"
+                :model="loginForm"
+                :rules="permissions.enablePassword ? guestRules : undefined"
+                label-placement="top"
+                require-mark-placement="right-hanging"
+                class="pt-4"
+              >
+                <n-form-item
+                  v-if="permissions.enablePassword"
+                  label="访问密码"
+                  path="password"
+                  required
+                >
+                  <n-input
+                    v-model:value="loginForm.password"
+                    type="password"
+                    show-password-on="click"
+                    placeholder="请输入访客访问密码"
+                    class="w-full"
+                    @keyup.enter="handleLogin"
+                  />
+                </n-form-item>
+                <n-form-item path="guestRememberMe" :show-feedback="false" :show-label="false">
+                  <n-checkbox v-model:checked="loginForm.rememberMe" label="记住登录状态" />
+                </n-form-item>
+                <n-form-item>
                   <n-button
                     type="primary"
                     class="w-full"
-                    @click="handleLogin"
                     :loading="isLoading"
-                    :disabled="permissions.enablePassword && !loginForm.password"
+                    block
+                    @click="handleLogin"
                   >
-                    <template #icon><i class="ri-login-box-line" /></template>
+                    <template #icon>
+                      <ri-login-box-line />
+                    </template>
                     访客访问
                   </n-button>
-                </div>
-              </div>
+                </n-form-item>
+              </n-form>
             </n-tab-pane>
 
             <n-tab-pane name="1" tab="管理员登录">
-              <div class="space-y-6 pt-4">
-                <div>
-                  <label for="adminUsername" class="block text-sm font-medium text-color mb-3"
-                    >用户名</label
-                  >
+              <n-form
+                ref="adminFormRef"
+                :model="loginForm"
+                :rules="adminRules"
+                label-placement="top"
+                require-mark-placement="right-hanging"
+                class="pt-4"
+              >
+                <n-form-item label="用户名" path="username" required>
                   <n-input
-                    id="adminUsername"
                     v-model:value="loginForm.username"
                     placeholder="请输入用户名"
                     class="w-full"
                     @keyup.enter="handleLogin"
                   />
-                </div>
-
-                <div>
-                  <label for="adminPassword" class="block text-sm font-medium text-color mb-3"
-                    >密码</label
-                  >
+                </n-form-item>
+                <n-form-item label="密码" path="password" required>
                   <n-input
-                    id="adminPassword"
                     v-model:value="loginForm.password"
                     type="password"
                     show-password-on="click"
@@ -200,26 +252,25 @@ onMounted(async () => {
                     class="w-full"
                     @keyup.enter="handleLogin"
                   />
-                </div>
-
-                <div class="flex items-center gap-3">
-                  <n-checkbox id="adminRememberMe" v-model:checked="loginForm.rememberMe" />
-                  <label for="adminRememberMe" class="text-sm text-muted-color cursor-pointer"
-                    >记住登录状态</label
+                </n-form-item>
+                <n-form-item path="adminRememberMe" :show-feedback="false" :show-label="false">
+                  <n-checkbox v-model:checked="loginForm.rememberMe" label="记住登录状态" />
+                </n-form-item>
+                <n-form-item>
+                  <n-button
+                    type="primary"
+                    class="w-full"
+                    :loading="isLoading"
+                    block
+                    @click="handleLogin"
                   >
-                </div>
-
-                <n-button
-                  type="primary"
-                  class="w-full"
-                  @click="handleLogin"
-                  :loading="isLoading"
-                  :disabled="!loginForm.username || !loginForm.password"
-                >
-                  <template #icon><i class="ri-login-box-line" /></template>
-                  管理员登录
-                </n-button>
-              </div>
+                    <template #icon>
+                      <ri-login-box-line />
+                    </template>
+                    管理员登录
+                  </n-button>
+                </n-form-item>
+              </n-form>
             </n-tab-pane>
           </n-tabs>
         </n-card>

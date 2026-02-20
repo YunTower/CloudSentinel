@@ -2,9 +2,9 @@
 import { ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
-
+import type { FormInst, FormRules } from 'naive-ui'
+import { RiLoginBoxLine } from '@remixicon/vue'
 import { useAuthStore } from '@/stores/auth'
-import { RiLogoutBoxLine } from '@remixicon/vue'
 
 interface Props {
   visible: boolean
@@ -21,12 +21,31 @@ const message = useMessage()
 const router = useRouter()
 const authStore = useAuthStore()
 
+const loginFormRef = ref<FormInst | null>(null)
 const isLoading = ref(false)
 const loginForm = ref({
   username: '',
   password: '',
   rememberMe: true, // 默认勾选记住登录状态
 })
+
+/** 管理员登录表单校验 */
+const loginRules: FormRules = {
+  username: [
+    {
+      required: true,
+      message: '请输入用户名',
+      trigger: ['blur', 'input'],
+    },
+  ],
+  password: [
+    {
+      required: true,
+      message: '请输入密码',
+      trigger: ['blur', 'input'],
+    },
+  ],
+}
 
 const isVisible = computed({
   get: () => props.visible,
@@ -40,15 +59,20 @@ watch(
       loginForm.value = {
         username: '',
         password: '',
-        rememberMe: true, // 默认勾选记住登录状态
+        rememberMe: true,
       }
+      loginFormRef.value?.restoreValidation()
     }
   },
 )
 
 const handleLogin = async () => {
-  const { username, password, rememberMe } = loginForm.value
+  const valid = await new Promise<boolean>((resolve) => {
+    loginFormRef.value?.validate((err) => resolve(!err?.length))
+  })
+  if (!valid) return
 
+  const { username, password, rememberMe } = loginForm.value
   isLoading.value = true
   try {
     const result = await authStore.handleAdminLogin(username, password, rememberMe)
@@ -88,66 +112,57 @@ const handleCancel = () => {
 </script>
 
 <template>
-  <n-modal v-model:show="isVisible" :mask-closable="false">
-    <n-card
-      style="width: 448px"
-      title="管理员登录"
-      :bordered="false"
-      size="huge"
-      role="dialog"
-      aria-modal="true"
-      @close="handleCancel"
+  <n-modal
+    v-model:show="isVisible"
+    :mask-closable="false"
+    title="管理员登录"
+    preset="card"
+    class="w-[450px]!"
+    closable
+    @close="handleCancel"
+  >
+    <n-form
+      ref="loginFormRef"
+      :model="loginForm"
+      :rules="loginRules"
+      label-placement="top"
+      require-mark-placement="right-hanging"
+      class="pt-2"
     >
-      <div class="space-y-6 pt-2">
-        <div>
-          <label for="adminUsername" class="block text-sm font-medium mb-2">用户名</label>
-          <n-input
-            id="adminUsername"
-            v-model:value="loginForm.username"
-            placeholder="请输入用户名"
-            autocomplete="username"
-            size="large"
-            @keyup.enter="handleLogin"
-          />
-        </div>
-
-        <div>
-          <label for="adminPassword" class="block text-sm font-medium mb-2">密码</label>
-          <n-input
-            id="adminPassword"
-            v-model:value="loginForm.password"
-            type="password"
-            show-password-on="click"
-            placeholder="请输入密码"
-            autocomplete="current-password"
-            size="large"
-            @keyup.enter="handleLogin"
-          />
-        </div>
-
-        <div class="flex items-center gap-3">
-          <n-checkbox id="adminRememberMe" v-model:checked="loginForm.rememberMe">
-            记住登录状态
-          </n-checkbox>
-        </div>
+      <n-form-item label="用户名" path="username" required>
+        <n-input
+          v-model:value="loginForm.username"
+          placeholder="请输入用户名"
+          autocomplete="username"
+          size="large"
+          @keyup.enter="handleLogin"
+        />
+      </n-form-item>
+      <n-form-item label="密码" path="password" required>
+        <n-input
+          v-model:value="loginForm.password"
+          type="password"
+          show-password-on="click"
+          placeholder="请输入密码"
+          autocomplete="current-password"
+          size="large"
+          @keyup.enter="handleLogin"
+        />
+      </n-form-item>
+      <n-form-item path="adminRememberMe" :show-feedback="false" :show-label="false">
+        <n-checkbox v-model:checked="loginForm.rememberMe" label="记住登录状态" />
+      </n-form-item>
+    </n-form>
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <n-button type="default" :disabled="isLoading" @click="handleCancel"> 取消 </n-button>
+        <n-button type="primary" :loading="isLoading" @click="handleLogin">
+          <template #icon>
+            <ri-login-box-line />
+          </template>
+          登录
+        </n-button>
       </div>
-
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <n-button type="default" :disabled="isLoading" @click="handleCancel"> 取消 </n-button>
-          <n-button
-            type="primary"
-            :loading="isLoading"
-            :disabled="!loginForm.username || !loginForm.password"
-            @click="handleLogin"
-          >
-            <template #icon>
-              <ri-logout-box-line />
-            </template>
-            登录
-          </n-button>
-        </div>
-      </template>
-    </n-card>
+    </template>
   </n-modal>
 </template>
