@@ -50,7 +50,7 @@ const handleLogin = async () => {
         toast.add({
           severity: 'success',
           summary: '登录成功',
-          detail: `欢迎回来，${result.userSession.username}`,
+          detail: `欢迎回来`,
           life: 3000,
         })
       } else {
@@ -145,7 +145,6 @@ onMounted(async () => {
 
 <template>
   <div class="login-view">
-    <Toast position="top-right" />
     <div
       class="min-h-screen flex items-center justify-center bg-gradient-to-br from-surface-50 to-surface-100 dark:from-surface-900 dark:to-surface-800 p-4"
     >
@@ -155,137 +154,94 @@ onMounted(async () => {
           <p class="text-lg text-muted-color">登录云哨服务器状态监测系统</p>
         </div>
 
-        <Card class="shadow-2xl border-0">
-          <template #content>
-            <Tabs :value="activeTab" @update:value="switchTab" class="w-full">
-              <TabList class="w-full">
-                <Tab value="0" class="flex-1" v-if="permissions.allowGuest">
-                  <div class="flex items-center justify-center gap-2">
-                    <span>访客访问</span>
-                  </div>
-                </Tab>
-                <Tab value="1" class="flex-1">
-                  <div class="flex items-center justify-center gap-2">
-                    <span>管理员登录</span>
-                  </div>
-                </Tab>
-              </TabList>
-
-              <TabPanels>
-                <!-- 访客访问 -->
-                <TabPanel value="0" class="p-0">
-                  <div class="space-y-6 pt-4">
-                    <div class="space-y-6">
-                      <!-- 访客密码验证 -->
-                      <div v-if="permissions.enablePassword">
-                        <label for="guestPassword" class="block text-sm font-medium text-color mb-3"
-                          >访问密码</label
-                        >
-                        <Password
-                          id="guestPassword"
-                          name="guestPassword"
-                          v-model="loginForm.password"
-                          placeholder="请输入访客访问密码"
-                          toggleMask
-                          :feedback="false"
-                          autocomplete="current-password"
-                          class="w-full"
-                          :pt="{
-                            root: { class: 'w-full' },
-                            input: { class: 'w-full py-3 px-4 text-base' },
-                          }"
-                          @keyup.enter="handleLogin"
-                        />
-                      </div>
-                      <div class="flex items-center gap-3">
-                        <Checkbox
-                          id="guestRememberMe"
-                          v-model="loginForm.rememberMe"
-                          :binary="true"
-                          class="w-5 h-5"
-                        />
-                        <label for="guestRememberMe" class="text-sm text-muted-color cursor-pointer"
-                          >记住登录状态</label
-                        >
-                      </div>
-
-                      <Button
-                        label="访客访问"
-                        icon="pi pi-sign-in"
-                        @click="handleLogin"
-                        :loading="isLoading"
-                        :disabled="permissions.enablePassword && !loginForm.password"
-                        class="w-full py-4 text-base font-medium"
-                      />
-                    </div>
-                  </div>
-                </TabPanel>
-
-                <!-- 管理员登录 -->
-                <TabPanel value="1" class="p-0">
-                  <div class="space-y-6 pt-4">
-                    <div>
-                      <label for="adminUsername" class="block text-sm font-medium text-color mb-3"
-                        >用户名</label
-                      >
-                      <InputText
-                        id="adminUsername"
-                        name="username"
-                        v-model="loginForm.username"
-                        placeholder="请输入用户名"
-                        autocomplete="username"
-                        class="w-full py-3 px-4 text-base"
-                        @keyup.enter="handleLogin"
-                      />
-                    </div>
-
-                    <div>
-                      <label for="adminPassword" class="block text-sm font-medium text-color mb-3"
-                        >密码</label
-                      >
-                      <Password
-                        id="adminPassword"
-                        name="password"
-                        v-model="loginForm.password"
-                        placeholder="请输入密码"
-                        toggleMask
-                        :feedback="false"
-                        autocomplete="current-password"
-                        class="w-full"
-                        :pt="{
-                          root: { class: 'w-full' },
-                          input: { class: 'w-full py-3 px-4 text-base' },
-                        }"
-                        @keyup.enter="handleLogin"
-                      />
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                      <Checkbox
-                        id="adminRememberMe"
-                        v-model="loginForm.rememberMe"
-                        :binary="true"
-                        class="w-5 h-5"
-                      />
-                      <label for="adminRememberMe" class="text-sm text-muted-color cursor-pointer"
-                        >记住登录状态</label
-                      >
-                    </div>
-
-                    <Button
-                      label="管理员登录"
-                      icon="pi pi-sign-in"
-                      @click="handleLogin"
-                      :loading="isLoading"
-                      :disabled="!loginForm.username || !loginForm.password"
-                      class="w-full py-4 text-base font-medium"
+        <n-card class="shadow-2xl border-0">
+          <n-tabs :value="activeTab" @update:value="switchTab" class="w-full">
+            <n-tab-pane v-if="permissions.allowGuest" name="0" tab="访客访问">
+              <div class="space-y-6 pt-4">
+                <div class="space-y-6">
+                  <!-- 访客密码验证 -->
+                  <div v-if="permissions.enablePassword">
+                    <label for="guestPassword" class="block text-sm font-medium text-color mb-3">访问密码</label>
+                    <n-input
+                      id="guestPassword"
+                      v-model:value="loginForm.password"
+                      type="password"
+                      show-password-on="click"
+                      placeholder="请输入访客访问密码"
+                      class="w-full"
+                      @keyup.enter="handleLogin"
                     />
                   </div>
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
-          </template>
-        </Card>
+                  <div class="flex items-center gap-3">
+                    <n-checkbox
+                      id="guestRememberMe"
+                      v-model:checked="loginForm.rememberMe"
+                    />
+                    <label for="guestRememberMe" class="text-sm text-muted-color cursor-pointer">记住登录状态</label>
+                  </div>
+
+                  <n-button
+                    type="primary"
+                    class="w-full"
+                    @click="handleLogin"
+                    :loading="isLoading"
+                    :disabled="permissions.enablePassword && !loginForm.password"
+                  >
+                    <template #icon><i class="ri-login-box-line" /></template>
+                    访客访问
+                  </n-button>
+                </div>
+              </div>
+            </n-tab-pane>
+
+            <n-tab-pane name="1" tab="管理员登录">
+              <div class="space-y-6 pt-4">
+                <div>
+                  <label for="adminUsername" class="block text-sm font-medium text-color mb-3">用户名</label>
+                  <n-input
+                    id="adminUsername"
+                    v-model:value="loginForm.username"
+                    placeholder="请输入用户名"
+                    class="w-full"
+                    @keyup.enter="handleLogin"
+                  />
+                </div>
+
+                <div>
+                  <label for="adminPassword" class="block text-sm font-medium text-color mb-3">密码</label>
+                  <n-input
+                    id="adminPassword"
+                    v-model:value="loginForm.password"
+                    type="password"
+                    show-password-on="click"
+                    placeholder="请输入密码"
+                    class="w-full"
+                    @keyup.enter="handleLogin"
+                  />
+                </div>
+
+                <div class="flex items-center gap-3">
+                  <n-checkbox
+                    id="adminRememberMe"
+                    v-model:checked="loginForm.rememberMe"
+                  />
+                  <label for="adminRememberMe" class="text-sm text-muted-color cursor-pointer">记住登录状态</label>
+                </div>
+
+                <n-button
+                  type="primary"
+                  class="w-full"
+                  @click="handleLogin"
+                  :loading="isLoading"
+                  :disabled="!loginForm.username || !loginForm.password"
+                >
+                  <template #icon><i class="ri-login-box-line" /></template>
+                  管理员登录
+                </n-button>
+              </div>
+            </n-tab-pane>
+          </n-tabs>
+        </n-card>
 
         <div class="text-center mt-8">
           <span class="text-sm text-muted-color">由 <a class="hover:underline" href="https://github.com/YunTower/CloudSentinel" target="_blank">CloudSentinel</a> 提供服务器监测支持</span>
