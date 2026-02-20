@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getProgressTextColor, getProgressBarColor } from '@/utils/version.ts'
+import { RiCpuLine, RiTempHotLine } from '@remixicon/vue'
 
 interface GPUInfo {
   index: number
@@ -32,7 +33,7 @@ const formatMemory = (mb: number): string => {
     class="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow"
   >
     <div class="flex items-center gap-2 mb-4">
-      <i class="ri-cpu-line text-primary"></i>
+      <ri-cpu-line size="14px" />
       <span class="font-medium">GPU 信息</span>
       <n-tag type="default" size="small">{{ gpuInfo.gpus.length }} 个设备</n-tag>
     </div>
@@ -45,7 +46,7 @@ const formatMemory = (mb: number): string => {
         </div>
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-1">
-            <i class="ri-temp-hot-line text-xs"></i>
+            <ri-temp-hot-line size="14px" />
             <span class="text-sm">{{ gpu.temperature }}°C</span>
           </div>
         </div>
@@ -103,7 +104,7 @@ const formatMemory = (mb: number): string => {
     class="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm opacity-60"
   >
     <div class="flex items-center gap-2 text-muted-color">
-      <i class="ri-cpu-line"></i>
+      <ri-cpu-line size="14px" />
       <span class="text-sm">未检测到 GPU 设备</span>
     </div>
   </div>

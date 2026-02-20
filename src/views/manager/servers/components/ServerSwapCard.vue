@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { SwapInfo } from '@/types/manager/servers'
 import { getProgressTextColor, getProgressBarColor, formatBytes } from '@/utils/version.ts'
+import { RiDatabaseLine } from '@remixicon/vue'
 
 interface Props {
   swapInfo?: SwapInfo
@@ -23,7 +24,7 @@ const swapUsage = computed(() => {
   >
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
-        <i class="ri-database-line text-primary"></i>
+        <ri-database-line size="14px" />
         <span class="font-medium">Swap使用率</span>
       </div>
       <span

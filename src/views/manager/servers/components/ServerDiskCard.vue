@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DiskInfo } from '@/types/manager/servers'
 import { getProgressTextColor, getProgressBarColor, formatBytes } from '@/utils/version.ts'
+import { RiHardDriveLine } from '@remixicon/vue'
 
 interface Props {
   disks?: DiskInfo[]
@@ -15,7 +16,7 @@ defineProps<Props>()
   >
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
-        <i class="ri-hard-drive-line text-primary"></i>
+        <ri-hard-drive-line size="14px" />
         <span class="font-medium">磁盘使用情况</span>
       </div>
     </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { MemoryInfo } from '@/types/manager/servers'
 import { getProgressTextColor, getProgressBarColor, formatBytes } from '@/utils/version.ts'
+import { RiRamLine } from '@remixicon/vue'
 
 interface Props {
   memory: number
@@ -16,7 +17,7 @@ defineProps<Props>()
   >
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
-        <i class="ri-ram-line text-primary"></i>
+        <ri-ram-line size="14px" />
         <span class="font-medium">内存使用率</span>
       </div>
       <span class="text-2xl font-bold" :class="getProgressTextColor(memory)">

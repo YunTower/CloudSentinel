@@ -11,6 +11,7 @@ import { hasUpdate as checkHasUpdate, getVersionTypeConfig } from '@/utils/versi
 import {
   RiAlignLeft,
   RiCheckboxCircleLine,
+  RiCheckLine,
   RiDownloadCloudLine,
   RiErrorWarningLine,
   RiSaveLine,
@@ -466,7 +467,7 @@ onMounted(() => {
               <div
                 class="w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4"
               >
-                <i class="ri-check-line text-4xl text-green-500 dark:text-green-400"></i>
+                <ri-check-line class-name="text-green-500 dark:text-green-400" />
               </div>
               <h3 class="text-lg font-medium text-color mb-1">当前已是最新版本</h3>
               <p class="text-sm text-muted-color">

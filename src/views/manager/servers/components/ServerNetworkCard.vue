@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TrafficInfo } from '@/types/manager/servers'
 import { formatSpeed, formatBytes } from '@/utils/version.ts'
+import { RiArrowDownLine, RiArrowUpLine, RiWifiLine } from '@remixicon/vue'
 
 interface Props {
   networkIO?: {
@@ -18,13 +19,13 @@ defineProps<Props>()
     class="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow"
   >
     <div class="flex items-center gap-2 mb-3">
-      <i class="ri-wifi-line text-primary"></i>
+      <ri-wifi-line size="14px" />
       <span class="font-medium">网络 I/O</span>
     </div>
     <div class="grid grid-cols-2 gap-4 mb-4">
       <div class="text-center p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800">
         <div class="flex items-center justify-center gap-2 mb-1">
-          <i class="ri-arrow-up-line text-sm"></i>
+          <ri-arrow-up-line size="14px" />
           <span class="text-xs text-muted-color">上传</span>
         </div>
         <div class="text-xl font-bold">
@@ -33,7 +34,7 @@ defineProps<Props>()
       </div>
       <div class="text-center p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800">
         <div class="flex items-center justify-center gap-2 mb-1">
-          <i class="ri-arrow-down-line text-sm"></i>
+          <ri-arrow-down-line size="14px" />
           <span class="text-xs text-muted-color">速度</span>
         </div>
         <div class="text-xl font-bold">
@@ -45,7 +46,7 @@ defineProps<Props>()
       <div class="grid grid-cols-2 gap-4">
         <div class="text-center p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800">
           <div class="flex items-center justify-center gap-2 mb-1">
-            <i class="ri-arrow-up-line text-sm"></i>
+            <ri-arrow-up-line size="14px" />
             <span class="text-xs text-muted-color">总发送</span>
           </div>
           <div class="text-lg font-bold">
@@ -54,7 +55,7 @@ defineProps<Props>()
         </div>
         <div class="text-center p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800">
           <div class="flex items-center justify-center gap-2 mb-1">
-            <i class="ri-arrow-down-line text-sm"></i>
+            <ri-arrow-down-line size="14px" />
             <span class="text-xs text-muted-color">总接收</span>
           </div>
           <div class="text-lg font-bold">

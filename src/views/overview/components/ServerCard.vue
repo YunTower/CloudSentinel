@@ -3,6 +3,17 @@ import { computed } from 'vue'
 import type { ServerItem } from '@/types/server'
 import { getProgressBarColor, getProgressTextColor } from '@/utils/version.ts'
 import { formatSpeed, formatOS, getStatusColor, getStatusText as getStatusTextUtil } from '../utils'
+import {
+  RiArrowDownLine,
+  RiArrowUpLine,
+  RiCalendarLine,
+  RiHardDriveFill,
+  RiHardDriveLine,
+  RiLineChartLine,
+  RiMapPinLine,
+  RiRefreshLine,
+  RiWifiLine,
+} from '@remixicon/vue'
 
 const props = defineProps<ServerItem>()
 
@@ -58,7 +69,7 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
             <span class="text-xs font-medium text-color-emphasis">{{ statusText }}</span>
           </div>
           <div class="flex items-center gap-2">
-            <i class="ri-map-pin-line text-xs text-muted-color"></i>
+            <ri-map-pin-line size="14px" />
             <span class="text-xs font-medium text-muted-color">{{ props.location || '-' }}</span>
           </div>
         </div>
@@ -106,7 +117,7 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
       <!-- 网络 I/O -->
       <div class="p-2 rounded-lg bg-surface-50 dark:bg-surface-0">
         <div class="flex items-center gap-2 mb-2">
-          <i class="ri-wifi-line text-sm text-muted-color"></i>
+          <ri-wifi-line size="14px" />
           <span class="text-sm font-medium text-color">网络</span>
           <div class="flex-1 flex justify-end">
             <div
@@ -118,7 +129,7 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
         <div class="grid grid-cols-2 gap-2">
           <div class="bg-surface-0 dark:bg-surface-0 rounded-lg p-2 text-center">
             <div class="flex items-center justify-center gap-1 mb-1">
-              <i class="ri-arrow-up-line text-xs text-green-600 dark:text-green-400"></i>
+              <ri-arrow-up-line size="14px" class-name="text-green-600 dark:text-green-400" />
               <span class="text-xs text-muted-color">上传</span>
             </div>
             <div class="text-base font-bold">
@@ -127,7 +138,7 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
           </div>
           <div class="bg-surface-0 dark:bg-surface-0 rounded-lg p-2 text-center">
             <div class="flex items-center justify-center gap-1 mb-1">
-              <i class="ri-arrow-down-line text-xs text-blue-600 dark:text-blue-400"></i>
+              <ri-arrow-down-line size="14px" class-name="text-blue-600 dark:text-blue-400" />
               <span class="text-xs text-muted-color">下载</span>
             </div>
             <div class="text-base font-bold">
@@ -141,7 +152,7 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
       <div class="p-2 rounded-lg bg-surface-50 dark:bg-surface-0">
         <div class="flex justify-between items-center mb-2">
           <div class="flex items-center gap-2">
-            <i class="ri-hard-drive-line text-sm text-muted-color"></i>
+            <ri-hard-drive-line size="14px" />
             <span class="text-sm font-medium text-color">磁盘</span>
             <span v-if="props.totalStorage" class="text-xs text-muted-color"
               >({{ props.totalStorage }})</span
@@ -167,7 +178,7 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
         class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800"
       >
         <div class="flex items-center gap-2 mb-2">
-          <i class="ri-calendar-line text-sm text-muted-color"></i>
+          <ri-calendar-line size="14px" />
           <span class="text-sm font-medium text-color">付费周期</span>
         </div>
         <div class="space-y-1 text-xs">
@@ -199,7 +210,7 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
         class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800"
       >
         <div class="flex items-center gap-2 mb-2">
-          <i class="ri-line-chart-line text-sm text-muted-color"></i>
+          <ri-line-chart-line size="14px" />
           <span class="text-sm font-medium text-color">流量限制</span>
         </div>
         <div class="space-y-1 text-xs">
@@ -227,7 +238,7 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
         class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800"
       >
         <div class="flex items-center gap-2 mb-2">
-          <i class="ri-refresh-line text-sm text-muted-color"></i>
+          <ri-refresh-line size="14px" />
           <span class="text-sm font-medium text-color">重置周期</span>
         </div>
         <div class="space-y-1 text-xs">

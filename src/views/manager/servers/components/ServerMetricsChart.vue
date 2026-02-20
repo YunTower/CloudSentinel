@@ -7,6 +7,7 @@ import type { YAXisOption } from 'echarts/types/dist/shared'
 import type { CallbackDataParams } from 'echarts/types/dist/shared'
 import { formatSpeed } from '@/utils/version.ts'
 import { useLayout } from '@/composables/useLayout'
+import { RiLineChartLine } from '@remixicon/vue'
 
 interface Props {
   serverId: string
@@ -505,7 +506,7 @@ defineExpose({
   >
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
-        <i class="ri-line-chart-line text-primary"></i>
+        <ri-line-chart-line size="14px" />
         <span class="font-medium">{{ chartTitles[chartType] }}</span>
       </div>
       <div class="flex items-center gap-1">

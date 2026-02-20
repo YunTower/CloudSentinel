@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Server } from '@/types/manager/servers'
 import { getStatusText, getStatusSeverity } from '@/utils/version.ts'
+import { RiInformationLine } from '@remixicon/vue'
 
 interface Props {
   server: Server
@@ -29,7 +30,8 @@ const severityToTagType = (
     <h4
       class="text-lg font-semibold text-color border-b border-zinc-200 dark:border-zinc-700 pb-2 mb-3"
     >
-      <i class="ri-information-line text-primary mr-2"></i>基本信息
+      <ri-information-line size="14px" />
+      基本信息
     </h4>
     <div class="space-y-3">
       <div

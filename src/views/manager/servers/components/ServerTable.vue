@@ -21,7 +21,7 @@ import {
   parseVersion,
 } from '@/utils/version.ts'
 import type { VersionType } from '@/utils/version.ts'
-import { RiEditLine, RiDeleteBinLine } from '@remixicon/vue'
+import { RiEditLine, RiDeleteBinLine, RiCheckLine, RiErrorWarningLine } from '@remixicon/vue'
 
 // 计算到期天数
 const getExpireDays = (expireTime?: string): number | null => {
@@ -1024,7 +1024,7 @@ defineExpose({
               v-if="latestAgentVersionType && latestAgentVersionType !== 'release'"
               class="flex items-center gap-2 text-orange-500 text-sm mt-1"
             >
-              <i class="ri-error-warning-line"></i>
+              <ri-error-warning-line size="14px" />
               <span>此版本为非正式版，可能包含实验性功能或大量缺陷，请谨慎更新</span>
             </div>
           </div>
@@ -1042,7 +1042,9 @@ defineExpose({
               取消
             </n-button>
             <n-button type="primary" :loading="updatingAgentId !== ''" @click="confirmUpdateAgent">
-              <template #icon><i class="ri-check-line" /></template>
+              <template #icon>
+                <ri-check-line />
+              </template>
               确认更新
             </n-button>
           </div>

@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useMessage, useDialog } from 'naive-ui'
 import serversApi from '@/apis/servers'
 import type { ServerGroup, Server } from '@/types/manager/servers'
+import { RiDeleteBinLine, RiEditLine } from '@remixicon/vue'
 
 interface Props {
   visible: boolean
@@ -161,10 +162,14 @@ watch(
             <td class="py-2 px-3">
               <div class="flex gap-2">
                 <n-button text size="small" @click="handleEdit(group)">
-                  <template #icon><i class="ri-edit-line" /></template>
+                  <template #icon>
+                    <ri-edit-line />
+                  </template>
                 </n-button>
                 <n-button text size="small" type="error" @click="handleDelete(group)">
-                  <template #icon><i class="ri-delete-bin-line" /></template>
+                  <template #icon>
+                    <ri-delete-bin-line />
+                  </template>
                 </n-button>
               </div>
             </td>

@@ -474,7 +474,6 @@ onMounted(() => {
       <n-card class="masonry-item">
         <template #header>
           <div class="flex items-center gap-2">
-            <i class="ri-time-line text-primary"></i>
             <span>会话管理</span>
           </div>
         </template>

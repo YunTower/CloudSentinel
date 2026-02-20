@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useMessage } from 'naive-ui'
 import type { Server } from '@/types/manager/servers'
+import { RiFileCopyLine } from '@remixicon/vue'
 
 interface Props {
   server?: Server | null
@@ -119,7 +120,9 @@ const copyInstallCommand = async () => {
         <n-tooltip trigger="hover" placement="top">
           <template #trigger>
             <n-button text size="small" @click="copyAgentKey">
-              <template #icon><i class="ri-file-copy-line" /></template>
+              <template #icon>
+                <ri-file-copy-line />
+              </template>
             </n-button>
           </template>
           复制密钥
@@ -139,7 +142,9 @@ const copyInstallCommand = async () => {
         <n-tooltip trigger="hover" placement="top">
           <template #trigger>
             <n-button text size="small" @click="copyInstallCommand">
-              <template #icon><i class="ri-file-copy-line" /></template>
+              <template #icon>
+                <ri-file-copy-line />
+              </template>
             </n-button>
           </template>
           复制命令

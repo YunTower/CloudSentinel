@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useMessage } from 'naive-ui'
 import type { Server, ServerAlertRules } from '@/types/manager/servers'
 import serversApi from '@/apis/servers'
+import { RiCheckLine } from '@remixicon/vue'
 
 interface Props {
   visible: boolean
@@ -250,7 +251,9 @@ watch(
             :loading="saving"
             :disabled="enabledRuleTypes.length === 0 || targetServers.length === 0"
           >
-            <template #icon><i class="ri-check-line" /></template>
+            <template #icon>
+              <ri-check-line />
+            </template>
             确认复制
           </n-button>
         </div>
