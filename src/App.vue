@@ -118,21 +118,23 @@ onMounted(() => {
 <template>
   <n-config-provider :theme="naiveTheme" :hljs="hljs">
     <n-message-provider>
-      <n-dialog-provider>
-        <component :is="layout" class="min-h-dvh h-full w-full">
-          <Loading
-            :loading="isLoading"
-            :size="50"
-            :strokeWidth="8"
-            animationDuration="0.5s"
-            :overlay="true"
-          />
+      <n-notification-provider>
+        <n-dialog-provider>
+          <component :is="layout" class="min-h-dvh h-full w-full">
+            <Loading
+              :loading="isLoading"
+              :size="50"
+              :strokeWidth="8"
+              animationDuration="0.5s"
+              :overlay="true"
+            />
 
-          <router-view v-slot="{ Component }">
+            <router-view v-slot="{ Component }">
               <component :is="Component" :key="$route.fullPath" />
-          </router-view>
-        </component>
-      </n-dialog-provider>
+            </router-view>
+          </component>
+        </n-dialog-provider>
+      </n-notification-provider>
     </n-message-provider>
   </n-config-provider>
 </template>

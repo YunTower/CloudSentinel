@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage } from '@/composables/useNotifications'
 import serversApi from '@/apis/servers'
 import type { ServerGroup } from '@/types/manager/servers'
 import { RiAddLine } from '@remixicon/vue'
@@ -18,7 +18,7 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const { toast } = useNotifications()
+const message = useMessage()
 const loading = ref(false)
 
 const isVisible = computed({
@@ -68,7 +68,7 @@ watch(
 
 const handleSubmit = async () => {
   if (!form.value.name.trim()) {
-    toast.add({ severity: 'warn', summary: '验证失败', detail: '分组名称不能为空', life: 3000 })
+    message.warning('分组名称不能为空', { duration: 3000 })
     return
   }
 
@@ -76,10 +76,10 @@ const handleSubmit = async () => {
   try {
     if (props.group) {
       await serversApi.updateGroup(props.group.id, form.value)
-      toast.add({ severity: 'success', summary: '成功', detail: '分组更新成功', life: 3000 })
+      message.success('分组更新成功', { duration: 3000 })
     } else {
       await serversApi.createGroup(form.value)
-      toast.add({ severity: 'success', summary: '成功', detail: '分组创建成功', life: 3000 })
+      message.success('分组创建成功', { duration: 3000 })
     }
     emit('success')
     emit('update:visible', false)
@@ -89,12 +89,7 @@ const handleSubmit = async () => {
       error && typeof error === 'object' && 'response' in error
         ? (error.response as { data?: { message?: string } })?.data?.message || '操作失败'
         : '操作失败'
-    toast.add({
-      severity: 'error',
-      summary: '失败',
-      detail: errorMessage,
-      life: 3000,
-    })
+    message.error(errorMessage, { duration: 3000 })
   } finally {
     loading.value = false
   }

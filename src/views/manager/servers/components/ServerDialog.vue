@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, h } from 'vue'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage, useDialog } from '@/composables/useNotifications'
 import ServerGroupSelector from './ServerGroupSelector.vue'
 import InstallInfo from './InstallInfo.vue'
 import serversApi from '@/apis/servers'
@@ -60,7 +60,8 @@ const emit = defineEmits<{
   'save-success': []
 }>()
 
-const { toast, confirm } = useNotifications()
+const message = useMessage()
+const dialog = useDialog()
 const activeTab = ref('0')
 const restarting = ref(false)
 const resettingKey = ref(false)
@@ -256,12 +257,7 @@ const loadServerDetail = async () => {
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '获取服务器详情失败'
-    toast.add({
-      severity: 'error',
-      summary: '加载失败',
-      detail: errorMessage,
-      life: 3000,
-    })
+    message.error(errorMessage, { duration: 3000 })
     if (props.editingServer) {
       form.value = {
         name: props.editingServer.name,
@@ -390,24 +386,13 @@ watch(
 const handleSave = async () => {
   // 验证必填字段
   if (!form.value.name || !form.value.ip) {
-    toast.add({
-      severity: 'error',
-      summary: '验证失败',
-      detail: '请填写服务器名称和IP地址',
-      life: 3000,
-    })
+    message.error('请填写服务器名称和IP地址', { duration: 3000 })
     return
   }
 
-  // 验证IP格式（简单验证）
   const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$|^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/
   if (!ipPattern.test(form.value.ip)) {
-    toast.add({
-      severity: 'error',
-      summary: '验证失败',
-      detail: '请输入有效的IP地址',
-      life: 3000,
-    })
+    message.error('请输入有效的IP地址', { duration: 3000 })
     return
   }
 
@@ -450,19 +435,12 @@ const handleCancel = () => {
 const handleRestartService = () => {
   if (!props.editingServer) return
 
-  confirm.require({
-    message: `确定要重启 "${props.editingServer.name}" 的Agent服务吗？`,
-    header: '重启确认',
-    rejectProps: {
-      label: '取消',
-      severity: 'secondary',
-      outlined: true,
-    },
-    acceptProps: {
-      label: '重启',
-      severity: 'warn',
-    },
-    accept: async () => {
+  dialog.warning({
+    title: '重启确认',
+    content: `确定要重启 "${props.editingServer.name}" 的Agent服务吗？`,
+    positiveText: '重启',
+    negativeText: '取消',
+    onPositiveClick: async () => {
       restarting.value = true
       try {
         const response = (await serversApi.restartService(
@@ -470,11 +448,8 @@ const handleRestartService = () => {
         )) as RestartServiceResponse
 
         if (response.status) {
-          toast.add({
-            severity: 'success',
-            summary: '重启成功',
-            detail: `服务器 "${props.editingServer!.name}" 的重启命令已发送`,
-            life: 3000,
+          message.success(`服务器 "${props.editingServer!.name}" 的重启命令已发送`, {
+            duration: 3000,
           })
           emit('restart-server', props.editingServer!)
         } else {
@@ -482,12 +457,7 @@ const handleRestartService = () => {
         }
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : '请稍后重试'
-        toast.add({
-          severity: 'error',
-          summary: '重启失败',
-          detail: errorMessage,
-          life: 3000,
-        })
+        message.error(errorMessage, { duration: 3000 })
       } finally {
         restarting.value = false
       }
@@ -499,31 +469,21 @@ const handleRestartService = () => {
 const handleResetAgentKey = () => {
   if (!props.editingServer) return
 
-  confirm.require({
-    message: `确定要重置 "${props.editingServer.name}" 的通信密钥和指纹吗？重置后Agent需要使用新密钥重新连接面板，并重新绑定指纹`,
-    header: '重置通信密钥确认',
-    rejectProps: {
-      label: '取消',
-      severity: 'secondary',
-      outlined: true,
-    },
-    acceptProps: {
-      label: '重置',
-      severity: 'warn',
-    },
-    accept: async () => {
+  dialog.warning({
+    title: '重置通信密钥确认',
+    content: `确定要重置 "${props.editingServer.name}" 的通信密钥和指纹吗？重置后Agent需要使用新密钥重新连接面板，并重新绑定指纹`,
+    positiveText: '重置',
+    negativeText: '取消',
+    onPositiveClick: async () => {
       resettingKey.value = true
       try {
         const response = await serversApi.resetAgentKey(props.editingServer!.id)
 
         if (response.status && response.data) {
-          toast.add({
-            severity: 'success',
-            summary: '重置成功',
-            detail: `服务器 "${props.editingServer!.name}" 的通信密钥和指纹已重置。`,
-            life: 5000,
-          })
-          // 重新加载服务器详情
+          message.success(
+            `服务器 "${props.editingServer!.name}" 的通信密钥和指纹已重置。`,
+            { duration: 5000 }
+          )
           if (props.editingServer) {
             await loadServerDetail()
           }
@@ -532,12 +492,7 @@ const handleResetAgentKey = () => {
         }
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : '请稍后重试'
-        toast.add({
-          severity: 'error',
-          summary: '重置失败',
-          detail: errorMessage,
-          life: 3000,
-        })
+        message.error(errorMessage, { duration: 3000 })
       } finally {
         resettingKey.value = false
       }
@@ -571,12 +526,7 @@ const addMonitoredService = () => {
   }
 
   if (form.value.monitored_services.includes(name)) {
-    toast.add({
-      severity: 'warn',
-      summary: '提示',
-      detail: '该服务已在监控列表中',
-      life: 3000,
-    })
+    message.warning('该服务已在监控列表中', { duration: 3000 })
     return
   }
 

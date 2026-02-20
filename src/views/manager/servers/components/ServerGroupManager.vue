@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage, useDialog } from '@/composables/useNotifications'
 import serversApi from '@/apis/servers'
 import type { ServerGroup, Server } from '@/types/manager/servers'
 
@@ -21,7 +21,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
-const { toast, confirm } = useNotifications()
+const message = useMessage()
+const dialog = useDialog()
 const loading = ref(false)
 const groups = ref<ServerGroup[]>([])
 
@@ -52,12 +53,7 @@ const loadGroups = async () => {
     }
   } catch (error) {
     console.error('加载分组列表失败:', error)
-    toast.add({
-      severity: 'error',
-      summary: '加载失败',
-      detail: '无法加载分组列表',
-      life: 3000,
-    })
+    message.error('无法加载分组列表', { duration: 3000 })
   } finally {
     loading.value = false
   }
@@ -66,33 +62,21 @@ const loadGroups = async () => {
 // 删除分组
 const handleDelete = (group: ServerGroup) => {
   const serverCount = groupServerCounts.value[group.id] || 0
-  const message =
+  const confirmContent =
     serverCount > 0
       ? `确定要删除分组 "${group.name}" 吗？该分组下有 ${serverCount} 台服务器，删除后这些服务器将变为未分组状态。`
       : `确定要删除分组 "${group.name}" 吗？`
 
-  confirm.require({
-    message,
-    header: '删除确认',
-    rejectProps: {
-      label: '取消',
-      severity: 'secondary',
-      outlined: true,
-    },
-    acceptProps: {
-      label: '删除',
-      severity: 'danger',
-    },
-    accept: async () => {
+  dialog.warning({
+    title: '删除确认',
+    content: confirmContent,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
       try {
         const response = await serversApi.deleteGroup(group.id)
         if (response.status) {
-          toast.add({
-            severity: 'success',
-            summary: '删除成功',
-            detail: `分组 "${group.name}" 已删除`,
-            life: 3000,
-          })
+          message.success(`分组 "${group.name}" 已删除`, { duration: 3000 })
           await loadGroups()
           emit('refresh')
         } else {
@@ -100,12 +84,7 @@ const handleDelete = (group: ServerGroup) => {
         }
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : '删除失败'
-        toast.add({
-          severity: 'error',
-          summary: '删除失败',
-          detail: errorMessage,
-          life: 3000,
-        })
+        message.error(errorMessage, { duration: 3000 })
       }
     },
   })

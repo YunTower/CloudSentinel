@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { RiLayoutGridLine, RiListCheck } from '@remixicon/vue'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage } from '@/composables/useNotifications'
 import ServerCard from './components/ServerCard.vue'
 import ServerTable from './components/ServerTable.vue'
 import GroupHeader from './components/GroupHeader.vue'
@@ -13,7 +13,7 @@ import type { ServerItem } from '@/types/server'
 import type { GetServersResponse, ServerGroup } from '@/types/manager/servers'
 import { mapServerListItemToServerItem, getStatusText, formatOS } from './utils'
 
-const { toast } = useNotifications()
+const message = useMessage()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -86,12 +86,7 @@ const loadServers = async () => {
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : '获取服务器列表失败'
     error.value = errorMessage
-    toast.add({
-      severity: 'error',
-      summary: '加载失败',
-      detail: errorMessage,
-      life: 3000,
-    })
+    message.error(errorMessage, { duration: 3000 })
   } finally {
     loading.value = false
   }

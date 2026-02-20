@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import type { FormInst, FormRules } from 'naive-ui'
-import { useNotifications } from '@/composables/useNotifications'
-import { useDialog } from 'naive-ui'
+import { useMessage, useDialog } from '@/composables/useNotifications'
 import { marked } from 'marked'
 import panelApi from '@/apis/settings/panel'
 import { useAuthStore } from '@/stores/auth'
@@ -36,7 +35,7 @@ const hasUpdate = computed(() => {
 
   return checkHasUpdate(current_version, latest_version, current_version_type, latest_version_type)
 })
-const { toast } = useNotifications()
+const message = useMessage()
 const dialog = useDialog()
 const authStore = useAuthStore()
 const panelFormRef = ref<FormInst | null>(null)
@@ -74,31 +73,16 @@ const checkForUpdate = async () => {
   try {
     const response = await panelApi.checkUpdate()
     if (!response?.status) {
-      toast.add({
-        severity: 'warn',
-        summary: '检查更新失败',
-        detail: response?.message || '无法获取版本信息',
-        life: 3000,
-      })
+      message.warning(response?.message || '无法获取版本信息', { duration: 3000 })
       return
     }
     versionInfo.value = { ...response?.data, has_update: false }
     hasCheckedUpdate.value = true
 
-    toast.add({
-      severity: 'info',
-      summary: '成功！！！',
-      detail: '检查到最新的版本信息喽~',
-      life: 3000,
-    })
+    message.info('检查到最新的版本信息喽~', { duration: 3000 })
   } catch (error) {
     console.error('Failed to check for updates:', error)
-    toast.add({
-      severity: 'error',
-      summary: '错误',
-      detail: '检查更新时出错，请稍后重试',
-      life: 3000,
-    })
+    message.error('检查更新时出错，请稍后重试', { duration: 3000 })
   } finally {
     checkingUpdate.value = false
   }
@@ -160,8 +144,8 @@ const executeUpdate = async () => {
         }
 
         if (res.status && res.data) {
-          const { step, progress, message } = res.data
-          updateStep.value = message
+          const { step, progress, message: stepMessage } = res.data
+          updateStep.value = stepMessage
           updateProgress.value = progress
 
           // 记录当前步骤，用于UI控制
@@ -180,12 +164,7 @@ const executeUpdate = async () => {
             clearInterval(pollInterval)
             updating.value = false
 
-            toast.add({
-              severity: 'success',
-              summary: '更新成功',
-              detail: '系统已更新到最新版本，页面即将刷新',
-              life: 3000,
-            })
+            message.success('系统已更新到最新版本，页面即将刷新', { duration: 3000 })
 
             setTimeout(() => {
               window.location.reload()
@@ -193,24 +172,14 @@ const executeUpdate = async () => {
           } else if (step === 'error') {
             clearInterval(pollInterval)
             updating.value = false
-            toast.add({
-              severity: 'error',
-              summary: '更新失败',
-              detail: message || '更新过程中发生错误',
-              life: 6000,
-            })
+            message.error(stepMessage || '更新过程中发生错误', { duration: 6000 })
           }
         } else if (isRestarting && recoveryChecks >= maxRecoveryChecks) {
           // 服务已恢复，但没有更新状态（可能已被清除），说明更新已完成
           clearInterval(pollInterval)
           updating.value = false
 
-          toast.add({
-            severity: 'success',
-            summary: '更新完成',
-            detail: '服务已重启，页面即将刷新以加载新版本',
-            life: 3000,
-          })
+          message.success('服务已重启，页面即将刷新以加载新版本', { duration: 3000 })
 
           setTimeout(() => {
             window.location.reload()
@@ -228,12 +197,10 @@ const executeUpdate = async () => {
             console.warn('服务重启等待时间超过限制，停止轮询')
             clearInterval(pollInterval)
             updating.value = false
-            toast.add({
-              severity: 'warn',
-              summary: '等待重启超时',
-              detail: `服务重启已等待 ${maxRestartingWaitTime} 秒。如果服务已重启，请手动刷新页面。`,
-              life: 8000,
-            })
+            message.warning(
+              `服务重启已等待 ${maxRestartingWaitTime} 秒。如果服务已重启，请手动刷新页面。`,
+              { duration: 8000 },
+            )
           }
           return
         }
@@ -258,23 +225,16 @@ const executeUpdate = async () => {
         console.error('Polling update status failed after max retries:', error)
         clearInterval(pollInterval)
         updating.value = false
-        toast.add({
-          severity: 'error',
-          summary: '更新失败',
-          detail: `获取更新状态失败，已重试 ${maxConsecutiveFailures} 次。请检查网络连接或稍后重试。`,
-          life: 8000,
-        })
+        message.error(
+          `获取更新状态失败，已重试 ${maxConsecutiveFailures} 次。请检查网络连接或稍后重试。`,
+          { duration: 8000 },
+        )
       }
     }, 1000)
   } catch (error) {
     console.error('Failed to start update:', error)
     updating.value = false
-    toast.add({
-      severity: 'error',
-      summary: '启动更新失败',
-      detail: `无法启动更新任务（${error}）`,
-      life: 5000,
-    })
+    message.error(`无法启动更新任务（${error}）`, { duration: 5000 })
   }
 }
 
@@ -322,15 +282,10 @@ const savePanelSettings = async () => {
       document.title = panelSettings.value.title
     }
 
-    toast.add({ severity: 'success', summary: '保存成功', detail: '面板设置已更新', life: 3000 })
+    message.success('面板设置已更新', { duration: 3000 })
   } catch (error) {
     console.error('Failed to save panel settings:', error)
-    toast.add({
-      severity: 'error',
-      summary: '保存失败',
-      detail: '无法保存面板设置，请稍后重试',
-      life: 3000,
-    })
+    message.error('无法保存面板设置，请稍后重试', { duration: 3000 })
   } finally {
     saving.value = false
   }

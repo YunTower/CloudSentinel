@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, nextTick, computed, h, defineComponent } from 'vue'
 import { NTag, NSpin, NButton, NEmpty, type PaginationInfo, type DataTableColumn } from 'naive-ui'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage, useDialog } from '@/composables/useNotifications'
 import { useAuthStore } from '@/stores/auth'
 import type { Server, MetricsData } from '@/types/manager/servers'
 import serversApi from '@/apis/servers'
@@ -60,7 +60,8 @@ const severityToNaiveType = (
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.role === 'admin')
-const { toast, confirm } = useNotifications()
+const message = useMessage()
+const dialog = useDialog()
 
 // 付费周期选项
 const billingCycleOptions = [
@@ -138,23 +139,13 @@ const confirmUpdateAgent = async () => {
 
   try {
     await serversApi.updateAgent(server.id)
-    toast.add({
-      severity: 'success',
-      summary: '成功',
-      detail: '更新命令已发送，Agent 将自动更新',
-      life: 3000,
-    })
+    message.success('更新命令已发送，Agent 将自动更新', { duration: 3000 })
     showUpdateDialog.value = false
     selectedServerForUpdate.value = null
     emit('update-agent', server)
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '更新失败'
-    toast.add({
-      severity: 'error',
-      summary: '更新失败',
-      detail: errorMessage,
-      life: 5000,
-    })
+    message.error(errorMessage, { duration: 5000 })
   } finally {
     updatingAgentId.value = ''
   }
@@ -251,22 +242,13 @@ const autoExpandServer = (serverId: string) => {
 }
 
 // 确认删除
-const confirmDelete = (event: MouseEvent, server: Server) => {
-  confirm.require({
-    target: event.currentTarget as HTMLElement,
-    message: `确定要删除服务器 "${server.name}" 吗？`,
-    header: '删除确认',
-    icon: 'ri-error-warning-line',
-    rejectProps: {
-      label: '取消',
-      severity: 'secondary',
-      outlined: true,
-    },
-    acceptProps: {
-      label: '删除',
-      severity: 'danger',
-    },
-    accept: () => {
+const confirmDelete = (_event: MouseEvent, server: Server) => {
+  dialog.warning({
+    title: '删除确认',
+    content: `确定要删除服务器 "${server.name}" 吗？`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: () => {
       emit('delete-server', server)
     },
   })

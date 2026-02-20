@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage } from '@/composables/useNotifications'
 import type { FormInst, FormRules } from 'naive-ui'
 import type { PermissionSettings, AdminAccount } from '@/types/settings/permissions'
 import settingsApi from '@/apis/settings/permissions'
 import { RiSaveLine } from '@remixicon/vue'
 
-const { toast } = useNotifications()
+const message = useMessage()
 
 const permissionsFormRef = ref<FormInst | null>(null)
 const usernameFormRef = ref<FormInst | null>(null)
@@ -166,9 +166,9 @@ const savePermissions = async () => {
       jwtExpiration: permissions.value.jwtExpiration,
     })
 
-    toast.add({ severity: 'success', summary: '保存成功', detail: '权限设置已更新', life: 3000 })
+    message.success('权限设置已更新', { duration: 3000 })
   } catch {
-    toast.add({ severity: 'error', summary: '保存失败', detail: '请稍后重试', life: 5000 })
+    message.error('请稍后重试', { duration: 5000 })
   } finally {
     saving.value = false
   }
@@ -200,12 +200,7 @@ const updateUsername = async () => {
     adminAccount.value.newUsername = ''
     adminAccount.value.currentPassword = ''
 
-    toast.add({
-      severity: 'success',
-      summary: '修改成功',
-      detail: '用户名已更新',
-      life: 3000,
-    })
+    message.success('用户名已更新', { duration: 3000 })
   } catch (error: unknown) {
     const errorMessage =
       (error && typeof error === 'object' && 'response' in error
@@ -213,12 +208,7 @@ const updateUsername = async () => {
         : null) ||
       (error instanceof Error ? error.message : null) ||
       '请稍后重试'
-    toast.add({
-      severity: 'error',
-      summary: '修改失败',
-      detail: errorMessage,
-      life: 5000,
-    })
+    message.error(errorMessage, { duration: 5000 })
   } finally {
     updatingUsername.value = false
   }
@@ -251,12 +241,7 @@ const updatePassword = async () => {
     adminAccount.value.newPassword = ''
     adminAccount.value.confirmPassword = ''
 
-    toast.add({
-      severity: 'success',
-      summary: '修改成功',
-      detail: '密码已更新',
-      life: 3000,
-    })
+    message.success('密码已更新', { duration: 3000 })
   } catch (error: unknown) {
     const errorMessage =
       (error && typeof error === 'object' && 'response' in error
@@ -264,12 +249,7 @@ const updatePassword = async () => {
         : null) ||
       (error instanceof Error ? error.message : null) ||
       '请稍后重试'
-    toast.add({
-      severity: 'error',
-      summary: '修改失败',
-      detail: errorMessage,
-      life: 5000,
-    })
+    message.error(errorMessage, { duration: 5000 })
   } finally {
     updatingPassword.value = false
   }

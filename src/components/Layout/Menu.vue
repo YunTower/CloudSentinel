@@ -3,7 +3,7 @@ import { type Component, computed, h, onMounted, ref } from 'vue'
 import { useRouter, RouterLink, useRoute } from 'vue-router'
 import { useLayout } from '@/composables/useLayout'
 import { useAuthStore } from '@/stores/auth'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage } from '@/composables/useNotifications'
 import websocketManager from '@/services/websocket-manager'
 import AdminLoginDialog from './AdminLoginDialog.vue'
 import { NIcon } from 'naive-ui'
@@ -17,7 +17,7 @@ interface MenuItem {
   roles?: string[]
 }
 
-const { toast } = useNotifications()
+const message = useMessage()
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
@@ -137,7 +137,7 @@ const activeMenuKey = computed(() => route.path)
 const handleLogout = () => {
   websocketManager.disconnect()
   authStore.logout()
-  toast.add({ severity: 'success', summary: '退出成功', detail: '已安全退出登录', life: 3000 })
+  message.success('已安全退出登录', { duration: 3000 })
   router.push({ name: 'overview' })
 }
 

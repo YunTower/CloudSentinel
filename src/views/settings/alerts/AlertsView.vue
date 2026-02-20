@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import type { FormInst, FormRules } from 'naive-ui'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage } from '@/composables/useNotifications'
 import type { Notifications } from '@/types/settings/alerts'
 import alertsApi from '@/apis/settings/alerts'
 import { RiSaveLine, RiSendPlaneLine } from '@remixicon/vue'
@@ -125,7 +125,7 @@ const testing = ref({
   email: false,
   webhook: false,
 })
-const { toast } = useNotifications()
+const message = useMessage()
 
 // 服务器离线/上线告警开关
 const hasNotificationChannel = ref(false)
@@ -146,12 +146,7 @@ const addMentionedUser = () => {
 
   // 检查是否已存在
   if (mentionedUsers.value.includes(value)) {
-    toast.add({
-      severity: 'warn',
-      summary: '提示',
-      detail: '该用户已添加',
-      life: 2000,
-    })
+    message.warning('该用户已添加', { duration: 2000 })
     return
   }
 
@@ -252,12 +247,7 @@ const loadAlertSettings = async () => {
   } catch (error: unknown) {
     console.error('Failed to load alert settings:', error)
     const errorMessage = error instanceof Error ? error.message : '加载告警设置失败，请刷新页面重试'
-    toast.add({
-      severity: 'error',
-      summary: '加载失败',
-      detail: errorMessage,
-      life: 5000,
-    })
+    message.error(errorMessage, { duration: 5000 })
   } finally {
     loading.value = false
   }
@@ -293,12 +283,7 @@ const testAlert = async (type: 'email' | 'webhook') => {
     })
 
     if (res && typeof res === 'object' && 'status' in res && res.status) {
-      toast.add({
-        severity: 'success',
-        summary: '测试成功',
-        detail: '测试消息已发送',
-        life: 3000,
-      })
+      message.success('测试消息已发送', { duration: 3000 })
     } else {
       const errorMsg =
         res && typeof res === 'object' && 'message' in res ? String(res.message) : '测试失败'
@@ -307,12 +292,7 @@ const testAlert = async (type: 'email' | 'webhook') => {
   } catch (error: unknown) {
     console.error(`Failed to test ${type} alert:`, error)
     const errorMessage = error instanceof Error ? error.message : '测试发送失败，请检查配置'
-    toast.add({
-      severity: 'error',
-      summary: '测试失败',
-      detail: errorMessage,
-      life: 5000,
-    })
+    message.error(errorMessage, { duration: 5000 })
   } finally {
     testing.value[type] = false
   }
@@ -334,12 +314,7 @@ const saveAlertSettings = async () => {
     })
 
     if (res && typeof res === 'object' && 'status' in res && res.status) {
-      toast.add({
-        severity: 'success',
-        summary: '保存成功',
-        detail: '告警设置已更新',
-        life: 3000,
-      })
+      message.success('告警设置已更新', { duration: 3000 })
       await loadAlertSettings()
     } else {
       const errorMsg =
@@ -349,12 +324,7 @@ const saveAlertSettings = async () => {
   } catch (error: unknown) {
     console.error('Failed to save alert settings:', error)
     const errorMessage = error instanceof Error ? error.message : '保存告警设置失败，请重试'
-    toast.add({
-      severity: 'error',
-      summary: '保存失败',
-      detail: errorMessage,
-      life: 5000,
-    })
+    message.error(errorMessage, { duration: 5000 })
   } finally {
     saving.value = false
   }

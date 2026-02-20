@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage } from '@/composables/useNotifications'
 import { useAuthStore } from '@/stores/auth'
 import { RiLogoutBoxLine } from '@remixicon/vue'
 
@@ -16,7 +16,7 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const { toast } = useNotifications()
+const message = useMessage()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -52,12 +52,7 @@ const handleLogin = async () => {
   try {
     const result = await authStore.handleAdminLogin(username, password, rememberMe)
     if (result.success && result.userSession) {
-      toast.add({
-        severity: 'success',
-        summary: '登录成功',
-        detail: `欢迎回来`,
-        life: 3000,
-      })
+      message.success('欢迎回来', { duration: 3000 })
 
       emit('update:visible', false)
 
@@ -74,20 +69,12 @@ const handleLogin = async () => {
         await router.replace(router.currentRoute.value.fullPath)
       }
     } else {
-      toast.add({
-        severity: 'error',
-        summary: '登录失败',
-        detail: result.error || '登录过程中发生错误',
-        life: 5000,
-      })
+      message.error(result.error || '登录过程中发生错误', { duration: 5000 })
     }
   } catch (error) {
     console.error('Login failed:', error)
-    toast.add({
-      severity: 'error',
-      summary: '登录失败',
-      detail: (error as { message: string }).message || '登录过程中发生错误',
-      life: 5000,
+    message.error((error as { message: string }).message || '登录过程中发生错误', {
+      duration: 5000,
     })
   } finally {
     isLoading.value = false

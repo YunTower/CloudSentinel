@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage } from '@/composables/useNotifications'
 import type { Server, ServerAlertRules } from '@/types/manager/servers'
 import serversApi from '@/apis/servers'
 
@@ -17,7 +17,7 @@ const emit = defineEmits<{
   success: []
 }>()
 
-const { toast } = useNotifications()
+const message = useMessage()
 const loading = ref(false)
 const saving = ref(false)
 
@@ -71,12 +71,7 @@ const loadSourceAlertRules = async () => {
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '加载告警规则失败'
-    toast.add({
-      severity: 'error',
-      summary: '加载失败',
-      detail: errorMessage,
-      life: 5000,
-    })
+    message.error(errorMessage, { duration: 5000 })
   } finally {
     loading.value = false
   }
@@ -109,22 +104,12 @@ const getRuleDisplayText = (ruleType: string): string => {
 // 确认复制
 const handleConfirm = async () => {
   if (selectedRuleTypes.value.length === 0) {
-    toast.add({
-      severity: 'warn',
-      summary: '请选择规则',
-      detail: '请至少选择一个告警规则',
-      life: 3000,
-    })
+    message.warning('请至少选择一个告警规则', { duration: 3000 })
     return
   }
 
   if (selectedTargetServerIds.value.length === 0) {
-    toast.add({
-      severity: 'warn',
-      summary: '请选择目标服务器',
-      detail: '请至少选择一个目标服务器',
-      life: 3000,
-    })
+    message.warning('请至少选择一个目标服务器', { duration: 3000 })
     return
   }
 
@@ -136,23 +121,13 @@ const handleConfirm = async () => {
       selectedRuleTypes.value,
     )
 
-    toast.add({
-      severity: 'success',
-      summary: '复制成功',
-      detail: '告警规则已成功复制到目标服务器',
-      life: 3000,
-    })
+    message.success('告警规则已成功复制到目标服务器', { duration: 3000 })
 
     emit('update:visible', false)
     emit('success')
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '复制告警规则失败'
-    toast.add({
-      severity: 'error',
-      summary: '复制失败',
-      detail: errorMessage,
-      life: 5000,
-    })
+    message.error(errorMessage, { duration: 5000 })
   } finally {
     saving.value = false
   }

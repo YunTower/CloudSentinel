@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage } from '@/composables/useNotifications'
 import type { Server } from '@/types/manager/servers'
 
 interface Props {
@@ -17,7 +17,7 @@ const props = withDefaults(defineProps<Props>(), {
   websocketURL: '',
 })
 
-const { toast } = useNotifications()
+const message = useMessage()
 
 // 计算安装命令
 const installCommand = computed(() => {
@@ -85,30 +85,15 @@ const copyToClipboard = async (text: string): Promise<boolean> => {
 const copyAgentKey = async () => {
   const key = currentAgentKey.value
   if (!key || key === '未设置') {
-    toast.add({
-      severity: 'warn',
-      summary: '无法复制',
-      detail: 'Agent Key 不存在',
-      life: 2000,
-    })
+    message.warning('Agent Key 不存在', { duration: 2000 })
     return
   }
 
   const success = await copyToClipboard(key)
   if (success) {
-    toast.add({
-      severity: 'success',
-      summary: '复制成功',
-      detail: 'Agent Key已复制到剪贴板',
-      life: 2000,
-    })
+    message.success('Agent Key已复制到剪贴板', { duration: 2000 })
   } else {
-    toast.add({
-      severity: 'error',
-      summary: '复制失败',
-      detail: '请手动复制Agent Key',
-      life: 3000,
-    })
+    message.error('请手动复制Agent Key', { duration: 3000 })
   }
 }
 
@@ -116,19 +101,9 @@ const copyAgentKey = async () => {
 const copyInstallCommand = async () => {
   const success = await copyToClipboard(installCommand.value)
   if (success) {
-    toast.add({
-      severity: 'success',
-      summary: '复制成功',
-      detail: '安装命令已复制到剪贴板',
-      life: 2000,
-    })
+    message.success('安装命令已复制到剪贴板', { duration: 2000 })
   } else {
-    toast.add({
-      severity: 'error',
-      summary: '复制失败',
-      detail: '请手动复制安装命令',
-      life: 3000,
-    })
+    message.error('请手动复制安装命令', { duration: 3000 })
   }
 }
 </script>

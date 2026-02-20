@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage } from '@/composables/useNotifications'
 import { useAuthStore } from '@/stores/auth'
 
-const { toast } = useNotifications()
+const message = useMessage()
 const router = useRouter()
 const authStore = useAuthStore()
 const activeTab = ref('0') // 当前激活的标签页
@@ -29,37 +29,17 @@ const handleLogin = async () => {
     if (type === 'guest') {
       result = await authStore.handleGuestLogin(password, rememberMe, permissions.value)
       if (result.success && result.userSession) {
-        toast.add({
-          severity: 'success',
-          summary: '登录成功',
-          detail: '欢迎访客用户',
-          life: 3000,
-        })
+        message.success('欢迎访客用户', { duration: 3000 })
       } else {
-        toast.add({
-          severity: 'error',
-          summary: '登录失败',
-          detail: result.error || '登录过程中发生错误',
-          life: 5000,
-        })
+        message.error(result.error || '登录过程中发生错误', { duration: 5000 })
         return
       }
     } else {
       result = await authStore.handleAdminLogin(username, password, rememberMe)
       if (result.success && result.userSession) {
-        toast.add({
-          severity: 'success',
-          summary: '登录成功',
-          detail: `欢迎回来`,
-          life: 3000,
-        })
+        message.success('欢迎回来', { duration: 3000 })
       } else {
-        toast.add({
-          severity: 'error',
-          summary: '登录失败',
-          detail: result.error || '登录过程中发生错误',
-          life: 5000,
-        })
+        message.error(result.error || '登录过程中发生错误', { duration: 5000 })
         return
       }
     }
@@ -81,11 +61,8 @@ const handleLogin = async () => {
     }
   } catch (error) {
     console.error('Login failed:', error)
-    toast.add({
-      severity: 'error',
-      summary: '登录失败',
-      detail: (error as { message: string }).message || '登录过程中发生错误',
-      life: 5000,
+    message.error((error as { message: string }).message || '登录过程中发生错误', {
+      duration: 5000,
     })
   } finally {
     isLoading.value = false

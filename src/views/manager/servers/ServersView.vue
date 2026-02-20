@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage } from '@/composables/useNotifications'
 import ServerTable from './components/ServerTable.vue'
 import ServerDialog from './components/ServerDialog.vue'
 import ServerGroupDialog from './components/ServerGroupDialog.vue'
@@ -67,7 +67,7 @@ const serverForm = ref<ServerForm>({
   hostname: '',
 })
 
-const { toast } = useNotifications()
+const message = useMessage()
 
 // 服务器数据
 const servers = ref<Server[]>([])
@@ -219,23 +219,13 @@ const handleDeleteServer = async (server: Server) => {
         servers.value.splice(index, 1)
       }
 
-      toast.add({
-        severity: 'success',
-        summary: '删除成功',
-        detail: `服务器 "${server.name}" 已删除`,
-        life: 3000,
-      })
+      message.success(`服务器 "${server.name}" 已删除`, { duration: 3000 })
     } else {
       throw new Error(response.message || '删除失败')
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '请稍后重试'
-    toast.add({
-      severity: 'error',
-      summary: '删除失败',
-      detail: errorMessage,
-      life: 3000,
-    })
+    message.error(errorMessage, { duration: 3000 })
   } finally {
     deletingServerId.value = ''
   }
@@ -247,23 +237,13 @@ const handleRestartServer = async (server: Server) => {
     const response = (await serversApi.restartService(server.id)) as RestartServiceResponse
 
     if (response.status) {
-      toast.add({
-        severity: 'success',
-        summary: '重启成功',
-        detail: `服务器 "${server.name}" 的重启命令已发送`,
-        life: 3000,
-      })
+      message.success(`服务器 "${server.name}" 的重启命令已发送`, { duration: 3000 })
     } else {
       throw new Error(response.message || '重启失败')
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '请稍后重试'
-    toast.add({
-      severity: 'error',
-      summary: '重启失败',
-      detail: errorMessage,
-      life: 3000,
-    })
+    message.error(errorMessage, { duration: 3000 })
   } finally {
     restartingServerId.value = ''
   }
@@ -282,12 +262,7 @@ const handleSaveServer = async (form: ServerForm) => {
 
       if (response.status) {
         await loadServers()
-        toast.add({
-          severity: 'success',
-          summary: '更新成功',
-          detail: '服务器信息已更新',
-          life: 3000,
-        })
+        message.success('服务器信息已更新', { duration: 3000 })
         // 如果对话框仍然打开，触发重新加载
         if (showAddDialog.value && editingServer.value) {
           handleSaveSuccess()
@@ -308,12 +283,7 @@ const handleSaveServer = async (form: ServerForm) => {
 
         await loadServers()
 
-        toast.add({
-          severity: 'success',
-          summary: '添加成功',
-          detail: '新服务器已添加',
-          life: 3000,
-        })
+        message.success('新服务器已添加', { duration: 3000 })
 
         // 显示agent_key对话框
         agentKeyDialog.value = true
@@ -326,12 +296,7 @@ const handleSaveServer = async (form: ServerForm) => {
     resetForm()
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '请稍后重试'
-    toast.add({
-      severity: 'error',
-      summary: '操作失败',
-      detail: errorMessage,
-      life: 3000,
-    })
+    message.error(errorMessage, { duration: 3000 })
   } finally {
     saving.value = false
   }
@@ -415,12 +380,7 @@ const loadServers = async () => {
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '获取服务器列表失败'
-    toast.add({
-      severity: 'error',
-      summary: '加载失败',
-      detail: errorMessage,
-      life: 3000,
-    })
+    message.error(errorMessage, { duration: 3000 })
   }
 }
 
@@ -552,12 +512,7 @@ const handleExpandServer = async (serverId: string) => {
     }
 
     const errorMessage = error instanceof Error ? error.message : '获取服务器详细信息失败'
-    toast.add({
-      severity: 'error',
-      summary: '加载失败',
-      detail: errorMessage,
-      life: 3000,
-    })
+    message.error(errorMessage, { duration: 3000 })
   } finally {
     expandingServerId.value = ''
   }
@@ -613,12 +568,7 @@ const handleSaveSuccess = async () => {
 }
 
 const handleUpdateAgent = async (server: Server) => {
-  toast.add({
-    severity: 'info',
-    summary: '更新中',
-    detail: `服务器 "${server.name}" 的 Agent 正在更新中...`,
-    life: 3000,
-  })
+  message.info(`服务器 "${server.name}" 的 Agent 正在更新中...`, { duration: 3000 })
 }
 
 onMounted(async () => {
