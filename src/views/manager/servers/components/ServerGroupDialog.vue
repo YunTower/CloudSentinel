@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useNotifications } from '@/composables/useNotifications'
 import serversApi from '@/apis/servers'
 import type { ServerGroup } from '@/types/manager/servers'
+import { RiAddLine } from '@remixicon/vue'
 
 interface Props {
   visible: boolean
@@ -106,51 +107,54 @@ const handleCancel = () => {
 </script>
 
 <template>
-  <Dialog
-    v-model:visible="isVisible"
-    :header="dialogHeader"
-    :modal="true"
-    :style="{ width: '500px' }"
-    :draggable="false"
-    :block-scroll="false"
-  >
-    <form @submit.prevent="handleSubmit">
-      <div class="flex flex-col gap-4">
-        <div>
-          <label for="name" class="block text-sm font-medium mb-2">分组名称 *</label>
-          <InputText id="name" v-model="form.name" class="w-full" placeholder="请输入分组名称" />
-        </div>
+  <n-modal v-model:show="isVisible" :mask-closable="false">
+    <n-card :title="dialogHeader" style="width: 500px">
+      <form @submit.prevent="handleSubmit">
+        <div class="flex flex-col gap-4">
+          <div>
+            <label for="name" class="block text-sm font-medium mb-2">分组名称 *</label>
+            <n-input
+              id="name"
+              v-model:value="form.name"
+              class="w-full"
+              placeholder="请输入分组名称"
+            />
+          </div>
 
-        <div>
-          <label for="description" class="block text-sm font-medium mb-2">分组描述</label>
-          <Textarea
-            id="description"
-            v-model="form.description"
-            class="w-full"
-            rows="3"
-            placeholder="请输入分组描述（可选）"
-          />
-        </div>
+          <div>
+            <label for="description" class="block text-sm font-medium mb-2">分组描述</label>
+            <n-input
+              id="description"
+              v-model:value="form.description"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入分组描述（可选）"
+            />
+          </div>
 
-        <div>
-          <label for="color" class="block text-sm font-medium mb-2">颜色标识</label>
-          <InputText
-            id="color"
-            v-model="form.color"
-            class="w-full"
-            placeholder="例如：#FF5733（可选）"
-          />
+          <div>
+            <label for="color" class="block text-sm font-medium mb-2">颜色标识</label>
+            <n-input
+              id="color"
+              v-model:value="form.color"
+              class="w-full"
+              placeholder="例如：#FF5733（可选）"
+            />
+          </div>
         </div>
-      </div>
-    </form>
+      </form>
 
-    <template #footer>
-      <Button label="取消" severity="secondary" @click="handleCancel" />
-      <Button
-        :label="props.group ? '保存修改' : '创建分组'"
-        :loading="loading"
-        @click="handleSubmit"
-      />
-    </template>
-  </Dialog>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <n-button secondary @click="handleCancel">取消</n-button>
+          <n-button type="primary" :loading="loading" @click="handleSubmit">
+            <template #icon>
+              <ri-add-line />
+            </template>
+            {{ props.group ? '保存修改' : '创建分组' }}
+          </n-button>
+        </div>
+      </template>
+    </n-card>
+  </n-modal>
 </template>

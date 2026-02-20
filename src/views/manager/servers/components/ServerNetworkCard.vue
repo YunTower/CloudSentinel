@@ -15,18 +15,18 @@ defineProps<Props>()
 
 <template>
   <div
-    class="bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700 shadow-sm hover:shadow-md transition-shadow"
+    class="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow"
   >
     <div class="flex items-center gap-2 mb-3">
-      <i class="pi pi-wifi text-primary"></i>
+      <i class="ri-wifi-line text-primary"></i>
       <span class="font-medium">网络 I/O</span>
     </div>
     <div class="grid grid-cols-2 gap-4 mb-4">
       <div
-        class="text-center p-3 rounded-lg bg-[var(--p-surface-50)] dark:bg-[var(--p-surface-800)]"
+        class="text-center p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800"
       >
         <div class="flex items-center justify-center gap-2 mb-1">
-          <i class="pi pi-arrow-up text-sm"></i>
+          <i class="ri-arrow-up-line text-sm"></i>
           <span class="text-xs text-muted-color">上传</span>
         </div>
         <div class="text-xl font-bold">
@@ -34,10 +34,10 @@ defineProps<Props>()
         </div>
       </div>
       <div
-        class="text-center p-3 rounded-lg bg-[var(--p-surface-50)] dark:bg-[var(--p-surface-800)]"
+        class="text-center p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800"
       >
         <div class="flex items-center justify-center gap-2 mb-1">
-          <i class="pi pi-arrow-down text-sm"></i>
+          <i class="ri-arrow-down-line text-sm"></i>
           <span class="text-xs text-muted-color">速度</span>
         </div>
         <div class="text-xl font-bold">
@@ -48,10 +48,10 @@ defineProps<Props>()
     <div v-if="traffic">
       <div class="grid grid-cols-2 gap-4">
         <div
-          class="text-center p-3 rounded-lg bg-[var(--p-surface-50)] dark:bg-[var(--p-surface-800)]"
+          class="text-center p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800"
         >
           <div class="flex items-center justify-center gap-2 mb-1">
-            <i class="pi pi-arrow-up text-sm"></i>
+            <i class="ri-arrow-up-line text-sm"></i>
             <span class="text-xs text-muted-color">总发送</span>
           </div>
           <div class="text-lg font-bold">
@@ -59,10 +59,10 @@ defineProps<Props>()
           </div>
         </div>
         <div
-          class="text-center p-3 rounded-lg bg-[var(--p-surface-50)] dark:bg-[var(--p-surface-800)]"
+          class="text-center p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800"
         >
           <div class="flex items-center justify-center gap-2 mb-1">
-            <i class="pi pi-arrow-down text-sm"></i>
+            <i class="ri-arrow-down-line text-sm"></i>
             <span class="text-xs text-muted-color">总接收</span>
           </div>
           <div class="text-lg font-bold">
@@ -73,9 +73,9 @@ defineProps<Props>()
     </div>
     <div
       v-else
-      class="text-xs text-muted-color text-center pt-3 border-t border-surface-200 dark:border-surface-700"
+      class="pt-3 border-t border-zinc-200 dark:border-zinc-700"
     >
-      暂无流量数据
+      <n-empty description="暂无流量数据" class="py-2" />
     </div>
   </div>
 </template>

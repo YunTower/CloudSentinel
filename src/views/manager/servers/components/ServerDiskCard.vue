@@ -11,11 +11,11 @@ defineProps<Props>()
 
 <template>
   <div
-    class="bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700 shadow-sm hover:shadow-md transition-shadow"
+    class="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow"
   >
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
-        <i class="pi pi-database text-primary"></i>
+        <i class="ri-hard-drive-line text-primary"></i>
         <span class="font-medium">磁盘使用情况</span>
       </div>
     </div>
@@ -30,17 +30,13 @@ defineProps<Props>()
             {{ disk.usage_percent.toFixed(2) }}%
           </span>
         </div>
-        <ProgressBar
-          :value="disk.usage_percent"
-          :showValue="false"
-          class="h-2 rounded-full"
-          :pt="{
-            value: {
-              style: {
-                backgroundColor: getProgressBarColor(disk.usage_percent),
-              },
-            },
-          }"
+        <n-progress
+          type="line"
+          :percentage="disk.usage_percent"
+          :show-indicator="false"
+          :color="getProgressBarColor(disk.usage_percent)"
+          :height="8"
+          :border-radius="9999"
         />
         <div class="flex items-center justify-between text-xs text-muted-color">
           <span>{{ formatBytes(disk.used_size) }} / {{ formatBytes(disk.total_size) }}</span>
@@ -48,6 +44,6 @@ defineProps<Props>()
         </div>
       </div>
     </div>
-    <div v-else class="text-sm text-muted-color text-center py-2">暂无磁盘信息</div>
+    <n-empty v-else description="暂无磁盘信息" class="py-2" />
   </div>
 </template>

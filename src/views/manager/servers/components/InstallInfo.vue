@@ -141,20 +141,17 @@ const copyInstallCommand = async () => {
         <div class="flex items-center">
           <h4 class="text-lg font-semibold text-color">Agent Key</h4>
         </div>
-        <Button
-          icon="pi pi-copy"
-          text
-          size="small"
-          @click="copyAgentKey"
-          v-tooltip.top="'复制密钥'"
-        />
+        <n-tooltip trigger="hover" placement="top">
+          <template #trigger>
+            <n-button text size="small" @click="copyAgentKey">
+              <template #icon><i class="ri-file-copy-line" /></template>
+            </n-button>
+          </template>
+          复制密钥
+        </n-tooltip>
       </div>
       <div class="space-y-3">
-        <code
-          class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
-        >
-          {{ currentAgentKey }}
-        </code>
+        <n-code :code="currentAgentKey" language="bash" inline> </n-code>
       </div>
     </div>
 
@@ -164,20 +161,17 @@ const copyInstallCommand = async () => {
         <div class="flex items-center">
           <h4 class="text-lg font-semibold text-color">Linux 安装命令</h4>
         </div>
-        <Button
-          icon="pi pi-copy"
-          text
-          size="small"
-          @click="copyInstallCommand"
-          v-tooltip.top="'复制命令'"
-        />
+        <n-tooltip trigger="hover" placement="top">
+          <template #trigger>
+            <n-button text size="small" @click="copyInstallCommand">
+              <template #icon><i class="ri-file-copy-line" /></template>
+            </n-button>
+          </template>
+          复制命令
+        </n-tooltip>
       </div>
       <div class="space-y-3">
-        <code
-          class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
-        >
-          {{ installCommand }}
-        </code>
+        <n-code :code="installCommand" language="bash" word-wrap />
       </div>
     </div>
   </div>

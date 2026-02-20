@@ -10,28 +10,24 @@ defineProps<Props>()
 
 <template>
   <div
-    class="bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700 shadow-sm hover:shadow-md transition-shadow"
+    class="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow"
   >
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
-        <i class="pi pi-microchip text-primary"></i>
+        <i class="ri-cpu-line text-primary"></i>
         <span class="font-medium">CPU 使用率</span>
       </div>
       <span class="text-2xl font-bold" :class="getProgressTextColor(cpu)">
         {{ cpu.toFixed(2) }}%
       </span>
     </div>
-    <ProgressBar
-      :value="cpu"
-      :showValue="false"
-      class="h-3 rounded-full"
-      :pt="{
-        value: {
-          style: {
-            backgroundColor: getProgressBarColor(cpu),
-          },
-        },
-      }"
+    <n-progress
+      type="line"
+      :percentage="cpu"
+      :show-indicator="false"
+      :color="getProgressBarColor(cpu)"
+      :height="12"
+      :border-radius="9999"
     />
   </div>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { h } from 'vue'
 import serversApi from '@/apis/servers'
 import type { ServerGroup } from '@/types/manager/servers'
 
@@ -47,28 +48,37 @@ const handleChange = (value: number | null) => {
 defineExpose({
   refresh: loadGroups,
 })
+
+// 构建 n-select options，带颜色点渲染
+const groupOptions = computed(() =>
+  groups.value.map((group) => ({
+    label: group.name,
+    value: group.id,
+    color: group.color,
+  })),
+)
+
+const renderLabel = (option: { label: string; value: number; color?: string }) => {
+  return h('div', { class: 'flex items-center gap-2' }, [
+    option.color
+      ? h('span', {
+          class: 'w-3 h-3 rounded-full flex-shrink-0',
+          style: { backgroundColor: option.color },
+        })
+      : null,
+    h('span', option.label),
+  ])
+}
 </script>
 
 <template>
-  <Select
-    :model-value="modelValue"
-    :options="groups"
-    option-label="name"
-    option-value="id"
+  <n-select
+    :value="modelValue"
+    :options="groupOptions"
     :placeholder="props.placeholder"
     :loading="loading"
+    :render-label="renderLabel"
     class="w-full"
-    @update:model-value="handleChange"
-  >
-    <template #option="slotProps">
-      <div class="flex items-center gap-2">
-        <span
-          v-if="slotProps.option.color"
-          class="w-3 h-3 rounded-full"
-          :style="{ backgroundColor: slotProps.option.color }"
-        />
-        <span>{{ slotProps.option.name }}</span>
-      </div>
-    </template>
-  </Select>
+    @update:value="handleChange"
+  />
 </template>

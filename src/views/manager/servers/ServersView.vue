@@ -24,6 +24,17 @@ import type {
   RestartServiceResponse,
   ServerListItemData,
 } from '@/types/manager/servers'
+import {
+  RiAddLine,
+  RiCheckLine,
+  RiCloseLine,
+  RiFileCodeLine,
+  RiFileCopyFill,
+  RiFileCopyLine,
+  RiFolderLine,
+  RiInformationLine,
+  RiSearchLine,
+} from '@remixicon/vue'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -639,58 +650,51 @@ onMounted(async () => {
         <p class="text-muted-color">管理和监控所有服务器节点</p>
       </div>
       <div class="flex gap-2">
-        <Button
-          label="分组管理"
-          icon="pi pi-folder"
-          severity="secondary"
-          @click="showGroupManager = true"
-        />
-        <Button
-          label="创建分组"
-          icon="pi pi-plus"
-          severity="secondary"
-          @click="handleCreateGroup"
-        />
-        <Button label="添加服务器" icon="pi pi-plus" @click="showAddDialog = true" />
+        <n-button secondary @click="showGroupManager = true">
+          <template #icon>
+            <ri-folder-line />
+          </template>
+          分组管理
+        </n-button>
+        <n-button secondary @click="handleCreateGroup">
+          <template #icon>
+            <ri-add-line />
+          </template>
+          创建分组
+        </n-button>
+        <n-button type="primary" @click="showAddDialog = true">
+          <template #icon>
+            <ri-add-line />
+          </template>
+          添加服务器
+        </n-button>
       </div>
     </div>
 
     <!-- 筛选栏 -->
-    <div class="mb-4 flex gap-4 items-center flex-wrap">
+    <div class="mb-2 flex gap-2 items-center flex-wrap">
       <div class="flex-1 min-w-[200px]">
-        <IconField>
-          <InputIcon class="pi pi-search" />
-          <InputText
-            v-model="searchQuery"
-            placeholder="搜索服务器名称、IP或地域..."
-            class="w-full"
-          />
-        </IconField>
+        <n-input v-model:value="searchQuery" placeholder="搜索服务器名称、IP或地域..." clearable />
       </div>
-      <Select
-        v-model="statusFilter"
+      <n-select
+        v-model:value="statusFilter"
         :options="[
           { label: '全部状态', value: 'all' },
           { label: '在线', value: 'online' },
           { label: '离线', value: 'offline' },
           { label: '错误', value: 'error' },
         ]"
-        option-label="label"
-        option-value="value"
         placeholder="筛选状态"
-        class="w-[150px]"
+        style="width: 150px"
       />
-
-      <Select
-        v-model="groupFilter"
+      <n-select
+        v-model:value="groupFilter"
         :options="[
           { label: '全部分组', value: null },
           ...groups.map((g) => ({ label: g.name, value: g.id })),
         ]"
-        option-label="label"
-        option-value="value"
         placeholder="筛选分组"
-        class="w-[150px]"
+        style="width: 150px"
       />
     </div>
 
@@ -705,21 +709,23 @@ onMounted(async () => {
         >
       </div>
       <div class="flex items-center gap-2">
-        <Button
-          label="复制告警规则到"
-          icon="pi pi-copy"
+        <n-button
           size="small"
+          type="primary"
           :disabled="!canCopyAlertRules"
           @click="showCopyAlertRulesDialog = true"
-        />
-        <Button
-          label="取消选择"
-          icon="pi pi-times"
-          size="small"
-          severity="secondary"
-          outlined
-          @click="selectedServers = []"
-        />
+        >
+          <template #icon>
+            <ri-file-copy-line />
+          </template>
+          复制告警规则到
+        </n-button>
+        <n-button size="small" secondary @click="selectedServers = []">
+          <template #icon>
+            <ri-close-line />
+          </template>
+          取消选择
+        </n-button>
       </div>
     </div>
 
@@ -779,49 +785,56 @@ onMounted(async () => {
     />
 
     <!-- Agent Key和安装命令显示对话框 -->
-    <Dialog v-model:visible="agentKeyDialog" modal :closable="true" class="w-3xl">
-      <template #header>
-        <div class="flex items-center gap-3">
-          <i class="pi pi-check-circle text-green-600 dark:text-green-400 text-2xl mt-0.5"></i>
-          <h4 class="font-medium text-green-700 dark:text-green-300">添加成功</h4>
-        </div>
-      </template>
-      <div class="space-y-4">
-        <p class="font-medium mb-4">服务器已成功添加！请保存以下信息：</p>
-        <InstallInfo
-          :agent-key="generatedAgentKey"
-          :server-i-p="serverIP"
-          :websocket-u-r-l="websocketURL"
-        />
-        <div class="mt-4 p-3 border rounded-lg">
-          <div class="flex items-start gap-2">
-            <div>
-              <p class="font-medium mb-1 gap-2">
-                <i class="pi pi-info-circle mt-0.5 mr-2"></i>
-                <span class="font-bold">安装说明</span>
-              </p>
-              <ul class="space-y-1">
-                <li>• 在目标Linux服务器上执行上述安装命令</li>
-                <li>• 安装完成后，探针会自动连接到控制中心</li>
-                <li>• 系统信息（地域、操作系统等）将自动获取</li>
-                <li>• 请妥善保管Agent Key避免泄露，此Agent Key用于服务器之间身份验证</li>
-              </ul>
+    <n-modal v-model:show="agentKeyDialog" :mask-closable="true">
+      <n-card
+        style="width: 700px; max-width: 95vw"
+        :bordered="false"
+        size="huge"
+        role="dialog"
+        aria-modal="true"
+      >
+        <template #header>
+          <div class="flex items-center gap-3">
+            <ri-check-line class-name="text-green-600 dark:text-green-400 text-2xl mt-0.5" />
+            <h4 class="font-medium text-green-700 dark:text-green-300">添加成功</h4>
+          </div>
+        </template>
+        <div class="space-y-4">
+          <p class="font-medium mb-4">服务器已成功添加！请保存以下信息：</p>
+          <InstallInfo
+            :agent-key="generatedAgentKey"
+            :server-i-p="serverIP"
+            :websocket-u-r-l="websocketURL"
+          />
+          <div class="mt-4 p-3 border rounded-lg">
+            <div class="flex items-start gap-2">
+              <div>
+                <p class="font-medium mb-1 gap-2">
+                  <ri-information-line class-name="mt-0.5 mr-2" />
+                  <span class="font-bold">安装说明</span>
+                </p>
+                <ul class="space-y-1">
+                  <li>• 在目标Linux服务器上执行上述安装命令</li>
+                  <li>• 安装完成后，探针会自动连接到控制中心</li>
+                  <li>• 系统信息（地域、操作系统等）将自动获取</li>
+                  <li>• 请妥善保管Agent Key避免泄露，此Agent Key用于服务器之间身份验证</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <template #footer>
-        <div class="flex justify-end">
-          <Button
-            label="我已保存"
-            icon="pi pi-check"
-            @click="agentKeyDialog = false"
-            class="px-6 py-2"
-          />
-        </div>
-      </template>
-    </Dialog>
+        <template #footer>
+          <div class="flex justify-end">
+            <n-button type="primary" @click="agentKeyDialog = false" class="px-6 py-2">
+              <template #icon>
+                <ri-check-line />
+              </template>
+              我已保存
+            </n-button>
+          </div>
+        </template>
+      </n-card>
+    </n-modal>
   </div>
 </template>
 

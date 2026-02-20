@@ -30,25 +30,27 @@ const handleCancel = () => {
 }
 </script>
 <template>
-  <Dialog v-model:visible="isVisible" header="确认删除" modal class="w-md">
-    <div class="space-y-4">
-      <div class="flex items-center gap-3">
-        <i class="pi pi-exclamation-triangle text-red-500 text-xl"></i>
-        <div>
-          <p class="font-medium">确定要删除服务器吗？</p>
-          <p class="text-sm text-muted-color mt-1">
-            服务器：<span class="font-medium">{{ server?.name }}</span>
-          </p>
+  <n-modal v-model:show="isVisible" :mask-closable="false">
+    <n-card title="确认删除" style="width: 420px">
+      <div class="space-y-4">
+        <div class="flex items-center gap-3">
+          <i class="ri-error-warning-line text-red-500 text-xl"></i>
+          <div>
+            <p class="font-medium">确定要删除服务器吗？</p>
+            <p class="text-sm text-muted-color mt-1">
+              服务器：<span class="font-medium">{{ server?.name }}</span>
+            </p>
+          </div>
         </div>
+        <p class="text-sm text-muted-color">此操作无法撤销，删除后将无法恢复。</p>
       </div>
-      <p class="text-sm text-muted-color">此操作无法撤销，删除后将无法恢复。</p>
-    </div>
 
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <Button label="取消" text @click="handleCancel" />
-        <Button label="删除" severity="danger" @click="handleConfirm" :loading="deleting" />
-      </div>
-    </template>
-  </Dialog>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <n-button text @click="handleCancel">取消</n-button>
+          <n-button type="error" :loading="deleting" @click="handleConfirm">删除</n-button>
+        </div>
+      </template>
+    </n-card>
+  </n-modal>
 </template>

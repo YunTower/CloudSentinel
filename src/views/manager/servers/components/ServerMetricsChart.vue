@@ -501,22 +501,24 @@ defineExpose({
 
 <template>
   <div
-    class="chart-card bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700 shadow-sm"
+    class="chart-card bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm"
   >
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
-        <i class="pi pi-chart-line text-primary"></i>
+        <i class="ri-line-chart-line text-primary"></i>
         <span class="font-medium">{{ chartTitles[chartType] }}</span>
       </div>
-      <div class="flex items-center gap-2">
-        <SelectButton
-          :modelValue="timeRange"
-          :options="timeRangeOptions"
-          optionLabel="label"
-          optionValue="value"
-          @update:modelValue="handleTimeRangeChange"
+      <div class="flex items-center gap-1">
+        <n-button
+          v-for="option in timeRangeOptions"
+          :key="option.value"
           size="small"
-        />
+          :secondary="timeRange !== option.value"
+          :type="timeRange === option.value ? 'primary' : 'default'"
+          @click="handleTimeRangeChange(option.value)"
+        >
+          {{ option.label }}
+        </n-button>
       </div>
     </div>
     <div ref="chartContainer" class="mt-4" style="height: 250px"></div>
