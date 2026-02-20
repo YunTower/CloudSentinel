@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { RiLayoutGridLine, RiListCheck } from '@remixicon/vue'
 import { useNotifications } from '@/composables/useNotifications'
 import ServerCard from './components/ServerCard.vue'
 import ServerTable from './components/ServerTable.vue'
 import GroupHeader from './components/GroupHeader.vue'
-import Loading from '@/components/Loading/Loading.vue'
 import serversApi from '@/apis/servers'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useAuthStore } from '@/stores/auth'
@@ -42,12 +42,6 @@ const getStoredViewMode = (): 'card' | 'table' => {
 
 const viewMode = ref<'card' | 'table'>(getStoredViewMode())
 const groupBy = ref<'none' | number | 'status' | 'location' | 'os'>('none')
-
-// 视图选项
-const viewOptions = [
-  { value: 'card', icon: 'pi pi-table', label: '' },
-  { value: 'table', icon: 'pi pi-list', label: '' },
-]
 
 // 分组选项
 const groupOptions = computed(() => {
@@ -266,32 +260,30 @@ const getGroupColor = (groupName: string): string | undefined => {
 }
 </script>
 <template>
-  <div class="mx-0 my-auto space-y-6">
+  <div class="w-full">
     <!-- 初始化状态 -->
-    <div v-if="initializing" class="flex flex-col items-center justify-center py-12 space-y-4">
-      <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
-      <p class="text-lg text-muted-color">正在初始化...</p>
+    <div v-if="initializing" class="flex justify-center py-12">
+      <n-spin size="large" description="正在初始化..." />
     </div>
 
     <!-- 加载状态 -->
-    <Loading v-else-if="loading" :size="25" :loading="loading" :overlay="false" />
+    <div v-else-if="loading" class="flex justify-center py-12">
+      <n-spin size="large" />
+    </div>
 
     <!-- 错误状态 -->
-    <div
-      v-else-if="error && !initializing"
-      class="flex flex-col items-center justify-center py-12 space-y-4"
-    >
-      <p class="text-2xl text-color">{{ error }}</p>
-      <Button size="small" @click="loadServers"> 重试 </Button>
-    </div>
+    <n-result v-else-if="error && !initializing" status="error" :title="error" class="py-12">
+      <template #footer>
+        <n-button @click="loadServers">重试</n-button>
+      </template>
+    </n-result>
 
     <!-- 空数据状态 -->
-    <div
+    <n-empty
       v-else-if="servers.length === 0 && !initializing"
-      class="flex flex-col items-center justify-center py-12"
-    >
-      <p class="text-lg text-muted-color">暂无服务器</p>
-    </div>
+      description="暂无服务器"
+      class="py-12"
+    />
 
     <!-- 主要内容 -->
     <div v-else-if="!initializing" class="space-y-6">
@@ -301,26 +293,22 @@ const getGroupColor = (groupName: string): string | undefined => {
           <h2 class="text-xl font-semibold text-color">总览</h2>
           <span class="text-sm text-muted-color">({{ servers.length }} 台)</span>
         </div>
-        <div class="flex items-center gap-3">
-          <Dropdown
-            v-model="groupBy"
+        <div class="flex items-center gap-3 group-type">
+          <n-select
+            v-model:value="groupBy"
             :options="groupOptions"
             size="small"
-            option-label="label"
-            option-value="value"
             placeholder="分组方式"
-            class="w-[140px]"
+            style="width: 140px"
           />
-          <SelectButton
-            v-model="viewMode"
-            :options="viewOptions"
-            option-value="value"
-            option-label="label"
-          >
-            <template #option="slotProps">
-              <i :class="slotProps.option.icon"></i>
-            </template>
-          </SelectButton>
+          <n-radio-group v-model:value="viewMode" size="small">
+            <n-radio-button value="card">
+              <ri-layout-grid-line size="14px" />
+            </n-radio-button>
+            <n-radio-button value="table">
+              <ri-list-check size="14px" />
+            </n-radio-button>
+          </n-radio-group>
         </div>
       </div>
 
@@ -376,3 +364,10 @@ const getGroupColor = (groupName: string): string | undefined => {
     </div>
   </div>
 </template>
+<style scoped>
+.group-type :deep(.n-radio__label) {
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+</style>
