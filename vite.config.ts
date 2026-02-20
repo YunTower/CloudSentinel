@@ -6,7 +6,7 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import tailwindcss from '@tailwindcss/vite'
 import Components from 'unplugin-vue-components/vite'
-import { PrimeVueResolver } from '@primevue/auto-import-resolver'
+import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
 import { visualizer } from 'rollup-plugin-visualizer'
 
 // https://vite.dev/config/
@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
       vueDevTools(),
       tailwindcss(),
       Components({
-        resolvers: [PrimeVueResolver()],
+        resolvers: [NaiveUiResolver()],
       }),
       isAnalyze &&
         visualizer({
@@ -47,8 +47,8 @@ export default defineConfig(({ mode }) => {
           // 手动分割代码块
           manualChunks: (id) => {
             if (id.includes('node_modules')) {
-              if (id.includes('primevue') || id.includes('primeicons')) {
-                return 'primevue'
+              if (id.includes('naive-ui') || id.includes('vicons')) {
+                return 'naive-ui'
               }
               if (id.includes('echarts')) {
                 return 'echarts'
@@ -80,6 +80,7 @@ export default defineConfig(({ mode }) => {
       sourcemap: false,
     },
     server: {
+      port: 5177,
       proxy: {
         [VITE_API_URL_PREFIX]: {
           target: VITE_API_SERVER,
