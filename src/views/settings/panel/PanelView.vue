@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import type { FormInst, FormRules } from 'naive-ui'
 import { useNotifications } from '@/composables/useNotifications'
+import { useDialog } from 'naive-ui'
 import { marked } from 'marked'
 import panelApi from '@/apis/settings/panel'
 import { useAuthStore } from '@/stores/auth'
 import type { PanelSettings } from '@/types/settings/panel'
 import type { GetUpdateData } from '@/types/settings/api'
 import { hasUpdate as checkHasUpdate, getVersionTypeConfig } from '@/utils/version.ts'
+import {
+  RiAlignLeft,
+  RiCheckboxCircleLine,
+  RiDownloadCloudLine,
+  RiErrorWarningLine,
+  RiSaveLine,
+  RiSearchLine,
+} from '@remixicon/vue'
 
 export interface VersionInfo extends GetUpdateData {
   has_update: boolean
@@ -26,11 +36,19 @@ const hasUpdate = computed(() => {
 
   return checkHasUpdate(current_version, latest_version, current_version_type, latest_version_type)
 })
-const { toast, confirm } = useNotifications()
+const { toast } = useNotifications()
+const dialog = useDialog()
 const authStore = useAuthStore()
+const panelFormRef = ref<FormInst | null>(null)
 const panelSettings = ref<PanelSettings>({
   title: 'CloudSentinel',
 })
+const panelRules: FormRules = {
+  title: [{ required: true, message: '请输入面板标题', trigger: 'blur' }],
+  log_retention_days: [
+    { type: 'number', min: 1, max: 365, message: '范围 1-365 天', trigger: ['blur', 'input'] },
+  ],
+}
 const saving = ref(false)
 const checkingUpdate = ref(false)
 const updating = ref(false)
@@ -89,13 +107,12 @@ const checkForUpdate = async () => {
 // 执行更新
 const performUpdate = async () => {
   if (versionInfo.value?.latest_version_type !== 'release') {
-    confirm.require({
-      message: '当前更新版本非正式版（Release），可能存在不稳定因素，是否确认更新？',
-      header: '高风险操作确认',
-      acceptClass: 'p-button-danger',
-      acceptLabel: '确认继续操作',
-      rejectLabel: '取消',
-      accept: () => {
+    dialog.warning({
+      title: '高风险操作确认',
+      content: '当前更新版本非正式版（Release），可能存在不稳定因素，是否确认更新？',
+      positiveText: '确认继续操作',
+      negativeText: '取消',
+      onPositiveClick: () => {
         executeUpdate()
       },
     })
@@ -230,7 +247,10 @@ const executeUpdate = async () => {
 
         // 如果失败次数未超过限制，继续轮询
         if (consecutiveFailures <= maxConsecutiveFailures) {
-          console.warn(`获取更新状态失败，继续重试... (${consecutiveFailures}/${maxConsecutiveFailures}):`, error)
+          console.warn(
+            `获取更新状态失败，继续重试... (${consecutiveFailures}/${maxConsecutiveFailures}):`,
+            error,
+          )
           return
         }
 
@@ -284,11 +304,16 @@ const loadPanelSettings = async () => {
 
 // 保存设置
 const savePanelSettings = async () => {
+  try {
+    await panelFormRef.value?.validate()
+  } catch {
+    return
+  }
   saving.value = true
   try {
     await panelApi.savePanelSettings({
       title: panelSettings.value.title,
-      log_retention_days: panelSettings.value.log_retention_days
+      log_retention_days: panelSettings.value.log_retention_days,
     })
 
     const publicSettings = authStore.getPublicSettings()
@@ -318,212 +343,184 @@ onMounted(() => {
 </script>
 <template>
   <div class="panel-view">
-    <ConfirmDialog></ConfirmDialog>
     <div class="mb-6 flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold text-color mb-2">面板设置</h1>
         <p class="text-muted-color">配置面板的基本信息和外观设置</p>
       </div>
       <div>
-        <Button
-          size="small"
-          class="px-6"
-          label="保存设置"
-          icon="pi pi-save"
-          @click="savePanelSettings"
-          :loading="saving"
-        />
+        <n-button type="primary" @click="savePanelSettings" :loading="saving">
+          <template #icon>
+            <ri-save-line />
+          </template>
+          保存设置
+        </n-button>
       </div>
     </div>
 
     <div class="grid grid-cols-1">
       <!-- 基本信息设置 -->
-      <Card class="h-fit">
-        <template #title>
+      <n-card class="h-fit">
+        <template #header>
           <div class="flex items-center gap-2">
-            <i class="pi pi-cog text-primary"></i>
             <span>基本设置</span>
           </div>
         </template>
-        <template #content>
-          <div class="space-y-4">
-            <!-- 面板标题 -->
-            <div class="flex flex-col gap-2">
-              <label for="panelTitle" class="text-sm font-medium text-color">面板标题</label>
-              <InputText
-                id="panelTitle"
-                v-model="panelSettings.title"
-                placeholder="请输入面板标题"
-                class="w-full"
-              />
-            </div>
-
-            <!-- 日志保留时间 -->
-            <div class="flex flex-col gap-2">
-              <label for="logRetentionDays" class="text-sm font-medium text-color">日志保留天数</label>
-              <InputNumber
-                id="logRetentionDays"
-                v-model="panelSettings.log_retention_days"
-                placeholder="30"
-                class="w-full"
-                :min="1"
-                :max="365"
-                suffix=" 天"
-              />
-              <small class="text-muted-color">Agent 日志在数据库中保留的天数，默认 30 天</small>
-            </div>
-          </div>
-        </template>
-      </Card>
+        <n-form ref="panelFormRef" :model="panelSettings" :rules="panelRules" label-placement="top">
+          <n-form-item label="面板标题" path="title" required>
+            <n-input
+              v-model:value="panelSettings.title"
+              placeholder="请输入面板标题"
+              class="w-full"
+            />
+          </n-form-item>
+          <n-form-item label="日志保留天数" path="log_retention_days">
+            <n-input-number
+              v-model:value="panelSettings.log_retention_days"
+              placeholder="30"
+              class="w-full"
+              :min="1"
+              :max="365"
+              :show-button="false"
+            >
+              <template #suffix> 天 </template>
+            </n-input-number>
+          </n-form-item>
+        </n-form>
+      </n-card>
 
       <!-- 版本更新 -->
-      <Card class="h-fit mt-6">
-        <template #title>
+      <n-card class="h-fit mt-2">
+        <template #header>
           <div class="flex items-center gap-2">
-            <i class="pi pi-box text-primary"></i>
             <span>版本更新</span>
           </div>
         </template>
-        <template #content>
-          <div class="space-y-3">
-            <!-- 版本信息 -->
-            <div
-              class="flex items-center justify-between p-4 rounded-lg bg-surface-50 dark:bg-surface-800"
-            >
-              <div class="space-y-1">
-                <div class="flex items-center gap-3">
-                  <span class="text-sm font-medium text-color">当前版本:</span>
-                  <span class="text-xs not-even:rounded-md text-primary font-semibold">
-                    {{
-                      versionInfo?.current_version ? 'v' + versionInfo?.current_version : 'unknown'
-                    }}
+        <div class="space-y-2">
+          <!-- 版本信息 -->
+          <n-card>
+            <div class="flex items-center justify-between w-full">
+              <div class="flex items-center gap-3">
+                <span class="text-sm font-medium text-color">当前版本:</span>
+                <span class="text-xs not-even:rounded-md text-primary font-semibold">
+                  {{
+                    versionInfo?.current_version ? 'v' + versionInfo?.current_version : 'unknown'
+                  }}
+                </span>
+              </div>
+              <n-button secondary size="small" @click="checkForUpdate" :loading="checkingUpdate">
+                <template #icon>
+                  <ri-search-line />
+                </template>
+                检查更新
+              </n-button>
+            </div>
+          </n-card>
+
+          <!-- 更新状态展示 -->
+          <div v-if="hasCheckedUpdate && versionInfo" class="animate-fade-in">
+            <!-- 可用更新 -->
+            <n-card v-if="hasUpdate">
+              <!-- 头部：版本信息与操作 -->
+              <div class="flex items-start justify-between gap-4">
+                <div class="space-y-2">
+                  <div class="flex items-center gap-2">
+                    <span class="text-base font-medium text-color">新版本：</span>
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm font-bold text-primary-700 dark:text-primary-300">
+                        v{{ versionInfo.latest_version }}
+                      </span>
+                      <n-tag
+                        :type="getVersionTypeConfig(versionInfo.latest_version_type).severity"
+                        size="small"
+                      >
+                        {{ getVersionTypeConfig(versionInfo.latest_version_type).label }}
+                      </n-tag>
+                    </div>
+                  </div>
+                  <p class="text-xs text-muted-color flex items-center gap-1.5">
+                    发布于 {{ versionInfo.publish_time }}
+                  </p>
+                  <div
+                    v-if="versionInfo.latest_version_type !== 'release'"
+                    class="flex items-center gap-2 text-orange-500 text-sm mt-1"
+                  >
+                    <ri-error-warning-line size="14px" />
+                    <span>此版本为非正式版，可能包含实验性功能或大量缺陷，请谨慎更新</span>
+                  </div>
+                </div>
+                <div class="flex-shrink-0">
+                  <n-button type="primary" size="small" @click="performUpdate" :loading="updating">
+                    <template #icon>
+                      <ri-download-cloud-line />
+                    </template>
+                    立即更新
+                  </n-button>
+                </div>
+              </div>
+
+              <!-- 更新进行中提示 -->
+              <div
+                v-if="updating"
+                class="mx-5 mb-5 p-4 rounded-lg bg-surface-0 dark:bg-surface-800/50 border border-gray-200 dark:border-gray-700"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <n-spin v-if="currentStep !== 'completed'" size="small" />
+                    <ri-checkbox-circle-line v-else class="text-green-500" size="14px" />
+                    <span class="text-sm font-medium text-color">{{ updateStep }}</span>
+                  </div>
+                  <span
+                    v-if="currentStep === 'downloading'"
+                    class="text-sm text-muted-color font-mono"
+                  >
+                    {{ updateProgress }}%
                   </span>
                 </div>
+                <n-progress
+                  class="mt-2"
+                  v-if="currentStep === 'downloading'"
+                  type="line"
+                  :percentage="updateProgress"
+                  :show-indicator="false"
+                  :height="6"
+                />
               </div>
 
-              <Button
-                label="检查更新"
-                icon="pi pi-search"
-                @click="checkForUpdate"
-                :loading="checkingUpdate"
-                severity="secondary"
-                outlined
-                size="small"
-              />
-            </div>
+              <!-- 分隔线 -->
+              <n-divider />
 
-            <!-- 更新状态展示 -->
-            <div v-if="hasCheckedUpdate && versionInfo" class="animate-fade-in">
-              <!-- 可用更新 -->
-              <div
-                v-if="hasUpdate"
-                class="rounded-xl bg-surface-50 dark:bg-surface-800 overflow-hidden"
-              >
-                <!-- 头部：版本信息与操作 -->
-                <div class="p-5 flex items-start justify-between gap-4">
-                  <div class="space-y-2">
-                    <div class="flex items-center gap-3">
-                      <span class="text-base font-medium text-color">发现新版本</span>
-                      <div
-                        class="flex items-center gap-2 px-2.5 py-1 rounded-md bg-primary-100 dark:bg-primary-900/20 border border-primary-100 dark:border-primary-900/30"
-                      >
-                        <span class="text-sm font-bold text-primary-700 dark:text-primary-300">
-                          v{{ versionInfo.latest_version }}
-                        </span>
-                        <Tag
-                          :value="getVersionTypeConfig(versionInfo.latest_version_type).label"
-                          :severity="getVersionTypeConfig(versionInfo.latest_version_type).severity"
-                          class="!text-[10px] !h-5 !min-w-[auto] !px-1.5"
-                        />
-                      </div>
-                    </div>
-                    <p class="text-xs text-muted-color flex items-center gap-1.5">
-                      发布于 {{ versionInfo.publish_time }}
-                    </p>
-                    <div
-                      v-if="versionInfo.latest_version_type !== 'release'"
-                      class="flex items-center gap-2 text-orange-500 text-sm mt-1"
-                    >
-                      <i class="pi pi-exclamation-triangle"></i>
-                      <span>此版本为非正式版，可能包含实验性功能或大量缺陷，请谨慎更新</span>
-                    </div>
-                  </div>
-                  <div class="flex-shrink-0">
-                    <Button
-                      label="立即更新"
-                      icon="pi pi-cloud-download"
-                      @click="performUpdate"
-                      :loading="updating"
-                      size="small"
-                    />
-                  </div>
-                </div>
-
-                <!-- 更新进行中提示 -->
+              <!-- 更新内容 -->
+              <div class="space-y-2">
+                <h4 class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-align-left size="14px" />
+                  <span>更新内容</span>
+                </h4>
                 <div
-                  v-if="updating"
-                  class="mx-5 mb-5 p-4 rounded-lg bg-surface-50 dark:bg-surface-800/50 border border-surface-200 dark:border-surface-700"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                      <i
-                        v-if="currentStep !== 'completed'"
-                        class="pi pi-spin pi-spinner text-primary"
-                      ></i>
-                      <i v-else class="pi pi-check-circle text-green-500"></i>
-                      <span class="text-sm font-medium text-color">{{ updateStep }}</span>
-                    </div>
-                    <span
-                      v-if="currentStep === 'downloading'"
-                      class="text-sm text-muted-color font-mono"
-                    >
-                      {{ updateProgress }}%
-                    </span>
-                  </div>
-                  <ProgressBar
-                    class="mt-2"
-                    v-if="currentStep === 'downloading'"
-                    :value="updateProgress"
-                    :showValue="false"
-                    style="height: 6px"
-                  ></ProgressBar>
-                </div>
-
-                <!-- 分隔线 -->
-                <div class="h-px bg-surface-100 dark:bg-surface-700 mx-5"></div>
-
-                <!-- 更新内容 -->
-                <div class="p-5 space-y-3">
-                  <h4 class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-align-left text-primary"></i>
-                    <span>更新内容</span>
-                  </h4>
-                  <div
-                    v-html="marked.parse(versionInfo.change_log)"
-                    class="text-sm text-color-secondary prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0"
-                  ></div>
-                </div>
+                  v-html="marked.parse(versionInfo.change_log)"
+                  class="text-sm text-color-secondary prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0"
+                ></div>
               </div>
+            </n-card>
 
-              <!-- 无更新状态 -->
+            <!-- 无更新状态 -->
+            <div
+              v-else
+              class="flex flex-col items-center justify-center py-10 text-center rounded-xl bg-surface-0 dark:bg-surface-800"
+            >
               <div
-                v-else
-                class="flex flex-col items-center justify-center py-10 text-center rounded-xl bg-surface-50 dark:bg-surface-800"
+                class="w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4"
               >
-                <div
-                  class="w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4"
-                >
-                  <i class="pi pi-check text-4xl text-green-500 dark:text-green-400"></i>
-                </div>
-                <h3 class="text-lg font-medium text-color mb-1">当前已是最新版本</h3>
-                <p class="text-sm text-muted-color">
-                  您的系统版本 v{{ versionInfo.current_version }} 是最新的，无需更新
-                </p>
+                <i class="ri-check-line text-4xl text-green-500 dark:text-green-400"></i>
               </div>
+              <h3 class="text-lg font-medium text-color mb-1">当前已是最新版本</h3>
+              <p class="text-sm text-muted-color">
+                您的系统版本 v{{ versionInfo.current_version }} 是最新的，无需更新
+              </p>
             </div>
           </div>
-        </template>
-      </Card>
+        </div>
+      </n-card>
     </div>
   </div>
 </template>
