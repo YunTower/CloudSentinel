@@ -19,6 +19,7 @@
   "dependencies": {
     "@remixicon/vue": "^4.9.0",
     "@tailwindcss/vite": "^4.1.11",
+    "@visactor/vchart": "^2.0.16",
     "alova": "^3.3.4",
     "echarts": "^5.6.0",
     "highlight.js": "^11.11.1",
