@@ -589,7 +589,7 @@ const serviceColumns = [
 <template>
   <n-modal
     v-model:show="isVisible"
-    :title="isEditing ? `编辑服务器 - ${props.editingServer?.name}` : '添加服务器'"
+    :title="isEditing ? `服务器设置 - ${props.editingServer?.name}` : '添加服务器'"
     :mask-closable="false"
     class="w-[700px]!"
     preset="card"

@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useMessage } from 'naive-ui'
 import serversApi from '@/apis/servers'
 import type { ServerGroup } from '@/types/manager/servers'
-import { RiAddLine } from '@remixicon/vue'
+import { RiAddLine, RiCheckLine, RiSaveLine } from '@remixicon/vue'
 
 interface Props {
   visible: boolean
@@ -29,10 +29,6 @@ const isVisible = computed({
       resetForm()
     }
   },
-})
-
-const dialogHeader = computed(() => {
-  return props.group ? '编辑分组' : '创建分组'
 })
 
 const form = ref({
@@ -104,7 +100,7 @@ const handleCancel = () => {
 <template>
   <n-modal
     v-model:show="isVisible"
-    :title="dialogHeader"
+    :title="props.group ? '编辑分组' : '创建分组'"
     :mask-closable="false"
     class="w-[700px]!"
     preset="card"
@@ -150,7 +146,8 @@ const handleCancel = () => {
         <n-button secondary @click="handleCancel">取消</n-button>
         <n-button type="primary" :loading="loading" @click="handleSubmit">
           <template #icon>
-            <ri-add-line />
+            <ri-add-line v-if="!props.group" />
+            <ri-check-line v-else />
           </template>
           {{ props.group ? '保存修改' : '创建分组' }}
         </n-button>
