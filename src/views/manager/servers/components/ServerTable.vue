@@ -91,7 +91,6 @@ interface Props {
   servers: Server[]
   loading?: boolean
   deletingServerId?: string
-  restartingServerId?: string
   latestAgentVersion?: string
   latestAgentVersionType?: VersionType
   selectedServers?: Server[]
@@ -103,7 +102,6 @@ const emit = defineEmits<{
   'view-install-info': [server: Server]
   'delete-server': [server: Server]
   'edit-server': [server: Server]
-  'restart-server': [server: Server]
   'update-agent': [server: Server]
   'selection-change': [servers: Server[]]
 }>()
@@ -213,6 +211,7 @@ const columns = computed(() => {
           {
             type: severityToNaiveType(getStatusSeverity(row.status)),
             size: 'small',
+            bordered: false,
           },
           { default: () => getStatusText(row.status) },
         ),
@@ -231,21 +230,23 @@ const columns = computed(() => {
               size: 'small',
               color: {
                 textColor: row?.group?.color ?? undefined,
-                borderColor: row?.group?.color ?? undefined,
               },
+              bordered: false,
             },
-            [
-              row.group.color
-                ? h('span', {
-                    class: 'w-3 h-3 rounded-full',
-                    style: { backgroundColor: row.group.color },
-                  })
-                : null,
-              h('span', {}, row.group.name),
-            ],
+            {
+              default: () => [
+                row.group!.color
+                  ? h('span', {
+                      class: 'w-3 h-3 rounded-full',
+                      style: { backgroundColor: row.group!.color },
+                    })
+                  : null,
+                h('span', {}, row.group!.name),
+              ],
+            },
           )
         }
-        return h(NTag, { size: 'small' }, '-')
+        return h(NTag, { size: 'small' }, { default: () => '-' })
       },
     },
     {
@@ -262,6 +263,7 @@ const columns = computed(() => {
       key: 'actions',
       title: '操作',
       width: 160,
+      fixed: 'right',
       render: (row: Server) =>
         h('div', { class: 'flex items-center gap-2' }, [
           h(

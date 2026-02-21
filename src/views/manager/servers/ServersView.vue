@@ -20,19 +20,14 @@ import type {
   GetServersResponse,
   DeleteServerResponse,
   UpdateServerResponse,
-  RestartServiceResponse,
   ServerListItemData,
 } from '@/types/manager/servers'
 import {
   RiAddLine,
   RiCheckLine,
   RiCloseLine,
-  RiFileCodeLine,
-  RiFileCopyFill,
   RiFileCopyLine,
   RiFolderLine,
-  RiInformationLine,
-  RiSearchLine,
 } from '@remixicon/vue'
 
 const router = useRouter()
@@ -41,7 +36,6 @@ const loading = ref(false)
 const saving = ref(false)
 const filterLoading = ref(false)
 const deletingServerId = ref<string>('')
-const restartingServerId = ref<string>('')
 const searchQuery = ref('')
 const statusFilter = ref<string>('all')
 const groupFilter = ref<number | null>(null)
@@ -217,24 +211,6 @@ const handleDeleteServer = async (server: Server) => {
     message.error(errorMessage, { duration: 3000 })
   } finally {
     deletingServerId.value = ''
-  }
-}
-
-const handleRestartServer = async (server: Server) => {
-  restartingServerId.value = server.id
-  try {
-    const response = (await serversApi.restartService(server.id)) as RestartServiceResponse
-
-    if (response.status) {
-      message.success(`服务器 "${server.name}" 的重启命令已发送`, { duration: 3000 })
-    } else {
-      throw new Error(response.message || '重启失败')
-    }
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : '请稍后重试'
-    message.error(errorMessage, { duration: 3000 })
-  } finally {
-    restartingServerId.value = ''
   }
 }
 
@@ -454,14 +430,12 @@ const handleCopyAlertRulesSuccess = () => {
 
 // 处理保存成功
 const handleSaveSuccess = async () => {
-  // 如果对话框仍然打开，重新加载服务器列表和详情
-  if (showAddDialog.value && editingServer.value) {
-    await loadServers()
-    const updatedServer = servers.value.find((s) => s.id === editingServer.value!.id)
-    if (updatedServer) {
-      // 创建一个新对象，确保触发 watch
-      editingServer.value = { ...updatedServer }
-    }
+  const currentEditing = editingServer.value
+  if (!showAddDialog.value || !currentEditing) return
+  await loadServers()
+  const updatedServer = servers.value.find((s) => s.id === currentEditing.id)
+  if (updatedServer) {
+    editingServer.value = { ...updatedServer }
   }
 }
 
@@ -578,13 +552,11 @@ onMounted(async () => {
         :servers="filteredServers"
         :loading="loading || filterLoading"
         :deleting-server-id="deletingServerId"
-        :restarting-server-id="restartingServerId"
         :latest-agent-version="latestAgentVersion"
         :latest-agent-version-type="latestAgentVersionType"
         :selected-servers="selectedServers"
         @edit-server="handleEditServer"
         @delete-server="handleDeleteServer"
-        @restart-server="handleRestartServer"
         @view-install-info="handleViewInstallInfo"
         @update-agent="handleUpdateAgent"
         @selection-change="handleSelectionChange"
@@ -622,7 +594,6 @@ onMounted(async () => {
       @save="handleSaveServer"
       @save-success="handleSaveSuccess"
       @cancel="handleCancelDialog"
-      @restart-server="handleRestartServer"
     />
 
     <!-- Agent Key和安装命令显示对话框 -->
