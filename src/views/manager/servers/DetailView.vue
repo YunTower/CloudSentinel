@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NSpin, NEmpty, NButton } from 'naive-ui'
+import { NSpin, NEmpty, NButton, useMessage } from 'naive-ui'
 import { RiArrowLeftLine, RiWrenchLine } from '@remixicon/vue'
 import serversApi from '@/apis/servers'
-import type { Server, MetricsData } from '@/types/manager/servers'
+import type { Server, ServerForm, MetricsData } from '@/types/manager/servers'
 import type { ExtendedServerDetailData } from '@/types/manager/servers'
 import type { ServerDetailResponse } from '@/types/manager/servers'
+import type { UpdateServerResponse } from '@/types/manager/servers'
 import BasicInfo from './components/detail/BasicInfo.vue'
+import ServerDialog from './components/ServerDialog.vue'
 import CpuCard from './components/detail/CpuCard.vue'
 import MemoryCard from './components/detail/MemoryCard.vue'
 import SwapCard from './components/detail/SwapCard.vue'
@@ -70,11 +72,14 @@ function detailToServer(detail: ExtendedServerDetailData): Server {
 
 const route = useRoute()
 const router = useRouter()
+const message = useMessage()
 const serverId = computed(() => route.params.id as string)
 
 const server = ref<Server | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+const showServerDialog = ref(false)
+const saving = ref(false)
 
 const metricsData = ref<{
   cpu?: MetricsData[]
@@ -220,6 +225,34 @@ const goBack = () => {
   router.push('/servers')
 }
 
+const openServerDialog = () => {
+  if (server.value) showServerDialog.value = true
+}
+
+const handleSaveServer = async (form: ServerForm & { clear_group?: boolean }) => {
+  if (!server.value) return
+  saving.value = true
+  try {
+    const response = (await serversApi.updateServer(server.value.id, form)) as UpdateServerResponse
+    if (response.status) {
+      message.success('服务器信息已更新', { duration: 3000 })
+      showServerDialog.value = false
+      await loadDetail()
+    } else {
+      throw new Error(response.message || '更新失败')
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '更新失败'
+    message.error(msg, { duration: 3000 })
+  } finally {
+    saving.value = false
+  }
+}
+
+const handleCancelDialog = () => {
+  showServerDialog.value = false
+}
+
 onMounted(() => {
   loadDetail()
 })
@@ -240,7 +273,12 @@ watch(serverId, (id) => {
         </n-button>
         <h1 class="text-2xl font-bold text-color">{{ server?.name || '加载中' }}</h1>
       </div>
-      <n-button type="primary" secondary>
+      <n-button
+        type="primary"
+        secondary
+        :disabled="!server"
+        @click="openServerDialog"
+      >
         <template #icon>
           <ri-wrench-line />
         </template>
@@ -394,7 +432,7 @@ watch(serverId, (id) => {
 
         <!-- 图表区域 -->
         <div class="mt-2 grid grid-cols-2 gap-2">
-          <div>
+          <div class="flex flex-col gap-2">
             <metrics-chart
               :server-id="server.id"
               chart-type="cpu"
@@ -410,7 +448,7 @@ watch(serverId, (id) => {
               @update:time-range="(h: number) => updateChartTimeRange('memory', h)"
             />
           </div>
-          <div>
+          <div class="flex flex-col gap-2">
             <metrics-chart
               :server-id="server.id"
               chart-type="disk"
@@ -429,6 +467,14 @@ watch(serverId, (id) => {
         </div>
       </template>
     </n-spin>
+
+    <server-dialog
+      v-model:visible="showServerDialog"
+      :editing-server="server"
+      :saving="saving"
+      @save="handleSaveServer"
+      @cancel="handleCancelDialog"
+    />
   </div>
 </template>
 
