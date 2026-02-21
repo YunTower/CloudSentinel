@@ -26,7 +26,7 @@ const severityToTagType = (
 
 <template>
   <n-card>
-    <n-descriptions :column="2" label-placement="left" >
+    <n-descriptions :column="2" label-placement="left">
       <n-descriptions-item label="服务器名称">
         <span class="font-medium">{{ server.name || '-' }}</span>
       </n-descriptions-item>
@@ -34,7 +34,11 @@ const severityToTagType = (
         <span class="font-mono text-sm">{{ server.ip || '-' }}</span>
       </n-descriptions-item>
       <n-descriptions-item label="状态">
-        <n-tag :type="severityToTagType(getStatusSeverity(server.status))" size="small">
+        <n-tag
+          :type="severityToTagType(getStatusSeverity(server.status))"
+          size="small"
+          :bordered="false"
+        >
           {{ getStatusText(server.status) }}
         </n-tag>
       </n-descriptions-item>
