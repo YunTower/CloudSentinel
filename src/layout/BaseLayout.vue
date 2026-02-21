@@ -1,26 +1,18 @@
+<script setup lang="ts">
+import Menu from '@/components/Layout/Menu.vue'
+</script>
+
 <template>
-  <div class="flex flex-col min-h-dvh">
-    <header class="fixed-header">
+  <n-layout>
+    <n-layout-header
+      class="flex justify-center"
+      bordered
+      style="position: sticky; top: 0; z-index: 1000"
+    >
       <Menu />
-    </header>
-    <main class="pt-[65px] flex-1 flex justify-center">
+    </n-layout-header>
+    <n-layout-content class="flex justify-center p-4" content-class="container">
       <slot />
-    </main>
-    <footer class="flex-shrink-0"></footer>
-  </div>
+    </n-layout-content>
+  </n-layout>
 </template>
-
-<style scoped>
-.fixed-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-}
-
-.container {
-  margin-top: 65px;
-}
-</style>
-<script setup lang="ts"></script>

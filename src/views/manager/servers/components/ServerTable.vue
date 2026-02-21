@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, nextTick, computed } from 'vue'
-import { useNotifications } from '@/composables/useNotifications'
+import { ref, nextTick, computed, h, defineComponent } from 'vue'
+import { NTag, NSpin, NButton, NEmpty, type PaginationInfo, type DataTableColumn } from 'naive-ui'
+import { useMessage, useDialog } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
 import type { Server, MetricsData } from '@/types/manager/servers'
 import serversApi from '@/apis/servers'
@@ -20,6 +21,7 @@ import {
   parseVersion,
 } from '@/utils/version.ts'
 import type { VersionType } from '@/utils/version.ts'
+import { RiEditLine, RiDeleteBinLine, RiCheckLine, RiErrorWarningLine } from '@remixicon/vue'
 
 // 计算到期天数
 const getExpireDays = (expireTime?: string): number | null => {
@@ -41,9 +43,25 @@ const getExpireStatus = (expireTime?: string): { severity: string; label: string
   return { severity: 'success', label: `${days}天后到期` }
 }
 
+// Map PrimeVue severity to Naive UI NTag type
+const severityToNaiveType = (
+  severity: string,
+): 'success' | 'error' | 'warning' | 'info' | 'default' => {
+  const map: Record<string, 'success' | 'error' | 'warning' | 'info' | 'default'> = {
+    success: 'success',
+    danger: 'error',
+    secondary: 'default',
+    warning: 'warning',
+    warn: 'warning',
+    info: 'info',
+  }
+  return map[severity] ?? 'default'
+}
+
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.role === 'admin')
-const { toast, confirm } = useNotifications()
+const message = useMessage()
+const dialog = useDialog()
 
 // 付费周期选项
 const billingCycleOptions = [
@@ -121,34 +139,22 @@ const confirmUpdateAgent = async () => {
 
   try {
     await serversApi.updateAgent(server.id)
-    toast.add({
-      severity: 'success',
-      summary: '成功',
-      detail: '更新命令已发送，Agent 将自动更新',
-      life: 3000,
-    })
+    message.success('更新命令已发送，Agent 将自动更新', { duration: 3000 })
     showUpdateDialog.value = false
     selectedServerForUpdate.value = null
     emit('update-agent', server)
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '更新失败'
-    toast.add({
-      severity: 'error',
-      summary: '更新失败',
-      detail: errorMessage,
-      life: 5000,
-    })
+    message.error(errorMessage, { duration: 5000 })
   } finally {
     updatingAgentId.value = ''
   }
 }
 
-const expandedRows = ref<{ [key: string]: boolean }>({})
+const expandedRowKeys = ref<string[]>([])
 const pendingExpandServerId = ref<string>('')
-const selectedServers = computed({
-  get: () => props.selectedServers || [],
-  set: (value) => emit('selection-change', value),
-})
+const checkedRowKeys = ref<string[]>([])
+
 const metricsData = ref<{
   [key: string]: {
     cpu?: MetricsData[]
@@ -170,21 +176,30 @@ const chartRefs = ref<{
 }>({})
 
 // 处理行展开事件
-const onRowExpand = (event: { data: Server }) => {
-  const serverId = event.data.id
-
-  if (props.expandingServerId === serverId) {
-    return
+const handleExpandChange = (keys: string[]) => {
+  const newKey = keys.find((k) => !expandedRowKeys.value.includes(k))
+  if (newKey) {
+    if (props.expandingServerId === newKey) {
+      expandedRowKeys.value = keys
+      return
+    }
+    pendingExpandServerId.value = newKey
+    emit('expand-server', newKey)
   }
+  expandedRowKeys.value = keys
+}
 
-  expandedRows.value[serverId] = true
-  pendingExpandServerId.value = serverId
-  emit('expand-server', serverId)
+// 处理选中行变化
+const handleCheckedRowsChange = (keys: string[], rows: Server[]) => {
+  checkedRowKeys.value = keys
+  emit('selection-change', rows)
 }
 
 // 确认展开
 const confirmExpand = async (serverId: string) => {
-  expandedRows.value[serverId] = true
+  if (!expandedRowKeys.value.includes(serverId)) {
+    expandedRowKeys.value = [...expandedRowKeys.value, serverId]
+  }
   pendingExpandServerId.value = ''
 
   // 初始化图表时间范围
@@ -210,7 +225,7 @@ const confirmExpand = async (serverId: string) => {
 
 // 取消展开
 const cancelExpand = (serverId: string) => {
-  expandedRows.value[serverId] = false
+  expandedRowKeys.value = expandedRowKeys.value.filter((k) => k !== serverId)
   pendingExpandServerId.value = ''
 }
 
@@ -218,30 +233,22 @@ const cancelExpand = (serverId: string) => {
 const autoExpandServer = (serverId: string) => {
   const server = props.servers.find((s) => s.id === serverId)
   if (server) {
-    // 总是先展开，然后触发数据加载
     pendingExpandServerId.value = serverId
-    expandedRows.value[serverId] = true
+    if (!expandedRowKeys.value.includes(serverId)) {
+      expandedRowKeys.value = [...expandedRowKeys.value, serverId]
+    }
     emit('expand-server', serverId)
   }
 }
 
 // 确认删除
-const confirmDelete = (event: Event, server: Server) => {
-  confirm.require({
-    target: event.currentTarget as HTMLElement,
-    message: `确定要删除服务器 "${server.name}" 吗？`,
-    header: '删除确认',
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: {
-      label: '取消',
-      severity: 'secondary',
-      outlined: true,
-    },
-    acceptProps: {
-      label: '删除',
-      severity: 'danger',
-    },
-    accept: () => {
+const confirmDelete = (_event: MouseEvent, server: Server) => {
+  dialog.warning({
+    title: '删除确认',
+    content: `确定要删除服务器 "${server.name}" 吗？`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: () => {
       emit('delete-server', server)
     },
   })
@@ -417,6 +424,517 @@ const addRealtimeDataPoint = (
   }
 }
 
+// 展开行内容组件
+const ServerExpansion = defineComponent({
+  props: {
+    data: { type: Object as () => Server, required: true },
+    expandingServerId: { type: String, default: '' },
+    metricsData: { type: Object as () => typeof metricsData.value, required: true },
+    chartTimeRange: { type: Object as () => typeof chartTimeRange.value, required: true },
+    chartRefs: { type: Object as () => typeof chartRefs.value, required: true },
+    billingCycleOptions: {
+      type: Array as () => { label: string; value: string }[],
+      required: true,
+    },
+    trafficLimitTypeOptions: {
+      type: Array as () => { label: string; value: string }[],
+      required: true,
+    },
+    trafficResetCycleOptions: {
+      type: Array as () => { label: string; value: string }[],
+      required: true,
+    },
+  },
+  emits: ['updateTimeRange'],
+  setup(props, { emit }) {
+    return () => {
+      const data = props.data
+      const isLoading = props.expandingServerId === data.id && !data._detailLoaded
+
+      if (isLoading) {
+        return h(NSpin)
+      }
+
+      const cards = [
+        // 基本信息卡片
+        h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0' }, [
+          h(ServerBasicInfo, { server: data }),
+        ]),
+        // CPU 资源卡片
+        h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0' }, [
+          h(ServerCpuCard, { cpu: data.cpu }),
+        ]),
+        // 内存资源卡片
+        h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0' }, [
+          h(ServerMemoryCard, { memory: data.memory, memoryInfo: data.memoryInfo }),
+        ]),
+        // Swap资源卡片
+        h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0' }, [
+          h(ServerSwapCard, { swapInfo: data.swapInfo }),
+        ]),
+        // 磁盘资源卡片
+        h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0' }, [
+          h(ServerDiskCard, { disks: data.disks }),
+        ]),
+        // 网络资源卡片
+        h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0' }, [
+          h(ServerNetworkCard, { networkIO: data.networkIO, traffic: data.traffic }),
+        ]),
+      ]
+
+      // GPU 资源卡片（条件渲染）
+      if (data.gpuInfo) {
+        cards.push(
+          h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0' }, [
+            h(ServerGPUCard, { gpuInfo: data.gpuInfo }),
+          ]),
+        )
+      }
+
+      // 进程监控卡片
+      cards.push(
+        h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0' }, [
+          h(
+            'div',
+            {
+              class:
+                'w-full min-w-0 bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow',
+            },
+            [
+              h('div', { class: 'space-y-3' }, [
+                h('div', { class: 'flex items-center gap-2 mb-3' }, [
+                  h('i', { class: 'ri-server-line text-primary' }),
+                  h('span', { class: 'text-sm font-semibold text-color' }, '进程监控'),
+                ]),
+                data.process_status && Object.keys(data.process_status).length > 0
+                  ? h(
+                      'div',
+                      { class: 'flex flex-wrap gap-2' },
+                      Object.entries(data.process_status).map(([name, status]) =>
+                        h(
+                          NTag,
+                          {
+                            key: name,
+                            type: status.running ? 'success' : 'error',
+                            class: 'cursor-help',
+                            title: `CPU: ${status.cpu.toFixed(1)}%, Mem: ${status.memory.toFixed(1)}%`,
+                          },
+                          {
+                            default: () => [
+                              h('i', {
+                                class: status.running ? 'ri-check-line mr-1' : 'ri-close-line mr-1',
+                              }),
+                              name,
+                            ],
+                          },
+                        ),
+                      ),
+                    )
+                  : h(NEmpty, { description: '暂无进程监控数据' }),
+              ]),
+            ],
+          ),
+        ]),
+      )
+
+      // 付费周期信息卡片（条件渲染）
+      if (
+        (data as any).show_billing_cycle &&
+        (data.billing_cycle || data.price || data.expire_time)
+      ) {
+        cards.push(
+          h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0' }, [
+            h(
+              'div',
+              {
+                class:
+                  'w-full min-w-0 bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm',
+              },
+              [
+                h('div', { class: 'space-y-3' }, [
+                  h('div', { class: 'flex items-center gap-2 mb-3' }, [
+                    h('i', { class: 'ri-calendar-line text-primary' }),
+                    h('span', { class: 'text-sm font-semibold text-color' }, '付费周期'),
+                  ]),
+                  h('div', { class: 'space-y-2 text-sm' }, [
+                    data.billing_cycle
+                      ? h('div', { class: 'flex justify-between' }, [
+                          h('span', { class: 'text-muted-color' }, '周期类型'),
+                          h(
+                            'span',
+                            { class: 'font-medium text-color' },
+                            props.billingCycleOptions.find(
+                              (opt) => opt.value === data.billing_cycle,
+                            )?.label || data.billing_cycle,
+                          ),
+                        ])
+                      : null,
+                    (data as any).custom_cycle_days
+                      ? h('div', { class: 'flex justify-between' }, [
+                          h('span', { class: 'text-muted-color' }, '自定义天数'),
+                          h(
+                            'span',
+                            { class: 'font-medium text-color' },
+                            `${(data as any).custom_cycle_days} 天`,
+                          ),
+                        ])
+                      : null,
+                    data.price !== undefined && data.price !== null
+                      ? h('div', { class: 'flex justify-between' }, [
+                          h('span', { class: 'text-muted-color' }, '价格'),
+                          h(
+                            'span',
+                            { class: 'font-medium text-color' },
+                            `¥${data.price.toFixed(2)}`,
+                          ),
+                        ])
+                      : null,
+                    data.expire_time
+                      ? h('div', { class: 'flex justify-between' }, [
+                          h('span', { class: 'text-muted-color' }, '到期时间'),
+                          h(
+                            'span',
+                            { class: 'font-medium text-color' },
+                            new Date(data.expire_time).toLocaleDateString('zh-CN'),
+                          ),
+                        ])
+                      : null,
+                  ]),
+                ]),
+              ],
+            ),
+          ]),
+        )
+      }
+
+      // 流量限制信息卡片（条件渲染）
+      if (
+        (data as any).show_traffic_limit &&
+        (data.traffic_limit_type || data.traffic_limit_bytes)
+      ) {
+        cards.push(
+          h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0' }, [
+            h(
+              'div',
+              {
+                class:
+                  'w-full min-w-0 bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm',
+              },
+              [
+                h('div', { class: 'space-y-3' }, [
+                  h('div', { class: 'flex items-center gap-2 mb-3' }, [
+                    h('i', { class: 'ri-line-chart-line text-primary' }),
+                    h('span', { class: 'text-sm font-semibold text-color' }, '流量限制'),
+                  ]),
+                  h('div', { class: 'space-y-2 text-sm' }, [
+                    data.traffic_limit_type
+                      ? h('div', { class: 'flex justify-between' }, [
+                          h('span', { class: 'text-muted-color' }, '限制类型'),
+                          h(
+                            'span',
+                            { class: 'font-medium text-color' },
+                            props.trafficLimitTypeOptions.find(
+                              (opt) => opt.value === data.traffic_limit_type,
+                            )?.label || data.traffic_limit_type,
+                          ),
+                        ])
+                      : null,
+                    data.traffic_limit_bytes && data.traffic_limit_bytes > 0
+                      ? h('div', { class: 'flex justify-between' }, [
+                          h('span', { class: 'text-muted-color' }, '限制大小'),
+                          h(
+                            'span',
+                            { class: 'font-medium text-color' },
+                            `${(data.traffic_limit_bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`,
+                          ),
+                        ])
+                      : null,
+                  ]),
+                ]),
+              ],
+            ),
+          ]),
+        )
+      }
+
+      // 流量重置周期信息卡片（条件渲染）
+      if ((data as any).show_traffic_reset_cycle && data.traffic_reset_cycle) {
+        cards.push(
+          h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0' }, [
+            h(
+              'div',
+              {
+                class:
+                  'w-full min-w-0 bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm',
+              },
+              [
+                h('div', { class: 'space-y-3' }, [
+                  h('div', { class: 'flex items-center gap-2 mb-3' }, [
+                    h('i', { class: 'ri-refresh-line text-primary' }),
+                    h('span', { class: 'text-sm font-semibold text-color' }, '流量重置周期'),
+                  ]),
+                  h('div', { class: 'space-y-2 text-sm' }, [
+                    h('div', { class: 'flex justify-between' }, [
+                      h('span', { class: 'text-muted-color' }, '重置周期'),
+                      h(
+                        'span',
+                        { class: 'font-medium text-color' },
+                        props.trafficResetCycleOptions.find(
+                          (opt) => opt.value === data.traffic_reset_cycle,
+                        )?.label || data.traffic_reset_cycle,
+                      ),
+                    ]),
+                    (data as any).traffic_custom_cycle_days
+                      ? h('div', { class: 'flex justify-between' }, [
+                          h('span', { class: 'text-muted-color' }, '自定义天数'),
+                          h(
+                            'span',
+                            { class: 'font-medium text-color' },
+                            `${(data as any).traffic_custom_cycle_days} 天`,
+                          ),
+                        ])
+                      : null,
+                  ]),
+                ]),
+              ],
+            ),
+          ]),
+        )
+      }
+
+      // 图表 - 全宽
+      const chartCards = [
+        // CPU负载图表
+        h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0 md:[column-span:all]' }, [
+          h(ServerMetricsChart, {
+            ref: (el: any) => {
+              if (el) {
+                if (!props.chartRefs[data.id]) props.chartRefs[data.id] = {}
+                props.chartRefs[data.id].cpu = el
+              }
+            },
+            serverId: data.id,
+            chartType: 'cpu',
+            data: props.metricsData[data.id]?.cpu || [],
+            timeRange: props.chartTimeRange[data.id]?.cpu || 1,
+            'onUpdate:timeRange': (value: number) => emit('updateTimeRange', data.id, 'cpu', value),
+          }),
+        ]),
+        // 内存负载图表
+        h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0 md:[column-span:all]' }, [
+          h(ServerMetricsChart, {
+            ref: (el: any) => {
+              if (el) {
+                if (!props.chartRefs[data.id]) props.chartRefs[data.id] = {}
+                props.chartRefs[data.id].memory = el
+              }
+            },
+            serverId: data.id,
+            chartType: 'memory',
+            data: props.metricsData[data.id]?.memory || [],
+            timeRange: props.chartTimeRange[data.id]?.memory || 1,
+            'onUpdate:timeRange': (value: number) =>
+              emit('updateTimeRange', data.id, 'memory', value),
+          }),
+        ]),
+        // 磁盘读写负载图表
+        h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0 md:[column-span:all]' }, [
+          h(ServerMetricsChart, {
+            ref: (el: any) => {
+              if (el) {
+                if (!props.chartRefs[data.id]) props.chartRefs[data.id] = {}
+                props.chartRefs[data.id].disk = el
+              }
+            },
+            serverId: data.id,
+            chartType: 'disk',
+            data: props.metricsData[data.id]?.disk || [],
+            timeRange: props.chartTimeRange[data.id]?.disk || 1,
+            'onUpdate:timeRange': (value: number) =>
+              emit('updateTimeRange', data.id, 'disk', value),
+          }),
+        ]),
+        // 网络IO负载图表
+        h('div', { class: 'break-inside-avoid mb-2 w-full min-w-0 md:[column-span:all]' }, [
+          h(ServerMetricsChart, {
+            ref: (el: any) => {
+              if (el) {
+                if (!props.chartRefs[data.id]) props.chartRefs[data.id] = {}
+                props.chartRefs[data.id].network = el
+              }
+            },
+            serverId: data.id,
+            chartType: 'network',
+            data: props.metricsData[data.id]?.network || [],
+            timeRange: props.chartTimeRange[data.id]?.network || 1,
+            'onUpdate:timeRange': (value: number) =>
+              emit('updateTimeRange', data.id, 'network', value),
+          }),
+        ]),
+      ]
+
+      return h('div', { class: 'w-full min-w-0' }, [
+        h(
+          'div',
+          {
+            class: 'w-full columns-1 sm:columns-1 md:columns-1 lg:columns-2 xl:columns-2 gap-2',
+          },
+          [...cards, ...chartCards],
+        ),
+      ])
+    }
+  },
+})
+
+// 列定义
+const columns = computed(() => {
+  const cols: DataTableColumn<Server>[] = [
+    {
+      type: 'selection',
+    },
+    {
+      type: 'expand',
+      expandable: () => true,
+      renderExpand: (rowData: Server) =>
+        h(ServerExpansion, {
+          data: rowData,
+          expandingServerId: props.expandingServerId || '',
+          metricsData: metricsData.value,
+          chartTimeRange: chartTimeRange.value,
+          chartRefs: chartRefs.value,
+          billingCycleOptions,
+          trafficLimitTypeOptions,
+          trafficResetCycleOptions,
+          onUpdateTimeRange: (
+            serverId: string,
+            type: 'cpu' | 'memory' | 'disk' | 'network',
+            hours: number,
+          ) => updateChartTimeRange(serverId, type, hours),
+        }),
+    },
+    {
+      key: 'name',
+      title: '服务器名称',
+      sorter: 'default',
+      minWidth: 200,
+      render: (row: Server) =>
+        h('div', { class: 'flex items-center gap-3' }, [
+          h('p', { class: 'flex-1 min-w-0 space-x-1' }, [
+            h('span', { class: 'font-medium text-color' }, row.name || '-'),
+            h('span', { class: 'text-muted-color' }, ` (${row.ip || '-'})`),
+          ]),
+        ]),
+    },
+    {
+      key: 'status',
+      title: '状态',
+      sorter: 'default',
+      minWidth: 100,
+      render: (row: Server) =>
+        h(
+          NTag,
+          {
+            type: severityToNaiveType(getStatusSeverity(row.status)),
+            size: 'small',
+          },
+          { default: () => getStatusText(row.status) },
+        ),
+    },
+    {
+      key: 'group',
+      title: '分组',
+      sorter: 'default',
+      minWidth: 120,
+      render: (row: Server) => {
+        if (row.group) {
+          return h('div', { class: 'flex items-center gap-2' }, [
+            row.group.color
+              ? h('span', {
+                  class: 'w-3 h-3 rounded-full',
+                  style: { backgroundColor: row.group.color },
+                })
+              : null,
+            h('span', { class: 'text-sm' }, row.group.name),
+          ])
+        }
+        return h('span', { class: 'text-sm text-muted-color' }, '-')
+      },
+    },
+    {
+      key: 'uptime',
+      title: '运行时间',
+      sorter: 'default',
+      minWidth: 120,
+      render: (row: Server) =>
+        h('div', { class: 'text-left' }, [
+          h('div', { class: 'text-sm font-medium text-color' }, row.uptime || '-'),
+        ]),
+    },
+    {
+      key: 'actions',
+      title: '操作',
+      width: 120,
+      render: (row: Server) =>
+        h('div', { class: 'flex items-center gap-2' }, [
+          h(
+            NButton,
+            {
+              size: 'small',
+              text: true,
+              onClick: () => emit('edit-server', row),
+            },
+            { default: () => h(RiEditLine, { size: '14px' }) },
+          ),
+          h(
+            NButton,
+            {
+              size: 'small',
+              text: true,
+              type: 'error',
+              loading: props.deletingServerId === row.id,
+              title: '删除',
+              onClick: (e: MouseEvent) => confirmDelete(e, row),
+            },
+            { default: () => h(RiDeleteBinLine, { size: '14px' }) },
+          ),
+        ]),
+    },
+  ]
+
+  // Agent版本列（仅管理员可见）
+  if (isAdmin.value) {
+    cols.splice(4, 0, {
+      key: 'agent_version',
+      title: '版本',
+      sorter: 'default',
+      minWidth: 150,
+      render: (row: Server) =>
+        h('div', { class: 'text-left flex gap-2 items-center' }, [
+          h('div', { class: 'text-sm font-medium text-color' }, row.agent_version || '-'),
+          needsUpdate(row)
+            ? h(
+                NTag,
+                {
+                  type: 'info',
+                  size: 'small',
+                  round: true,
+                  bordered: true,
+                  class: 'cursor-pointer',
+                  title: '有新版本可用，点击升级',
+                  onClick: () => showUpdateAgentDialog(row),
+                },
+                {
+                  default: () => [h('i', { class: 'ri-arrow-up-circle-line' })],
+                },
+              )
+            : null,
+        ]),
+    })
+  }
+
+  return cols
+})
+
 defineExpose({
   autoExpandServer,
   confirmExpand,
@@ -424,541 +942,134 @@ defineExpose({
   addRealtimeDataPoint,
 })
 </script>
+
 <template>
   <div>
-    <Card class="border border-[var(--p-select-border-color)]">
-      <template #content>
-        <DataTable
-          :value="servers"
-          :paginator="true"
-          :rows="10"
-          :rowsPerPageOptions="[5, 10, 20, 50]"
-          :loading="loading"
-          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-          currentPageReportTemplate="显示第 {first} 到 {last} 条，共 {totalRecords} 条"
-          class="w-full"
-          stripedRows
-          hover
-          v-model:expandedRows="expandedRows"
-          v-model:selection="selectedServers"
-          dataKey="id"
-          @row-expand="onRowExpand"
-          @selection-change="(e: { data: Server[] }) => emit('selection-change', e.data)"
-          :pt="{
-            root: { class: 'rounded-lg' },
-            header: { class: 'bg-surface-50 dark:bg-surface-800' },
-            tbody: { class: 'bg-surface-0 dark:bg-surface-900' },
-            row: { class: 'hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors' },
-          }"
-        >
-          <!-- 空数据占位 -->
-          <template #empty>
-            <div class="flex flex-col items-center justify-center py-12 px-4">
-              <p class="text-lg font-medium text-color mb-2">暂无服务器数据</p>
-              <p class="text-sm text-muted-color text-center max-w-md">
-                {{
-                  loading
-                    ? '正在加载服务器列表...'
-                    : '点击右上角"添加服务器"按钮来添加您的第一台服务器'
-                }}
-              </p>
-            </div>
-          </template>
-
-          <!-- 选择列 -->
-          <Column selectionMode="multiple" headerStyle="width: 3rem" style="width: 3rem" />
-
-          <!-- 展开列 -->
-          <Column expander style="width: 3rem" />
-
-          <!-- 服务器名称列 -->
-          <Column field="name" header="服务器名称" sortable style="min-width: 200px">
-            <template #body="{ data }">
-              <div class="flex items-center gap-3">
-                <p class="flex-1 min-w-0 space-x-1">
-                  <span class="font-medium text-color">{{ data.name || '-' }}</span>
-                  <span class="text-muted-color"> ({{ data.ip || '-' }}) </span>
-                </p>
-              </div>
-            </template>
-          </Column>
-
-          <!-- 状态列 -->
-          <Column field="status" header="状态" sortable style="min-width: 100px">
-            <template #body="{ data }">
-              <Tag
-                :value="getStatusText(data.status)"
-                :severity="getStatusSeverity(data.status)"
-                class="text-xs"
-              />
-            </template>
-          </Column>
-
-          <!-- 分组列 -->
-          <Column field="group" header="分组" sortable style="min-width: 120px">
-            <template #body="{ data }">
-              <div v-if="data.group" class="flex items-center gap-2">
-                <span
-                  v-if="data.group.color"
-                  class="w-3 h-3 rounded-full"
-                  :style="{ backgroundColor: data.group.color }"
-                />
-                <span class="text-sm">{{ data.group.name }}</span>
-              </div>
-              <span v-else class="text-sm text-muted-color">-</span>
-            </template>
-          </Column>
-
-          <!-- Agent版本列 -->
-          <Column
-            v-if="isAdmin"
-            field="agent_version"
-            header="版本"
-            sortable
-            style="min-width: 150px"
-          >
-            <template #body="{ data }">
-              <div class="text-left flex gap-2 items-center">
-                <div class="text-sm font-medium text-color">{{ data.agent_version || '-' }}</div>
-                <Tag
-                  v-if="needsUpdate(data)"
-                  v-tooltip.top="'有新版本可用，点击升级'"
-                  class="cursor-pointer"
-                  icon="pi pi-arrow-circle-up"
-                  size="small"
-                  severity="info"
-                  rounded
-                  variant="outlined"
-                  @click="showUpdateAgentDialog(data)"
-                  aria-label="升级Agent版本"
-                />
-              </div>
-            </template>
-          </Column>
-
-          <!-- 运行时间列 -->
-          <Column field="uptime" header="运行时间" sortable style="min-width: 120px">
-            <template #body="{ data }">
-              <div class="text-left">
-                <div class="text-sm font-medium text-color">{{ data.uptime || '-' }}</div>
-              </div>
-            </template>
-          </Column>
-
-          <!-- 操作列 -->
-          <Column header="操作" style="width: 120px">
-            <template #body="{ data }">
-              <div class="flex items-center gap-1">
-                <Button
-                  icon="pi pi-pen-to-square"
-                  size="small"
-                  text
-                  @click="emit('edit-server', data)"
-                  class="hover:bg-red-50"
-                />
-                <Button
-                  icon="pi pi-trash"
-                  size="small"
-                  text
-                  severity="danger"
-                  @click="confirmDelete($event, data)"
-                  v-tooltip.top="'删除'"
-                  :loading="props.deletingServerId === data.id"
-                  class="hover:bg-red-50"
-                />
-              </div>
-            </template>
-          </Column>
-
-          <!-- 展开行内容 -->
-          <template #expansion="{ data }">
-            <div
-              class="p-6 bg-surface-50 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700"
-            >
-              <div
-                v-if="props.expandingServerId === data.id && !data._detailLoaded"
-                class="flex items-center justify-center py-8"
-              >
-                <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
-              </div>
-              <div
-                v-else
-                class="columns-1 sm:columns-1 md:columns-2 lg:columns-2 xl:columns-3 gap-2"
-              >
-                <!-- 基本信息卡片 -->
-                <div class="break-inside-avoid mb-2 w-full inline-block">
-                  <ServerBasicInfo :server="data" />
-                </div>
-
-                <!-- CPU 资源卡片 -->
-                <div class="break-inside-avoid mb-2 w-full inline-block">
-                  <ServerCpuCard :cpu="data.cpu" />
-                </div>
-
-                <!-- 内存资源卡片 -->
-                <div class="break-inside-avoid mb-2 w-full inline-block">
-                  <ServerMemoryCard :memory="data.memory" :memory-info="data.memoryInfo" />
-                </div>
-
-                <!-- Swap资源卡片 -->
-                <div class="break-inside-avoid mb-2 w-full inline-block">
-                  <ServerSwapCard :swap-info="data.swapInfo" />
-                </div>
-
-                <!-- 磁盘资源卡片 -->
-                <div class="break-inside-avoid mb-2 w-full inline-block">
-                  <ServerDiskCard :disks="data.disks" />
-                </div>
-
-                <!-- 网络资源卡片 -->
-                <div class="break-inside-avoid mb-2 w-full inline-block">
-                  <ServerNetworkCard :networkIO="data.networkIO" :traffic="data.traffic" />
-                </div>
-
-                <!-- GPU 资源卡片 -->
-                <div v-if="data.gpuInfo" class="break-inside-avoid mb-2 w-full inline-block">
-                  <ServerGPUCard :gpu-info="data.gpuInfo" />
-                </div>
-
-                <!-- 进程监控卡片 -->
-                <div class="break-inside-avoid mb-2 w-full inline-block">
-                  <div
-                    class="bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700 shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <div class="space-y-3">
-                      <div class="flex items-center gap-2 mb-3">
-                        <i class="pi pi-server text-primary"></i>
-                        <span class="text-sm font-semibold text-color">进程监控</span>
-                      </div>
-                      <div
-                        v-if="data.process_status && Object.keys(data.process_status).length > 0"
-                        class="flex flex-wrap gap-2"
-                      >
-                        <Tag
-                          v-for="(status, name) in data.process_status"
-                          :key="name"
-                          :value="name"
-                          :severity="status.running ? 'success' : 'danger'"
-                          :icon="status.running ? 'pi pi-check-circle' : 'pi pi-times-circle'"
-                          class="cursor-help"
-                          v-tooltip.top="
-                            `CPU: ${status.cpu.toFixed(1)}%, Mem: ${status.memory.toFixed(1)}%`
-                          "
-                        />
-                      </div>
-                      <div v-else class="text-sm text-muted-color text-center">暂无进程监控数据</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 付费周期信息卡片 -->
-                <div
-                  v-if="
-                    data.show_billing_cycle &&
-                    (data.billing_cycle || data.price || data.expire_time)
-                  "
-                  class="break-inside-avoid mb-2 w-full inline-block"
-                >
-                  <Card>
-                    <template #content>
-                      <div class="space-y-3">
-                        <div class="flex items-center gap-2 mb-3">
-                          <i class="pi pi-calendar text-primary"></i>
-                          <span class="text-sm font-semibold text-color">付费周期</span>
-                        </div>
-                        <div class="space-y-2 text-sm">
-                          <div v-if="data.billing_cycle" class="flex justify-between">
-                            <span class="text-muted-color">周期类型</span>
-                            <span class="font-medium text-color">{{
-                              billingCycleOptions.find((opt) => opt.value === data.billing_cycle)
-                                ?.label || data.billing_cycle
-                            }}</span>
-                          </div>
-                          <div v-if="data.custom_cycle_days" class="flex justify-between">
-                            <span class="text-muted-color">自定义天数</span>
-                            <span class="font-medium text-color"
-                              >{{ data.custom_cycle_days }} 天</span
-                            >
-                          </div>
-                          <div
-                            v-if="data.price !== undefined && data.price !== null"
-                            class="flex justify-between"
-                          >
-                            <span class="text-muted-color">价格</span>
-                            <span class="font-medium text-color">¥{{ data.price.toFixed(2) }}</span>
-                          </div>
-                          <div v-if="data.expire_time" class="flex justify-between">
-                            <span class="text-muted-color">到期时间</span>
-                            <span class="font-medium text-color">{{
-                              new Date(data.expire_time).toLocaleDateString('zh-CN')
-                            }}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </template>
-                  </Card>
-                </div>
-
-                <!-- 流量限制信息卡片 -->
-                <div
-                  v-if="
-                    data.show_traffic_limit && (data.traffic_limit_type || data.traffic_limit_bytes)
-                  "
-                  class="break-inside-avoid mb-2 w-full inline-block"
-                >
-                  <Card>
-                    <template #content>
-                      <div class="space-y-3">
-                        <div class="flex items-center gap-2 mb-3">
-                          <i class="pi pi-chart-line text-primary"></i>
-                          <span class="text-sm font-semibold text-color">流量限制</span>
-                        </div>
-                        <div class="space-y-2 text-sm">
-                          <div v-if="data.traffic_limit_type" class="flex justify-between">
-                            <span class="text-muted-color">限制类型</span>
-                            <span class="font-medium text-color">{{
-                              trafficLimitTypeOptions.find(
-                                (opt) => opt.value === data.traffic_limit_type,
-                              )?.label || data.traffic_limit_type
-                            }}</span>
-                          </div>
-                          <div
-                            v-if="data.traffic_limit_bytes && data.traffic_limit_bytes > 0"
-                            class="flex justify-between"
-                          >
-                            <span class="text-muted-color">限制大小</span>
-                            <span class="font-medium text-color"
-                              >{{
-                                (data.traffic_limit_bytes / (1024 * 1024 * 1024)).toFixed(2)
-                              }}
-                              GB</span
-                            >
-                          </div>
-                        </div>
-                      </div>
-                    </template>
-                  </Card>
-                </div>
-
-                <!-- 流量重置周期信息卡片 -->
-                <div
-                  v-if="data.show_traffic_reset_cycle && data.traffic_reset_cycle"
-                  class="break-inside-avoid mb-2 w-full inline-block"
-                >
-                  <Card>
-                    <template #content>
-                      <div class="space-y-3">
-                        <div class="flex items-center gap-2 mb-3">
-                          <i class="pi pi-refresh text-primary"></i>
-                          <span class="text-sm font-semibold text-color">流量重置周期</span>
-                        </div>
-                        <div class="space-y-2 text-sm">
-                          <div class="flex justify-between">
-                            <span class="text-muted-color">重置周期</span>
-                            <span class="font-medium text-color">{{
-                              trafficResetCycleOptions.find(
-                                (opt) => opt.value === data.traffic_reset_cycle,
-                              )?.label || data.traffic_reset_cycle
-                            }}</span>
-                          </div>
-                          <div v-if="data.traffic_custom_cycle_days" class="flex justify-between">
-                            <span class="text-muted-color">自定义天数</span>
-                            <span class="font-medium text-color"
-                              >{{ data.traffic_custom_cycle_days }} 天</span
-                            >
-                          </div>
-                        </div>
-                      </div>
-                    </template>
-                  </Card>
-                </div>
-
-                <!-- CPU负载图表 -->
-                <div class="break-inside-avoid mb-2 w-full inline-block md:[column-span:all]">
-                  <ServerMetricsChart
-                    :ref="
-                      (el) => {
-                        if (el) {
-                          if (!chartRefs[data.id]) {
-                            chartRefs[data.id] = {}
-                          }
-                          chartRefs[data.id].cpu = el as InstanceType<typeof ServerMetricsChart>
-                        }
-                      }
-                    "
-                    :server-id="data.id"
-                    chart-type="cpu"
-                    :data="metricsData[data.id]?.cpu || []"
-                    :time-range="chartTimeRange[data.id]?.cpu || 1"
-                    @update:time-range="(value) => updateChartTimeRange(data.id, 'cpu', value)"
-                  />
-                </div>
-
-                <!-- 内存负载图表 -->
-                <div class="break-inside-avoid mb-2 w-full inline-block md:[column-span:all]">
-                  <ServerMetricsChart
-                    :ref="
-                      (el) => {
-                        if (el) {
-                          if (!chartRefs[data.id]) {
-                            chartRefs[data.id] = {}
-                          }
-                          chartRefs[data.id].memory = el as InstanceType<typeof ServerMetricsChart>
-                        }
-                      }
-                    "
-                    :server-id="data.id"
-                    chart-type="memory"
-                    :data="metricsData[data.id]?.memory || []"
-                    :time-range="chartTimeRange[data.id]?.memory || 1"
-                    @update:time-range="(value) => updateChartTimeRange(data.id, 'memory', value)"
-                  />
-                </div>
-
-                <!-- 磁盘读写负载图表 -->
-                <div class="break-inside-avoid mb-2 w-full inline-block md:[column-span:all]">
-                  <ServerMetricsChart
-                    :ref="
-                      (el) => {
-                        if (el) {
-                          if (!chartRefs[data.id]) {
-                            chartRefs[data.id] = {}
-                          }
-                          chartRefs[data.id].disk = el as InstanceType<typeof ServerMetricsChart>
-                        }
-                      }
-                    "
-                    :server-id="data.id"
-                    chart-type="disk"
-                    :data="metricsData[data.id]?.disk || []"
-                    :time-range="chartTimeRange[data.id]?.disk || 1"
-                    @update:time-range="(value) => updateChartTimeRange(data.id, 'disk', value)"
-                  />
-                </div>
-
-                <!-- 网络IO负载图表 -->
-                <div class="break-inside-avoid mb-2 w-full inline-block md:[column-span:all]">
-                  <ServerMetricsChart
-                    :ref="
-                      (el) => {
-                        if (el) {
-                          if (!chartRefs[data.id]) {
-                            chartRefs[data.id] = {}
-                          }
-                          chartRefs[data.id].network = el as InstanceType<typeof ServerMetricsChart>
-                        }
-                      }
-                    "
-                    :server-id="data.id"
-                    chart-type="network"
-                    :data="metricsData[data.id]?.network || []"
-                    :time-range="chartTimeRange[data.id]?.network || 1"
-                    @update:time-range="(value) => updateChartTimeRange(data.id, 'network', value)"
-                  />
-                </div>
-              </div>
-            </div>
-          </template>
-        </DataTable>
+    <n-data-table
+      :columns="columns"
+      :data="servers"
+      :loading="loading"
+      :pagination="{
+        showSizePicker: true,
+        prefix: (info: PaginationInfo) => `共 ${info.itemCount} 条`,
+      }"
+      :row-key="(row: Server) => row.id"
+      v-model:expanded-row-keys="expandedRowKeys"
+      :checked-row-keys="checkedRowKeys"
+      @update:checked-row-keys="handleCheckedRowsChange"
+      @update:expanded-row-keys="handleExpandChange"
+      striped
+      class="w-full"
+    >
+      <template #empty>
+        <n-empty description="暂无服务器" class="py-8" />
       </template>
-    </Card>
-    <ConfirmPopup />
+    </n-data-table>
 
     <!-- Agent 更新对话框 -->
-    <Dialog
-      v-model:visible="showUpdateDialog"
-      modal
-      header="更新 Agent"
-      :style="{ width: '500px' }"
-      :draggable="false"
-    >
-      <div v-if="selectedServerForUpdate" class="flex flex-col gap-4">
-        <div>
-          <p class="text-sm text-color-secondary mb-2">服务器信息</p>
-          <p class="font-medium">
-            {{ selectedServerForUpdate.name }} ({{ selectedServerForUpdate.ip }})
-          </p>
-        </div>
+    <n-modal v-model:show="showUpdateDialog" :mask-closable="false">
+      <n-card
+        style="width: 500px; max-width: 95vw"
+        title="更新 Agent"
+        :bordered="false"
+        size="huge"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div v-if="selectedServerForUpdate" class="flex flex-col gap-4">
+          <div>
+            <p class="text-sm text-muted-color mb-2">服务器信息</p>
+            <p class="font-medium">
+              {{ selectedServerForUpdate.name }} ({{ selectedServerForUpdate.ip }})
+            </p>
+          </div>
 
-        <div>
-          <p class="text-sm text-color-secondary mb-2">当前版本</p>
-          <div class="flex items-center gap-2">
-            <span class="font-medium">{{ selectedServerForUpdate.agent_version || '-' }}</span>
-            <Tag
-              v-if="selectedServerForUpdate.agent_version"
-              :value="
-                getVersionTypeConfig(
-                  parseVersion(selectedServerForUpdate.agent_version).versionType,
-                ).label
-              "
-              :severity="
-                getVersionTypeConfig(
-                  parseVersion(selectedServerForUpdate.agent_version).versionType,
-                ).severity
-              "
-              size="small"
-            />
+          <div>
+            <p class="text-sm text-muted-color mb-2">当前版本</p>
+            <div class="flex items-center gap-2">
+              <span class="font-medium">{{ selectedServerForUpdate.agent_version || '-' }}</span>
+              <n-tag
+                v-if="selectedServerForUpdate.agent_version"
+                :type="
+                  severityToNaiveType(
+                    getVersionTypeConfig(
+                      parseVersion(selectedServerForUpdate.agent_version).versionType,
+                    ).severity,
+                  )
+                "
+                size="small"
+              >
+                {{
+                  getVersionTypeConfig(
+                    parseVersion(selectedServerForUpdate.agent_version).versionType,
+                  ).label
+                }}
+              </n-tag>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-sm text-muted-color mb-2">最新版本</p>
+            <div class="flex items-center gap-2">
+              <span class="font-medium">{{ latestAgentVersion || '-' }}</span>
+              <n-tag
+                v-if="latestAgentVersionType"
+                :type="severityToNaiveType(getVersionTypeConfig(latestAgentVersionType).severity)"
+                size="small"
+              >
+                {{ getVersionTypeConfig(latestAgentVersionType).label }}
+              </n-tag>
+            </div>
+            <div
+              v-if="latestAgentVersionType && latestAgentVersionType !== 'release'"
+              class="flex items-center gap-2 text-orange-500 text-sm mt-1"
+            >
+              <ri-error-warning-line size="14px" />
+              <span>此版本为非正式版，可能包含实验性功能或大量缺陷，请谨慎更新</span>
+            </div>
+          </div>
+
+          <div class="mt-2">
+            <p class="text-sm text-muted-color">
+              确认后，系统将向 Agent 发送更新指令，Agent 将自动下载并安装新版本。
+            </p>
           </div>
         </div>
 
-        <div>
-          <p class="text-sm text-color-secondary mb-2">最新版本</p>
-          <div class="flex items-center gap-2">
-            <span class="font-medium">{{ latestAgentVersion || '-' }}</span>
-            <Tag
-              v-if="latestAgentVersionType"
-              :value="getVersionTypeConfig(latestAgentVersionType).label"
-              :severity="getVersionTypeConfig(latestAgentVersionType).severity"
-              size="small"
-            />
+        <template #footer>
+          <div class="flex justify-end gap-2">
+            <n-button text @click="showUpdateDialog = false" :disabled="updatingAgentId !== ''">
+              取消
+            </n-button>
+            <n-button type="primary" :loading="updatingAgentId !== ''" @click="confirmUpdateAgent">
+              <template #icon>
+                <ri-check-line />
+              </template>
+              确认更新
+            </n-button>
           </div>
-          <div
-            v-if="latestAgentVersionType && latestAgentVersionType !== 'release'"
-            class="flex items-center gap-2 text-orange-500 text-sm mt-1"
-          >
-            <i class="pi pi-exclamation-triangle"></i>
-            <span>此版本为非正式版，可能包含实验性功能或大量缺陷，请谨慎更新</span>
-          </div>
-        </div>
-
-        <div class="mt-2">
-          <p class="text-sm text-color-secondary">
-            确认后，系统将向 Agent 发送更新指令，Agent 将自动下载并安装新版本。
-          </p>
-        </div>
-      </div>
-
-      <template #footer>
-        <Button
-          label="取消"
-          text
-          @click="showUpdateDialog = false"
-          :disabled="updatingAgentId !== ''"
-        />
-        <Button
-          label="确认更新"
-          icon="pi pi-check"
-          @click="confirmUpdateAgent"
-          :loading="updatingAgentId !== ''"
-        />
-      </template>
-    </Dialog>
+        </template>
+      </n-card>
+    </n-modal>
   </div>
 </template>
+
 <style scoped>
 /* 固定操作列在右侧 */
-:deep(.p-datatable-scrollable) {
-  position: relative;
-}
-
-:deep(.p-datatable-scrollable-header table thead tr th:last-child),
-:deep(.p-datatable-scrollable-body table tbody tr td:last-child) {
-  position: sticky !important;
-  right: 0 !important;
+:deep(.n-data-table-th:last-child),
+:deep(.n-data-table-td:last-child) {
+  position: sticky;
+  right: 0;
   z-index: 10;
 }
 
-:deep(.p-datatable-scrollable-header table thead tr th:last-child) {
-  z-index: 20;
+/* 展开行内容与表格同宽 */
+:deep(.n-data-table-expanded-row .n-data-table-td) {
+  width: 100%;
+  padding: 0;
+}
+:deep(.n-data-table-expanded-row .n-data-table-td .n-data-table-td__ellipsis) {
+  width: 100%;
+  padding: 12px 16px;
 }
 </style>

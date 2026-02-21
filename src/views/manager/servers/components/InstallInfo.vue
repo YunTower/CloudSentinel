@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage } from 'naive-ui'
 import type { Server } from '@/types/manager/servers'
+import { RiFileCopyLine } from '@remixicon/vue'
 
 interface Props {
   server?: Server | null
@@ -17,7 +18,7 @@ const props = withDefaults(defineProps<Props>(), {
   websocketURL: '',
 })
 
-const { toast } = useNotifications()
+const message = useMessage()
 
 // 计算安装命令
 const installCommand = computed(() => {
@@ -85,30 +86,15 @@ const copyToClipboard = async (text: string): Promise<boolean> => {
 const copyAgentKey = async () => {
   const key = currentAgentKey.value
   if (!key || key === '未设置') {
-    toast.add({
-      severity: 'warn',
-      summary: '无法复制',
-      detail: 'Agent Key 不存在',
-      life: 2000,
-    })
+    message.warning('Agent Key 不存在', { duration: 2000 })
     return
   }
 
   const success = await copyToClipboard(key)
   if (success) {
-    toast.add({
-      severity: 'success',
-      summary: '复制成功',
-      detail: 'Agent Key已复制到剪贴板',
-      life: 2000,
-    })
+    message.success('Agent Key已复制到剪贴板', { duration: 2000 })
   } else {
-    toast.add({
-      severity: 'error',
-      summary: '复制失败',
-      detail: '请手动复制Agent Key',
-      life: 3000,
-    })
+    message.error('请手动复制Agent Key', { duration: 3000 })
   }
 }
 
@@ -116,19 +102,9 @@ const copyAgentKey = async () => {
 const copyInstallCommand = async () => {
   const success = await copyToClipboard(installCommand.value)
   if (success) {
-    toast.add({
-      severity: 'success',
-      summary: '复制成功',
-      detail: '安装命令已复制到剪贴板',
-      life: 2000,
-    })
+    message.success('安装命令已复制到剪贴板', { duration: 2000 })
   } else {
-    toast.add({
-      severity: 'error',
-      summary: '复制失败',
-      detail: '请手动复制安装命令',
-      life: 3000,
-    })
+    message.error('请手动复制安装命令', { duration: 3000 })
   }
 }
 </script>
@@ -141,20 +117,19 @@ const copyInstallCommand = async () => {
         <div class="flex items-center">
           <h4 class="text-lg font-semibold text-color">Agent Key</h4>
         </div>
-        <Button
-          icon="pi pi-copy"
-          text
-          size="small"
-          @click="copyAgentKey"
-          v-tooltip.top="'复制密钥'"
-        />
+        <n-tooltip trigger="hover" placement="top">
+          <template #trigger>
+            <n-button text size="small" @click="copyAgentKey">
+              <template #icon>
+                <ri-file-copy-line />
+              </template>
+            </n-button>
+          </template>
+          复制密钥
+        </n-tooltip>
       </div>
       <div class="space-y-3">
-        <code
-          class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
-        >
-          {{ currentAgentKey }}
-        </code>
+        <n-code :code="currentAgentKey" language="bash" inline> </n-code>
       </div>
     </div>
 
@@ -164,20 +139,19 @@ const copyInstallCommand = async () => {
         <div class="flex items-center">
           <h4 class="text-lg font-semibold text-color">Linux 安装命令</h4>
         </div>
-        <Button
-          icon="pi pi-copy"
-          text
-          size="small"
-          @click="copyInstallCommand"
-          v-tooltip.top="'复制命令'"
-        />
+        <n-tooltip trigger="hover" placement="top">
+          <template #trigger>
+            <n-button text size="small" @click="copyInstallCommand">
+              <template #icon>
+                <ri-file-copy-line />
+              </template>
+            </n-button>
+          </template>
+          复制命令
+        </n-tooltip>
       </div>
       <div class="space-y-3">
-        <code
-          class="block bg-surface-900 dark:bg-surface-800 text-green-400 dark:text-green-300 p-3 rounded font-mono text-sm break-all whitespace-pre-wrap"
-        >
-          {{ installCommand }}
-        </code>
+        <n-code :code="installCommand" language="bash" word-wrap />
       </div>
     </div>
   </div>

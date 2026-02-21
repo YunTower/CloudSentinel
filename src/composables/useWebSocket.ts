@@ -52,12 +52,15 @@ export interface WebSocketCallbacks {
   }) => void
   onProcessInfoUpdate?: (data: {
     server_id: string
-    data: Record<string, {
-      running: boolean
-      pids: number[]
-      cpu: number
-      memory: number
-    }>
+    data: Record<
+      string,
+      {
+        running: boolean
+        pids: number[]
+        cpu: number
+        memory: number
+      }
+    >
   }) => void
   onGPUInfoUpdate?: (data: {
     server_id: string
@@ -263,12 +266,15 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
     } else if (message.type === 'process_info_update' && message.data) {
       const data = message.data as {
         server_id?: string
-        data?: Record<string, {
-          running: boolean
-          pids: number[]
-          cpu: number
-          memory: number
-        }>
+        data?: Record<
+          string,
+          {
+            running: boolean
+            pids: number[]
+            cpu: number
+            memory: number
+          }
+        >
       }
       if (data.server_id && data.data) {
         callbacks.onProcessInfoUpdate?.({

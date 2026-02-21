@@ -20,9 +20,9 @@ export function useLayout(): UseLayoutReturn {
   function setDarkMode(value: boolean): void {
     appState.value.darkMode = value
     if (value) {
-      document.documentElement.classList.add('p-dark')
+      document.documentElement.classList.add('dark')
     } else {
-      document.documentElement.classList.remove('p-dark')
+      document.documentElement.classList.remove('dark')
     }
   }
 

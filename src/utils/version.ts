@@ -23,14 +23,14 @@ export const getStatusSeverity = (status: string) => {
 export const getProgressBarColor = (value: number): string => {
   if (value >= 90) return '#ef4444'
   if (value >= 70) return '#f97316'
-  return 'var(--p-primary-color)'
+  return '#22c55e'
 }
 
 // 进度条文字颜色
 export const getProgressTextColor = (cpu: number) => {
   if (cpu >= 90) return 'text-red-600 dark:text-red-400'
   if (cpu >= 70) return 'text-orange-600 dark:text-orange-400'
-  return 'text-[var(--p-primary-color)]'
+  return 'text-green-600 dark:text-green-400'
 }
 
 // 格式化速度

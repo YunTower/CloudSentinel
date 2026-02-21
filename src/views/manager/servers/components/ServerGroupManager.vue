@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useNotifications } from '@/composables/useNotifications'
+import { useMessage, useDialog } from 'naive-ui'
 import serversApi from '@/apis/servers'
 import type { ServerGroup, Server } from '@/types/manager/servers'
+import { RiDeleteBinLine, RiEditLine } from '@remixicon/vue'
 
 interface Props {
   visible: boolean
@@ -21,7 +22,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
-const { toast, confirm } = useNotifications()
+const message = useMessage()
+const dialog = useDialog()
 const loading = ref(false)
 const groups = ref<ServerGroup[]>([])
 
@@ -52,12 +54,7 @@ const loadGroups = async () => {
     }
   } catch (error) {
     console.error('加载分组列表失败:', error)
-    toast.add({
-      severity: 'error',
-      summary: '加载失败',
-      detail: '无法加载分组列表',
-      life: 3000,
-    })
+    message.error('无法加载分组列表', { duration: 3000 })
   } finally {
     loading.value = false
   }
@@ -66,33 +63,21 @@ const loadGroups = async () => {
 // 删除分组
 const handleDelete = (group: ServerGroup) => {
   const serverCount = groupServerCounts.value[group.id] || 0
-  const message =
+  const confirmContent =
     serverCount > 0
       ? `确定要删除分组 "${group.name}" 吗？该分组下有 ${serverCount} 台服务器，删除后这些服务器将变为未分组状态。`
       : `确定要删除分组 "${group.name}" 吗？`
 
-  confirm.require({
-    message,
-    header: '删除确认',
-    rejectProps: {
-      label: '取消',
-      severity: 'secondary',
-      outlined: true,
-    },
-    acceptProps: {
-      label: '删除',
-      severity: 'danger',
-    },
-    accept: async () => {
+  dialog.warning({
+    title: '删除确认',
+    content: confirmContent,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
       try {
         const response = await serversApi.deleteGroup(group.id)
         if (response.status) {
-          toast.add({
-            severity: 'success',
-            summary: '删除成功',
-            detail: `分组 "${group.name}" 已删除`,
-            life: 3000,
-          })
+          message.success(`分组 "${group.name}" 已删除`, { duration: 3000 })
           await loadGroups()
           emit('refresh')
         } else {
@@ -100,12 +85,7 @@ const handleDelete = (group: ServerGroup) => {
         }
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : '删除失败'
-        toast.add({
-          severity: 'error',
-          summary: '删除失败',
-          detail: errorMessage,
-          life: 3000,
-        })
+        message.error(errorMessage, { duration: 3000 })
       }
     },
   })
@@ -134,84 +114,74 @@ watch(
 </script>
 
 <template>
-  <Dialog
-    v-model:visible="isVisible"
-    header="分组管理"
-    :modal="true"
-    :style="{ width: '800px' }"
-    :draggable="false"
-    :block-scroll="false"
+  <n-modal
+    v-model:show="isVisible"
+    title="分组管理"
+    :mask-closable="false"
+    class="w-[700px]!"
+    preset="card"
   >
     <div v-if="loading" class="flex items-center justify-center py-12">
-      <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
+      <n-spin size="large" />
     </div>
 
     <div v-else>
-      <div v-if="groups.length === 0" class="text-center py-12 text-muted-color">
-        <i class="pi pi-folder mb-4 opacity-50 text-[2rem]!"></i>
-        <p>暂无分组，请先创建分组</p>
+      <div v-if="groups.length === 0" class="py-12">
+        <n-empty description="暂无分组" />
       </div>
 
-      <DataTable
-        v-else
-        :value="groups"
-        :paginator="groups.length > 10"
-        :rows="10"
-        :rows-per-page-options="[10, 20, 50]"
-        striped-rows
-        class="p-datatable-sm"
-      >
-        <Column field="name" header="分组名称" sortable>
-          <template #body="{ data }">
-            <div class="flex items-center gap-2">
-              <span
-                v-if="data.color"
-                class="w-3 h-3 rounded-full flex-shrink-0"
-                :style="{ backgroundColor: data.color }"
-              />
-              <span class="font-medium">{{ data.name }}</span>
-            </div>
-          </template>
-        </Column>
-
-        <Column field="description" header="描述">
-          <template #body="{ data }">
-            <span class="text-muted-color">{{ data.description || '-' }}</span>
-          </template>
-        </Column>
-
-        <Column header="服务器数量" sortable>
-          <template #body="{ data }">
-            <Tag :value="groupServerCounts[data.id] || 0" severity="info" />
-          </template>
-        </Column>
-
-        <Column header="操作" :exportable="false" style="width: 150px">
-          <template #body="{ data }">
-            <div class="flex gap-2">
-              <Button
-                icon="pi pi-pen-to-square"
-                text
-                size="small"
-                v-tooltip.top="'编辑'"
-                @click="handleEdit(data)"
-              />
-              <Button
-                icon="pi pi-trash"
-                text
-                severity="danger"
-                size="small"
-                v-tooltip.top="'删除'"
-                @click="handleDelete(data)"
-              />
-            </div>
-          </template>
-        </Column>
-      </DataTable>
+      <table v-else class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-surface-200 dark:border-surface-700">
+            <th class="text-left py-2 px-3 font-medium">分组名称</th>
+            <th class="text-left py-2 px-3 font-medium">描述</th>
+            <th class="text-left py-2 px-3 font-medium">服务器数量</th>
+            <th class="text-left py-2 px-3 font-medium" style="width: 150px">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="group in groups"
+            :key="group.id"
+            class="border-b border-surface-100 dark:border-surface-800 hover:bg-surface-50 dark:hover:bg-surface-800"
+          >
+            <td class="py-2 px-3">
+              <div class="flex items-center gap-2">
+                <span
+                  v-if="group.color"
+                  class="w-3 h-3 rounded-full flex-shrink-0"
+                  :style="{ backgroundColor: group.color }"
+                />
+                <span class="font-medium">{{ group.name }}</span>
+              </div>
+            </td>
+            <td class="py-2 px-3 text-muted-color">{{ group.description || '-' }}</td>
+            <td class="py-2 px-3">
+              <n-tag type="info">{{ groupServerCounts[group.id] || 0 }}</n-tag>
+            </td>
+            <td class="py-2 px-3">
+              <div class="flex gap-2">
+                <n-button text size="small" @click="handleEdit(group)">
+                  <template #icon>
+                    <ri-edit-line />
+                  </template>
+                </n-button>
+                <n-button text size="small" type="error" @click="handleDelete(group)">
+                  <template #icon>
+                    <ri-delete-bin-line />
+                  </template>
+                </n-button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <template #footer>
-      <Button label="关闭" severity="secondary" @click="emit('update:visible', false)" />
+      <div class="flex justify-end">
+        <n-button secondary @click="emit('update:visible', false)">关闭</n-button>
+      </div>
     </template>
-  </Dialog>
+  </n-modal>
 </template>

@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { useNotifications } from '@/composables/useNotifications'
+import type { FormInst, FormRules } from 'naive-ui'
+import { useMessage } from 'naive-ui'
 import type { Notifications } from '@/types/settings/alerts'
 import alertsApi from '@/apis/settings/alerts'
+import { RiSaveLine, RiSendPlaneLine } from '@remixicon/vue'
 
+const alertsFormRef = ref<FormInst | null>(null)
 const notifications = ref<Notifications>({
   email: {
     enabled: false,
@@ -56,13 +59,73 @@ const supportsMention = computed(() => {
   return platform === 'feishu' || platform === 'wechat'
 })
 
+const alertRules: FormRules = {
+  'email.smtp': [
+    {
+      validator: (_rule, value: string) => {
+        if (notifications.value.email.enabled && !value?.trim()) {
+          return new Error('请输入 SMTP 服务器地址')
+        }
+        return true
+      },
+      trigger: ['blur', 'input'],
+    },
+  ],
+  'email.port': [
+    {
+      validator: (_rule, value: number) => {
+        if (notifications.value.email.enabled && (value < 1 || value > 65535)) {
+          return new Error('端口号必须在 1-65535 之间')
+        }
+        return true
+      },
+      trigger: ['blur', 'input'],
+    },
+  ],
+  'email.from': [
+    {
+      validator: (_rule, value: string) => {
+        if (notifications.value.email.enabled && !value?.trim()) {
+          return new Error('请输入发件人邮箱')
+        }
+        return true
+      },
+      trigger: ['blur', 'input'],
+    },
+  ],
+  'email.to': [
+    {
+      validator: (_rule, value: string) => {
+        if (notifications.value.email.enabled && !value?.trim()) {
+          return new Error('请输入收件人邮箱')
+        }
+        return true
+      },
+      trigger: ['blur', 'input'],
+    },
+  ],
+  'webhook.webhook': [
+    {
+      validator: (_rule, value: string) => {
+        if (!notifications.value.webhook.enabled) return true
+        if (!value?.trim()) return new Error('请输入 Webhook URL')
+        if (!value.startsWith('http://') && !value.startsWith('https://')) {
+          return new Error('Webhook URL 必须以 http:// 或 https:// 开头')
+        }
+        return true
+      },
+      trigger: ['blur', 'input'],
+    },
+  ],
+}
+
 const saving = ref(false)
 const loading = ref(false)
 const testing = ref({
   email: false,
   webhook: false,
 })
-const { toast } = useNotifications()
+const message = useMessage()
 
 // 服务器离线/上线告警开关
 const hasNotificationChannel = ref(false)
@@ -83,12 +146,7 @@ const addMentionedUser = () => {
 
   // 检查是否已存在
   if (mentionedUsers.value.includes(value)) {
-    toast.add({
-      severity: 'warn',
-      summary: '提示',
-      detail: '该用户已添加',
-      life: 2000,
-    })
+    message.warning('该用户已添加', { duration: 2000 })
     return
   }
 
@@ -189,117 +247,26 @@ const loadAlertSettings = async () => {
   } catch (error: unknown) {
     console.error('Failed to load alert settings:', error)
     const errorMessage = error instanceof Error ? error.message : '加载告警设置失败，请刷新页面重试'
-    toast.add({
-      severity: 'error',
-      summary: '加载失败',
-      detail: errorMessage,
-      life: 5000,
-    })
+    message.error(errorMessage, { duration: 5000 })
   } finally {
     loading.value = false
   }
 }
 
-// 验证通知配置
-const validateNotifications = (): boolean => {
-  // 验证邮件配置
-  if (notifications.value.email.enabled) {
-    if (!notifications.value.email.smtp.trim()) {
-      toast.add({
-        severity: 'warn',
-        summary: '验证失败',
-        detail: '请输入 SMTP 服务器地址',
-        life: 3000,
-      })
-      return false
-    }
-    if (notifications.value.email.port < 1 || notifications.value.email.port > 65535) {
-      toast.add({
-        severity: 'warn',
-        summary: '验证失败',
-        detail: '端口号必须在 1-65535 之间',
-        life: 3000,
-      })
-      return false
-    }
-    if (!notifications.value.email.from.trim()) {
-      toast.add({
-        severity: 'warn',
-        summary: '验证失败',
-        detail: '请输入发件人邮箱',
-        life: 3000,
-      })
-      return false
-    }
-    if (!notifications.value.email.to.trim()) {
-      toast.add({
-        severity: 'warn',
-        summary: '验证失败',
-        detail: '请输入收件人邮箱',
-        life: 3000,
-      })
-      return false
-    }
+// 校验表单（保存或测试前调用）
+const validateAlertsForm = async (): Promise<boolean> => {
+  try {
+    await alertsFormRef.value?.validate()
+    return true
+  } catch {
+    return false
   }
-
-  // 验证 Webhook 配置
-  if (notifications.value.webhook.enabled) {
-    if (!notifications.value.webhook.webhook.trim()) {
-      toast.add({
-        severity: 'warn',
-        summary: '验证失败',
-        detail: '请输入 Webhook URL',
-        life: 3000,
-      })
-      return false
-    }
-    if (
-      !notifications.value.webhook.webhook.startsWith('http://') &&
-      !notifications.value.webhook.webhook.startsWith('https://')
-    ) {
-      toast.add({
-        severity: 'warn',
-        summary: '验证失败',
-        detail: 'Webhook URL 必须以 http:// 或 https:// 开头',
-        life: 3000,
-      })
-      return false
-    }
-  }
-
-  return true
 }
 
 // 测试告警设置
 const testAlert = async (type: 'email' | 'webhook') => {
-  // 验证配置
-  if (type === 'email') {
-    if (
-      !notifications.value.email.smtp.trim() ||
-      notifications.value.email.port < 1 ||
-      notifications.value.email.port > 65535 ||
-      !notifications.value.email.from.trim() ||
-      !notifications.value.email.to.trim()
-    ) {
-      toast.add({
-        severity: 'warn',
-        summary: '验证失败',
-        detail: '请填写完整的邮件配置信息',
-        life: 3000,
-      })
-      return
-    }
-  } else {
-    if (!notifications.value.webhook.webhook.trim()) {
-      toast.add({
-        severity: 'warn',
-        summary: '验证失败',
-        detail: '请填写 Webhook URL',
-        life: 3000,
-      })
-      return
-    }
-  }
+  const valid = await validateAlertsForm()
+  if (!valid) return
 
   testing.value[type] = true
   try {
@@ -316,12 +283,7 @@ const testAlert = async (type: 'email' | 'webhook') => {
     })
 
     if (res && typeof res === 'object' && 'status' in res && res.status) {
-      toast.add({
-        severity: 'success',
-        summary: '测试成功',
-        detail: '测试消息已发送',
-        life: 3000,
-      })
+      message.success('测试消息已发送', { duration: 3000 })
     } else {
       const errorMsg =
         res && typeof res === 'object' && 'message' in res ? String(res.message) : '测试失败'
@@ -330,12 +292,7 @@ const testAlert = async (type: 'email' | 'webhook') => {
   } catch (error: unknown) {
     console.error(`Failed to test ${type} alert:`, error)
     const errorMessage = error instanceof Error ? error.message : '测试发送失败，请检查配置'
-    toast.add({
-      severity: 'error',
-      summary: '测试失败',
-      detail: errorMessage,
-      life: 5000,
-    })
+    message.error(errorMessage, { duration: 5000 })
   } finally {
     testing.value[type] = false
   }
@@ -343,12 +300,9 @@ const testAlert = async (type: 'email' | 'webhook') => {
 
 // 保存告警设置
 const saveAlertSettings = async () => {
-  // 验证通知配置
-  if (!validateNotifications()) {
-    return
-  }
+  const valid = await validateAlertsForm()
+  if (!valid) return
 
-  // 同步提及用户数组到字符串
   updateMentionedString()
 
   saving.value = true
@@ -360,12 +314,7 @@ const saveAlertSettings = async () => {
     })
 
     if (res && typeof res === 'object' && 'status' in res && res.status) {
-      toast.add({
-        severity: 'success',
-        summary: '保存成功',
-        detail: '告警设置已更新',
-        life: 3000,
-      })
+      message.success('告警设置已更新', { duration: 3000 })
       await loadAlertSettings()
     } else {
       const errorMsg =
@@ -375,12 +324,7 @@ const saveAlertSettings = async () => {
   } catch (error: unknown) {
     console.error('Failed to save alert settings:', error)
     const errorMessage = error instanceof Error ? error.message : '保存告警设置失败，请重试'
-    toast.add({
-      severity: 'error',
-      summary: '保存失败',
-      detail: errorMessage,
-      life: 5000,
-    })
+    message.error(errorMessage, { duration: 5000 })
   } finally {
     saving.value = false
   }
@@ -398,139 +342,132 @@ onMounted(() => {
         <p class="text-muted-color">配置告警通知方式</p>
       </div>
       <div>
-        <Button
-          size="small"
-          class="px-6"
-          label="保存设置"
-          icon="pi pi-save"
-          @click="saveAlertSettings"
-          :loading="saving"
-          :disabled="loading"
-        />
+        <n-button type="primary" :loading="saving" :disabled="loading" @click="saveAlertSettings">
+          <template #icon>
+            <ri-save-line />
+          </template>
+          保存设置
+        </n-button>
       </div>
     </div>
 
     <div v-if="loading" class="flex items-center justify-center py-12">
-      <i class="pi pi-spin pi-spinner text-4xl text-primary"></i>
+      <n-spin size="large" />
     </div>
 
-    <div v-else class="space-y-6">
+    <div v-else class="space-y-2">
       <!-- 服务器离线/上线告警 -->
-      <Card>
-        <template #title>
+      <n-card>
+        <template #header>
           <div class="flex items-center gap-2">
-            <i class="pi pi-desktop text-primary"></i>
             <span>服务器状态告警</span>
           </div>
         </template>
-        <template #content>
-          <Message v-if="!hasNotificationChannel" severity="info" variant="simple" class="mb-4">
-            请先在上方「通知设置」中配置并启用至少一个通知渠道（邮件或 Webhook）后，方可开启以下告警。
-          </Message>
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <div>
-                <label class="text-sm font-medium text-color">开启服务器离线告警</label>
-                <Message size="small" severity="secondary" variant="simple">
-                  当服务器 Agent 断开连接时发送告警通知
-                </Message>
-              </div>
-              <ToggleSwitch
-                v-model="alertServerOfflineEnabled"
-                :disabled="!hasNotificationChannel"
-              />
+        <n-alert v-if="!hasNotificationChannel" type="info" class="mb-4">
+          请先在上方「通知设置」中配置并启用至少一个通知渠道（邮件或 Webhook）后，方可开启以下告警。
+        </n-alert>
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <label class="text-sm font-medium text-color">服务器离线告警</label>
+              <p class="text-sm text-muted-color mt-1">当服务器 Agent 断开连接时发送告警通知</p>
             </div>
-            <div class="flex items-center justify-between">
-              <div>
-                <label class="text-sm font-medium text-color">开启服务器上线告警</label>
-                <Message size="small" severity="secondary" variant="simple">
-                  当服务器从离线恢复上线时发送通知
-                </Message>
-              </div>
-              <ToggleSwitch
-                v-model="alertServerOnlineEnabled"
-                :disabled="!hasNotificationChannel"
-              />
-            </div>
+            <n-switch
+              v-model:value="alertServerOfflineEnabled"
+              :disabled="!hasNotificationChannel"
+            />
           </div>
-        </template>
-      </Card>
+          <div class="flex items-center justify-between">
+            <div>
+              <label class="text-sm font-medium text-color">服务器上线告警</label>
+              <p class="text-sm text-muted-color mt-1">当服务器从离线恢复上线时发送通知</p>
+            </div>
+            <n-switch
+              v-model:value="alertServerOnlineEnabled"
+              :disabled="!hasNotificationChannel"
+            />
+          </div>
+        </div>
+      </n-card>
 
       <!-- 通知设置 -->
-      <Card>
-        <template #title>
+      <n-card>
+        <template #header>
           <div class="flex items-center gap-2">
-            <i class="pi pi-send text-primary"></i>
             <span>通知设置</span>
           </div>
         </template>
-        <template #content>
+        <n-form
+          ref="alertsFormRef"
+          :model="notifications"
+          :rules="alertRules"
+          label-placement="top"
+        >
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- 邮件通知 -->
             <div class="space-y-4">
               <div class="flex items-center justify-between">
                 <div>
                   <label class="text-sm font-medium text-color">邮件通知</label>
-                  <Message size="small" severity="secondary" variant="simple"
-                    >通过邮件发送告警通知</Message
-                  >
+                  <p class="text-sm text-muted-color mt-1">通过邮件发送告警通知</p>
                 </div>
-                <ToggleSwitch v-model="notifications.email.enabled" />
+                <n-switch v-model:value="notifications.email.enabled" />
               </div>
 
-              <div
-                v-if="notifications.email.enabled"
-                class="space-y-3 ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700"
-              >
-                <div class="flex flex-col gap-2">
-                  <label class="text-sm font-medium text-color">SMTP 服务器</label>
-                  <InputText v-model="notifications.email.smtp" placeholder="smtp.example.com" />
-                </div>
+              <div v-if="notifications.email.enabled">
+                <n-form-item label="SMTP 服务器" path="email.smtp" required>
+                  <n-input
+                    v-model:value="notifications.email.smtp"
+                    placeholder="smtp.example.com"
+                  />
+                </n-form-item>
                 <div class="grid grid-cols-2 gap-3">
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-color">端口</label>
-                    <InputNumber v-model="notifications.email.port" :min="1" :max="65535" />
-                  </div>
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium text-color">加密方式</label>
-                    <Select
-                      v-model="notifications.email.security"
-                      :options="securityOptions"
-                      optionLabel="label"
-                      optionValue="value"
+                  <n-form-item label="端口" path="email.port" required>
+                    <n-input-number
+                      v-model:value="notifications.email.port"
+                      :min="1"
+                      :max="65535"
+                      class="w-full"
                     />
-                  </div>
+                  </n-form-item>
+                  <n-form-item label="加密方式" path="email.security">
+                    <n-select
+                      v-model:value="notifications.email.security"
+                      :options="securityOptions"
+                    />
+                  </n-form-item>
                 </div>
-                <div class="flex flex-col gap-2">
-                  <label class="text-sm font-medium text-color">SMTP 密码</label>
-                  <Password
-                    v-model="notifications.email.password"
-                    :feedback="false"
-                    toggleMask
+                <n-form-item label="SMTP 密码" path="email.password">
+                  <n-input
+                    v-model:value="notifications.email.password"
+                    type="password"
+                    show-password-on="click"
                     :placeholder="
                       notifications.email.hasPassword ? '已设置，留空则不修改' : '请输入 SMTP 密码'
                     "
-                    inputClass="w-full"
                   />
-                </div>
-                <div class="flex flex-col gap-2">
-                  <label class="text-sm font-medium text-color">发件人邮箱</label>
-                  <InputText v-model="notifications.email.from" placeholder="alert@example.com" />
-                </div>
-                <div class="flex flex-col gap-2">
-                  <label class="text-sm font-medium text-color">收件人邮箱</label>
-                  <InputText v-model="notifications.email.to" placeholder="admin@example.com" />
-                </div>
-                <div class="pt-2">
-                  <Button
-                    label="发送测试邮件"
-                    icon="pi pi-send"
-                    severity="secondary"
-                    size="small"
+                </n-form-item>
+                <n-form-item label="发件人邮箱" path="email.from" required>
+                  <n-input
+                    v-model:value="notifications.email.from"
+                    placeholder="alert@example.com"
+                  />
+                </n-form-item>
+                <n-form-item label="收件人邮箱" path="email.to" required>
+                  <n-input v-model:value="notifications.email.to" placeholder="admin@example.com" />
+                </n-form-item>
+                <div class="w-full flex justify-end">
+                  <n-button
+                    secondary
                     :loading="testing.email"
                     :disabled="testing.email"
                     @click="testAlert('email')"
-                  />
+                  >
+                    <template #icon>
+                      <ri-send-plane-line />
+                    </template>
+                    发送测试邮件
+                  </n-button>
                 </div>
               </div>
             </div>
@@ -540,67 +477,61 @@ onMounted(() => {
               <div class="flex items-center justify-between">
                 <div>
                   <label class="text-sm font-medium text-color">Webhook 通知</label>
-                  <Message size="small" severity="secondary" variant="simple"
-                    >通过 Webhook 发送告警通知</Message
-                  >
+                  <p class="text-sm text-muted-color mt-1">通过 Webhook 发送告警通知</p>
                 </div>
-                <ToggleSwitch v-model="notifications.webhook.enabled" />
+                <n-switch v-model:value="notifications.webhook.enabled" />
               </div>
 
-              <div
-                v-if="notifications.webhook.enabled"
-                class="space-y-3 ml-4 pl-4 border-l-2 border-surface-200 dark:border-surface-700"
-              >
-                <div class="flex flex-col gap-2">
-                  <label class="text-sm font-medium text-color">平台类型</label>
-                  <Select
-                    v-model="notifications.webhook.platform"
+              <div v-if="notifications.webhook.enabled">
+                <n-form-item label="平台类型" path="webhook.platform">
+                  <n-select
+                    v-model:value="notifications.webhook.platform"
                     :options="webhookPlatformOptions"
-                    optionLabel="label"
-                    optionValue="value"
                     placeholder="选择平台"
                   />
-                </div>
-                <div class="flex flex-col gap-2">
-                  <label class="text-sm font-medium text-color">Webhook URL</label>
-                  <InputText
-                    v-model="notifications.webhook.webhook"
+                </n-form-item>
+                <n-form-item label="Webhook URL" path="webhook.webhook" required>
+                  <n-input
+                    v-model:value="notifications.webhook.webhook"
                     :placeholder="webhookPlaceholder"
                   />
-                </div>
+                </n-form-item>
                 <div v-if="supportsMention" class="flex flex-col gap-2">
                   <label class="text-sm font-medium text-color">提及用户</label>
-                  <InputText
-                    v-model="mentionedInput"
+                  <n-input
+                    v-model:value="mentionedInput"
                     placeholder="输入用户ID后按回车添加"
                     @keydown.enter.prevent="addMentionedUser"
                   />
                   <div v-if="mentionedUsers.length > 0" class="flex flex-wrap gap-2 mt-2">
-                    <Chip
+                    <n-tag
                       v-for="(user, index) in mentionedUsers"
                       :key="index"
-                      :label="user"
-                      removable
-                      @remove="removeMentionedUser(index)"
-                    />
+                      closable
+                      @close="removeMentionedUser(index)"
+                    >
+                      {{ user }}
+                    </n-tag>
                   </div>
                 </div>
-                <div class="pt-2">
-                  <Button
-                    label="发送测试消息"
-                    icon="pi pi-send"
-                    severity="secondary"
-                    size="small"
+                <div class="w-full flex justify-end">
+                  <n-button
+                    secondary
                     :loading="testing.webhook"
                     :disabled="testing.webhook"
                     @click="testAlert('webhook')"
-                  />
+                  >
+                    <template #icon>
+                      <ri-send-plane-line />
+                    </template>
+                    发送测试消息
+                  </n-button>
                 </div>
               </div>
             </div>
           </div>
-        </template>
-      </Card>
+        </n-form>
+      </n-card>
     </div>
   </div>
 </template>

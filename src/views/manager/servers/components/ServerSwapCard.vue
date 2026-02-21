@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { SwapInfo } from '@/types/manager/servers'
 import { getProgressTextColor, getProgressBarColor, formatBytes } from '@/utils/version.ts'
+import { RiDatabaseLine } from '@remixicon/vue'
 
 interface Props {
   swapInfo?: SwapInfo
@@ -19,11 +20,11 @@ const swapUsage = computed(() => {
 
 <template>
   <div
-    class="bg-surface-0 dark:bg-surface-900 rounded-lg p-4 border border-surface-200 dark:border-surface-700 shadow-sm hover:shadow-md transition-shadow"
+    class="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow"
   >
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
-        <i class="pi pi-database text-primary"></i>
+        <ri-database-line size="14px" />
         <span class="font-medium">Swap使用率</span>
       </div>
       <span
@@ -35,22 +36,18 @@ const swapUsage = computed(() => {
       </span>
       <span v-else class="text-lg text-muted-color">未配置</span>
     </div>
-    <ProgressBar
+    <n-progress
       v-if="swapInfo && swapInfo.swap_total > 0"
-      :value="swapUsage"
-      :showValue="false"
-      class="h-3 rounded-full"
-      :pt="{
-        value: {
-          style: {
-            backgroundColor: getProgressBarColor(swapUsage),
-          },
-        },
-      }"
+      type="line"
+      :percentage="swapUsage"
+      :show-indicator="false"
+      :color="getProgressBarColor(swapUsage)"
+      :height="12"
+      :border-radius="9999"
     />
     <div
       v-if="swapInfo && swapInfo.swap_total > 0"
-      class="mt-3 pt-3 border-t border-surface-200 dark:border-surface-700 text-sm"
+      class="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 text-sm"
     >
       <div class="flex items-center justify-between text-muted-color">
         <span>已使用:</span>
@@ -67,7 +64,7 @@ const swapUsage = computed(() => {
     </div>
     <div
       v-else
-      class="mt-3 pt-3 border-t border-surface-200 dark:border-surface-700 text-sm text-muted-color"
+      class="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 text-sm text-muted-color"
     >
       <p>系统未配置Swap分区</p>
     </div>

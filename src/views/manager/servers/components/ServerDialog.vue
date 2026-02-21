@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { useNotifications } from '@/composables/useNotifications'
+import { ref, computed, watch, h } from 'vue'
+import { useMessage, useDialog } from 'naive-ui'
 import ServerGroupSelector from './ServerGroupSelector.vue'
 import InstallInfo from './InstallInfo.vue'
 import serversApi from '@/apis/servers'
@@ -16,6 +16,30 @@ import type {
   ServerNotificationChannels,
 } from '@/types/manager/servers'
 import alertsApi from '@/apis/settings/alerts'
+import {
+  RiAddLine,
+  RiCalendarCloseLine,
+  RiCalendarLine,
+  RiCheckLine,
+  RiDatabaseLine,
+  RiDeleteBinLine,
+  RiEyeLine,
+  RiFolderLine,
+  RiGlobalLine,
+  RiHeartLine,
+  RiInformationLine,
+  RiKey2Line,
+  RiLineChartLine,
+  RiMapPinLine,
+  RiMoneyCnyCircleLine,
+  RiNotificationLine,
+  RiPriceTag3Line,
+  RiRefreshLine,
+  RiSendPlaneLine,
+  RiServerLine,
+  RiTimeLine,
+  RiWifiLine,
+} from '@remixicon/vue'
 
 interface Props {
   visible: boolean
@@ -33,7 +57,8 @@ const emit = defineEmits<{
   'save-success': []
 }>()
 
-const { toast, confirm } = useNotifications()
+const message = useMessage()
+const dialog = useDialog()
 const activeTab = ref('0')
 const restarting = ref(false)
 const resettingKey = ref(false)
@@ -98,21 +123,14 @@ const showTrafficLimitBytes = computed(() => form.value.traffic_limit_type === '
 
 const showTrafficResetCycle = computed(() => true)
 
-// 到期时间的 Date 对象
-const expireTimeDate = computed({
+// 到期时间的 timestamp 转换 (n-date-picker uses ms timestamps)
+const expireTimestamp = computed({
   get: () => {
     if (!form.value.expire_time) return null
-    if (typeof form.value.expire_time === 'string') {
-      return new Date(form.value.expire_time)
-    }
-    return form.value.expire_time as Date | null
+    return new Date(form.value.expire_time).getTime()
   },
-  set: (value: Date | null) => {
-    if (value) {
-      form.value.expire_time = value.toISOString()
-    } else {
-      form.value.expire_time = undefined
-    }
+  set: (val: number | null) => {
+    form.value.expire_time = val ? new Date(val).toISOString() : undefined
   },
 })
 
@@ -236,12 +254,7 @@ const loadServerDetail = async () => {
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '获取服务器详情失败'
-    toast.add({
-      severity: 'error',
-      summary: '加载失败',
-      detail: errorMessage,
-      life: 3000,
-    })
+    message.error(errorMessage, { duration: 3000 })
     if (props.editingServer) {
       form.value = {
         name: props.editingServer.name,
@@ -370,24 +383,13 @@ watch(
 const handleSave = async () => {
   // 验证必填字段
   if (!form.value.name || !form.value.ip) {
-    toast.add({
-      severity: 'error',
-      summary: '验证失败',
-      detail: '请填写服务器名称和IP地址',
-      life: 3000,
-    })
+    message.error('请填写服务器名称和IP地址', { duration: 3000 })
     return
   }
 
-  // 验证IP格式（简单验证）
   const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$|^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/
   if (!ipPattern.test(form.value.ip)) {
-    toast.add({
-      severity: 'error',
-      summary: '验证失败',
-      detail: '请输入有效的IP地址',
-      life: 3000,
-    })
+    message.error('请输入有效的IP地址', { duration: 3000 })
     return
   }
 
@@ -430,19 +432,12 @@ const handleCancel = () => {
 const handleRestartService = () => {
   if (!props.editingServer) return
 
-  confirm.require({
-    message: `确定要重启 "${props.editingServer.name}" 的Agent服务吗？`,
-    header: '重启确认',
-    rejectProps: {
-      label: '取消',
-      severity: 'secondary',
-      outlined: true,
-    },
-    acceptProps: {
-      label: '重启',
-      severity: 'warn',
-    },
-    accept: async () => {
+  dialog.warning({
+    title: '重启确认',
+    content: `确定要重启 "${props.editingServer.name}" 的Agent服务吗？`,
+    positiveText: '重启',
+    negativeText: '取消',
+    onPositiveClick: async () => {
       restarting.value = true
       try {
         const response = (await serversApi.restartService(
@@ -450,11 +445,8 @@ const handleRestartService = () => {
         )) as RestartServiceResponse
 
         if (response.status) {
-          toast.add({
-            severity: 'success',
-            summary: '重启成功',
-            detail: `服务器 "${props.editingServer!.name}" 的重启命令已发送`,
-            life: 3000,
+          message.success(`服务器 "${props.editingServer!.name}" 的重启命令已发送`, {
+            duration: 3000,
           })
           emit('restart-server', props.editingServer!)
         } else {
@@ -462,12 +454,7 @@ const handleRestartService = () => {
         }
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : '请稍后重试'
-        toast.add({
-          severity: 'error',
-          summary: '重启失败',
-          detail: errorMessage,
-          life: 3000,
-        })
+        message.error(errorMessage, { duration: 3000 })
       } finally {
         restarting.value = false
       }
@@ -479,31 +466,20 @@ const handleRestartService = () => {
 const handleResetAgentKey = () => {
   if (!props.editingServer) return
 
-  confirm.require({
-    message: `确定要重置 "${props.editingServer.name}" 的通信密钥和指纹吗？重置后Agent需要使用新密钥重新连接面板，并重新绑定指纹`,
-    header: '重置通信密钥确认',
-    rejectProps: {
-      label: '取消',
-      severity: 'secondary',
-      outlined: true,
-    },
-    acceptProps: {
-      label: '重置',
-      severity: 'warn',
-    },
-    accept: async () => {
+  dialog.warning({
+    title: '重置通信密钥确认',
+    content: `确定要重置 "${props.editingServer.name}" 的通信密钥和指纹吗？重置后Agent需要使用新密钥重新连接面板，并重新绑定指纹`,
+    positiveText: '重置',
+    negativeText: '取消',
+    onPositiveClick: async () => {
       resettingKey.value = true
       try {
         const response = await serversApi.resetAgentKey(props.editingServer!.id)
 
         if (response.status && response.data) {
-          toast.add({
-            severity: 'success',
-            summary: '重置成功',
-            detail: `服务器 "${props.editingServer!.name}" 的通信密钥和指纹已重置。`,
-            life: 5000,
+          message.success(`服务器 "${props.editingServer!.name}" 的通信密钥和指纹已重置。`, {
+            duration: 5000,
           })
-          // 重新加载服务器详情
           if (props.editingServer) {
             await loadServerDetail()
           }
@@ -512,12 +488,7 @@ const handleResetAgentKey = () => {
         }
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : '请稍后重试'
-        toast.add({
-          severity: 'error',
-          summary: '重置失败',
-          detail: errorMessage,
-          life: 3000,
-        })
+        message.error(errorMessage, { duration: 3000 })
       } finally {
         resettingKey.value = false
       }
@@ -551,12 +522,7 @@ const addMonitoredService = () => {
   }
 
   if (form.value.monitored_services.includes(name)) {
-    toast.add({
-      severity: 'warn',
-      summary: '提示',
-      detail: '该服务已在监控列表中',
-      life: 3000,
-    })
+    message.warning('该服务已在监控列表中', { duration: 3000 })
     return
   }
 
@@ -568,778 +534,758 @@ const removeMonitoredService = (name: string) => {
   if (!form.value.monitored_services) return
   form.value.monitored_services = form.value.monitored_services.filter((s) => s !== name)
 }
+
+// n-data-table columns for monitored services
+const serviceColumns = [
+  {
+    title: '服务名称',
+    key: 'name',
+  },
+  {
+    title: '状态',
+    key: 'status',
+    render(row: { status: unknown; running: boolean }) {
+      if (row.status) {
+        return h(
+          'n-tag',
+          { type: row.running ? 'success' : 'error' },
+          { default: () => (row.running ? '运行中' : '已停止') },
+        )
+      }
+      return h('n-tag', { type: 'default' }, { default: () => '未知' })
+    },
+  },
+  {
+    title: '资源占用',
+    key: 'resources',
+    render(row: { status: unknown; cpu: number; memory: number }) {
+      if (row.status) {
+        return h('div', { class: 'text-sm' }, [
+          h('div', {}, `CPU: ${row.cpu.toFixed(1)}%`),
+          h('div', {}, `MEM: ${row.memory.toFixed(1)}%`),
+        ])
+      }
+      return h('span', { class: 'text-muted-color' }, '-')
+    },
+  },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 100,
+    render(row: { name: string }) {
+      return h(
+        'n-button',
+        {
+          text: true,
+          type: 'error',
+          onClick: () => removeMonitoredService(row.name),
+        },
+        { default: () => RiDeleteBinLine },
+      )
+    },
+  },
+]
 </script>
 <template>
-  <Dialog
-    v-model:visible="isVisible"
-    :header="isEditing ? `编辑服务器 - ${props.editingServer?.name}` : '添加服务器'"
-    :block-scroll="false"
-    :draggable="false"
-    modal
-    class="w-3xl"
-    :pt="{
-      root: 'rounded-xl border-0 shadow-2xl',
-      header:
-        'bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 border-b border-primary-200 dark:border-primary-700 rounded-t-xl',
-      content: 'p-0',
-      footer:
-        '!p-5 bg-surface-50 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700 rounded-b-xl',
-    }"
+  <n-modal
+    v-model:show="isVisible"
+    :title="isEditing ? `编辑服务器 - ${props.editingServer?.name}` : '添加服务器'"
+    :mask-closable="false"
+    class="w-[700px]!"
+    preset="card"
   >
     <div v-if="isEditing && loadingDetail" class="flex flex-col items-center justify-center py-20">
-      <ProgressSpinner
-        style="width: 50px; height: 50px"
-        strokeWidth="4"
-        fill="transparent"
-        animationDuration="0.5s"
-      />
+      <n-spin size="large" />
       <p class="mt-4 text-muted-color">加载服务器详情中...</p>
     </div>
     <form v-else @submit.prevent="handleSave" class="space-y-6">
-      <Tabs :value="activeTab" @update:value="(val: string | number) => (activeTab = String(val))">
-        <TabList>
-          <Tab value="0">基础</Tab>
-          <Tab value="1">计费</Tab>
-          <Tab value="2">网络</Tab>
-          <Tab v-if="isEditing" value="5">Agent配置</Tab>
-          <Tab value="6">进程监控</Tab>
-          <Tab v-if="isEditing" value="4">告警</Tab>
-          <Tab v-if="isEditing" value="3">操作</Tab>
-        </TabList>
-        <TabPanels>
-          <!-- 基础信息 Tab -->
-          <TabPanel value="0">
-            <div class="space-y-4 pt-4">
-              <div class="grid grid-cols-2 gap-6">
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-tag text-primary text-xs"></i>
-                    服务器名称
-                    <span class="text-red-500">*</span>
-                  </label>
-                  <InputText
-                    v-model="form.name"
-                    placeholder="输入服务器名称"
-                    required
-                    class="w-full border-surface-300 dark:border-surface-600 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
-                  />
-                </div>
+      <n-tabs v-model:value="activeTab" type="line">
+        <!-- 基础信息 Tab -->
+        <n-tab-pane name="0" tab="基础">
+          <div class="space-y-4 pt-4">
+            <div class="grid grid-cols-2 gap-6">
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-price-tag3-line size="14px" />
+                  服务器名称
+                  <span class="text-red-500">*</span>
+                </label>
+                <n-input v-model:value="form.name" placeholder="输入服务器名称" class="w-full" />
+              </div>
 
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-globe text-primary text-xs"></i>
-                    IP地址
-                    <span class="text-red-500">*</span>
-                  </label>
-                  <InputText
-                    v-model="form.ip"
-                    placeholder="192.168.1.100"
-                    required
-                    class="w-full border-surface-300 dark:border-surface-600 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
-                  />
-                </div>
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-global-line size="14px" />
+                  IP地址
+                  <span class="text-red-500">*</span>
+                </label>
+                <n-input v-model:value="form.ip" placeholder="192.168.1.100" class="w-full" />
+              </div>
 
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-map-marker text-primary text-xs"></i>
-                    地域
-                  </label>
-                  <InputText
-                    v-model="form.location"
-                    placeholder="留空则自动获取"
-                    class="w-full border-surface-300 dark:border-surface-600 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
-                  />
-                </div>
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-map-pin-line size="14px" />
+                  地域
+                </label>
+                <n-input
+                  v-model:value="form.location"
+                  placeholder="留空则自动获取"
+                  class="w-full"
+                />
+              </div>
 
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-folder text-primary text-xs"></i>
-                    分组
-                  </label>
-                  <ServerGroupSelector v-model="form.group_id" placeholder="请选择分组（可选）" />
-                </div>
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-folder-line size="14px" />
+                  分组
+                </label>
+                <ServerGroupSelector v-model="form.group_id" placeholder="请选择分组（可选）" />
               </div>
             </div>
-          </TabPanel>
+          </div>
+        </n-tab-pane>
 
-          <!-- 计费信息 Tab -->
-          <TabPanel value="1">
-            <div class="space-y-4 pt-4">
-              <div class="grid grid-cols-2 gap-6">
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-calendar text-primary text-xs"></i>
-                    付费周期
-                  </label>
-                  <Select
-                    v-model="form.billing_cycle"
-                    :options="billingCycleOptions"
-                    option-label="label"
-                    option-value="value"
-                    placeholder="请选择付费周期"
-                    class="w-full"
-                  />
-                </div>
+        <!-- 计费信息 Tab -->
+        <n-tab-pane name="1" tab="计费">
+          <div class="space-y-4 pt-4">
+            <div class="grid grid-cols-2 gap-6">
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-calendar-line size="14px" />
+                  付费周期
+                </label>
+                <n-select
+                  v-model:value="form.billing_cycle"
+                  :options="billingCycleOptions"
+                  placeholder="请选择付费周期"
+                  class="w-full"
+                />
+              </div>
 
-                <div v-if="showCustomCycleDays" class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-clock text-primary text-xs"></i>
-                    自定义周期天数
-                  </label>
-                  <InputNumber
-                    v-model="form.custom_cycle_days"
-                    :min="1"
-                    placeholder="请输入天数"
-                    class="w-full"
-                  />
-                </div>
+              <div v-if="showCustomCycleDays" class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-time-line size="14px" />
+                  自定义周期天数
+                </label>
+                <n-input-number
+                  v-model:value="form.custom_cycle_days"
+                  :min="1"
+                  placeholder="请输入天数"
+                  class="w-full"
+                />
+              </div>
 
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-dollar text-primary text-xs"></i>
-                    价格
-                  </label>
-                  <InputNumber
-                    v-model="form.price"
-                    :min="0"
-                    mode="decimal"
-                    :min-fraction-digits="2"
-                    :max-fraction-digits="2"
-                    placeholder="请输入价格"
-                    class="w-full"
-                  />
-                </div>
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-money-cny-circle-line size="14px" />
+                  价格
+                </label>
+                <n-input-number
+                  v-model:value="form.price"
+                  :min="0"
+                  :precision="2"
+                  placeholder="请输入价格"
+                  class="w-full"
+                />
+              </div>
 
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-calendar-times text-primary text-xs"></i>
-                    到期时间
-                  </label>
-                  <Calendar
-                    v-model="expireTimeDate"
-                    date-format="yy-mm-dd"
-                    show-time
-                    hour-format="24"
-                    placeholder="请选择到期时间"
-                    class="w-full"
-                  />
-                </div>
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-calendar-close-line size="14px" />
+                  到期时间
+                </label>
+                <n-date-picker
+                  v-model:value="expireTimestamp"
+                  type="datetime"
+                  clearable
+                  class="w-full"
+                  placeholder="请选择到期时间"
+                />
+              </div>
 
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-eye text-primary text-xs"></i>
-                    显示付费周期
-                  </label>
-                  <div
-                    class="flex items-center gap-2 p-2 border border-[var(--p-select-border-color)] rounded-[var(--p-select-border-radius)]"
-                  >
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-eye-line size="14px" />
+                  显示付费周期
+                </label>
+                <n-card>
+                  <div class="flex gap-2">
                     <span class="text-sm text-muted-color flex-1"
                       >在概览和详情中显示付费周期信息</span
                     >
-                    <InputSwitch v-model="form.show_billing_cycle" />
+                    <n-switch v-model:value="form.show_billing_cycle" />
                   </div>
-                </div>
+                </n-card>
               </div>
             </div>
-          </TabPanel>
+          </div>
+        </n-tab-pane>
 
-          <!-- 网络信息 Tab -->
-          <TabPanel value="2">
-            <div class="space-y-4 pt-4">
-              <div class="grid grid-cols-2 gap-6">
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-wifi text-primary text-xs"></i>
-                    带宽大小
-                  </label>
-                  <InputNumber
-                    v-model="form.bandwidth_mbps"
-                    :min="0"
-                    placeholder="0表示无限制"
-                    suffix=" Mbps"
-                    class="w-full"
-                  />
-                </div>
+        <!-- 网络信息 Tab -->
+        <n-tab-pane name="2" tab="网络">
+          <div class="space-y-4 pt-4">
+            <div class="grid grid-cols-2 gap-6">
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-wifi-line size="14px" />
+                  带宽大小
+                </label>
+                <n-input-number
+                  v-model:value="form.bandwidth_mbps"
+                  :min="0"
+                  placeholder="0表示无限制"
+                  class="w-full"
+                >
+                  <template #suffix>Mbps</template>
+                </n-input-number>
+              </div>
 
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-chart-line text-primary text-xs"></i>
-                    流量限制类型
-                  </label>
-                  <Select
-                    v-model="form.traffic_limit_type"
-                    :options="trafficLimitTypeOptions"
-                    option-label="label"
-                    option-value="value"
-                    placeholder="请选择流量限制类型"
-                    class="w-full"
-                  />
-                </div>
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-line-chart-line size="14px" />
+                  流量限制类型
+                </label>
+                <n-select
+                  v-model:value="form.traffic_limit_type"
+                  :options="trafficLimitTypeOptions"
+                  placeholder="请选择流量限制类型"
+                  class="w-full"
+                />
+              </div>
 
-                <div v-if="showTrafficLimitBytes" class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-database text-primary text-xs"></i>
-                    流量限制大小
-                  </label>
-                  <InputNumber
-                    v-model="trafficLimitGB"
-                    :min="0"
-                    placeholder="0表示无限制"
-                    suffix=" GB"
-                    :min-fraction-digits="2"
-                    :max-fraction-digits="2"
-                    class="w-full"
-                  />
-                </div>
+              <div v-if="showTrafficLimitBytes" class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-database-line size="14px" />
+                  流量限制大小
+                </label>
+                <n-input-number
+                  v-model:value="trafficLimitGB"
+                  :min="0"
+                  :precision="2"
+                  placeholder="0表示无限制"
+                  class="w-full"
+                >
+                  <template #suffix>GB</template>
+                </n-input-number>
+              </div>
 
-                <div v-if="showTrafficResetCycle" class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-refresh text-primary text-xs"></i>
-                    流量重置周期
-                  </label>
-                  <Select
-                    v-model="form.traffic_reset_cycle"
-                    :options="trafficResetCycleOptions"
-                    option-label="label"
-                    option-value="value"
-                    placeholder="请选择重置周期"
-                    class="w-full"
-                  />
-                </div>
+              <div v-if="showTrafficResetCycle" class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-refresh-line size="14px" />
+                  流量重置周期
+                </label>
+                <n-select
+                  v-model:value="form.traffic_reset_cycle"
+                  :options="trafficResetCycleOptions"
+                  placeholder="请选择重置周期"
+                  class="w-full"
+                />
+              </div>
 
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-eye text-primary text-xs"></i>
-                    显示流量限制
-                  </label>
-                  <div
-                    class="flex items-center gap-2 p-2 border border-[var(--p-select-border-color)] rounded-[var(--p-select-border-radius)]"
-                  >
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-eye-line size="14px" />
+                  显示流量限制
+                </label>
+                <n-card>
+                  <div class="flex gap-2">
                     <span class="text-sm text-muted-color flex-1"
                       >在概览和详情中显示流量限制信息</span
                     >
-                    <InputSwitch v-model="form.show_traffic_limit" />
+                    <n-switch v-model:value="form.show_traffic_limit" />
                   </div>
-                </div>
+                </n-card>
+              </div>
 
-                <div v-if="showTrafficResetCycle" class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-eye text-primary text-xs"></i>
-                    显示流量重置周期
-                  </label>
-                  <div
-                    class="flex items-center gap-2 p-2 border border-[var(--p-select-border-color)] rounded-[var(--p-select-border-radius)]"
-                  >
+              <div v-if="showTrafficResetCycle" class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-eye-line size="14px" />
+                  显示流量重置周期
+                </label>
+                <n-card>
+                  <div class="flex gap-2">
                     <span class="text-sm text-muted-color flex-1"
                       >在概览和详情中显示流量重置周期信息</span
                     >
-                    <InputSwitch v-model="form.show_traffic_reset_cycle" />
+                    <n-switch v-model:value="form.show_traffic_reset_cycle" />
                   </div>
-                </div>
+                </n-card>
+              </div>
 
-                <div v-if="showTrafficCustomCycleDays" class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-clock text-primary text-xs"></i>
-                    自定义重置周期天数
-                  </label>
-                  <InputNumber
-                    v-model="form.traffic_custom_cycle_days"
-                    :min="1"
-                    placeholder="请输入天数"
-                    class="w-full"
-                  />
-                </div>
+              <div v-if="showTrafficCustomCycleDays" class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-time-line size="14px" />
+                  自定义重置周期天数
+                </label>
+                <n-input-number
+                  v-model:value="form.traffic_custom_cycle_days"
+                  :min="1"
+                  placeholder="请输入天数"
+                  class="w-full"
+                />
               </div>
             </div>
-          </TabPanel>
+          </div>
+        </n-tab-pane>
 
-          <!-- Agent配置 Tab -->
-          <TabPanel v-if="isEditing" value="5">
-            <div class="space-y-4 pt-4">
-              <div class="grid grid-cols-2 gap-6">
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-globe text-primary text-xs"></i>
-                    时区
-                  </label>
-                  <Select
-                    v-model="form.agent_timezone"
-                    :options="timezoneOptions"
-                    option-label="label"
-                    option-value="value"
-                    placeholder="请选择时区（留空使用默认）"
-                    class="w-full"
-                  />
-                </div>
-
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-chart-line text-primary text-xs"></i>
-                    性能指标上报间隔
-                  </label>
-                  <InputNumber
-                    v-model="form.agent_metrics_interval"
-                    :min="1"
-                    placeholder="秒（默认30）"
-                    suffix=" 秒"
-                    class="w-full"
-                  />
-                </div>
-
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-info-circle text-primary text-xs"></i>
-                    详细信息上报间隔
-                  </label>
-                  <InputNumber
-                    v-model="form.agent_detail_interval"
-                    :min="1"
-                    placeholder="秒（默认30）"
-                    suffix=" 秒"
-                    class="w-full"
-                  />
-                </div>
-
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-server text-primary text-xs"></i>
-                    系统信息上报间隔
-                  </label>
-                  <InputNumber
-                    v-model="form.agent_system_interval"
-                    :min="1"
-                    placeholder="秒（默认30）"
-                    suffix=" 秒"
-                    class="w-full"
-                  />
-                </div>
-
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-heart text-primary text-xs"></i>
-                    心跳间隔
-                  </label>
-                  <InputNumber
-                    v-model="form.agent_heartbeat_interval"
-                    :min="1"
-                    placeholder="秒（默认20）"
-                    suffix=" 秒"
-                    class="w-full"
-                  />
-                </div>
-
-                <div class="space-y-3">
-                  <label class="text-sm font-medium text-color flex items-center gap-2">
-                    <i class="pi pi-folder text-primary text-xs"></i>
-                    日志路径
-                  </label>
-                  <InputText
-                    v-model="form.agent_log_path"
-                    placeholder="logs（默认）"
-                    class="w-full"
-                  />
-                </div>
-              </div>
+        <!-- 告警配置 Tab -->
+        <n-tab-pane v-if="isEditing" name="3" tab="告警">
+          <div class="space-y-4 pt-4">
+            <div v-if="loadingAlertRules" class="flex flex-col items-center justify-center py-10">
+              <n-spin size="large" />
+              <p class="mt-3 text-sm text-muted-color">加载告警规则中...</p>
             </div>
-          </TabPanel>
-
-          <!-- 进程监控 Tab -->
-          <TabPanel value="6">
-            <div class="space-y-4 pt-4">
-              <div class="flex gap-2">
-                <InputText
-                  v-model="newServiceName"
-                  placeholder="输入服务名称，如: nginx, mysql"
-                  class="flex-1"
-                  @keydown.enter.prevent="addMonitoredService"
-                />
-                <Button
-                  label="添加服务"
-                  icon="pi pi-plus"
-                  @click="addMonitoredService"
-                  :disabled="!newServiceName.trim()"
-                />
-              </div>
-
-              <DataTable :value="monitoredServicesList" class="overflow-x-hidden overflow-y-auto max-h-[400px]" stripedRows>
-                <Column field="name" header="服务名称"></Column>
-                <Column header="状态">
-                  <template #body="{ data }">
-                    <Tag
-                      v-if="data.status"
-                      :severity="data.running ? 'success' : 'danger'"
-                      :value="data.running ? '运行中' : '已停止'"
-                      :icon="data.running ? 'pi pi-check-circle' : 'pi pi-times-circle'"
-                    />
-                    <Tag v-else severity="secondary" value="未知" icon="pi pi-question-circle" />
-                  </template>
-                </Column>
-                <Column header="资源占用">
-                  <template #body="{ data }">
-                    <div v-if="data.status" class="text-sm">
-                      <div>CPU: {{ data.cpu.toFixed(1) }}%</div>
-                      <div>MEM: {{ data.memory.toFixed(1) }}%</div>
-                    </div>
-                    <span v-else class="text-muted-color">-</span>
-                  </template>
-                </Column>
-                <Column header="操作" style="width: 100px">
-                  <template #body="{ data }">
-                    <Button
-                      icon="pi pi-trash"
-                      text
-                      severity="danger"
-                      @click="removeMonitoredService(data.name)"
-                      v-tooltip="'删除监控'"
-                    />
-                  </template>
-                </Column>
-                <template #empty>
-                  <div class="text-center p-4 text-muted-color">暂无监控服务，请在上方添加</div>
-                </template>
-              </DataTable>
-            </div>
-          </TabPanel>
-
-          <!-- 操作 Tab -->
-          <TabPanel v-if="isEditing" value="3">
-            <div class="space-y-4 pt-4">
-              <!-- 服务器操作 -->
-              <div class="flex flex-row gap-3">
-                <Button
-                  label="重启服务"
-                  icon="pi pi-refresh"
-                  outlined
-                  severity="warn"
-                  :loading="restarting"
-                  @click="handleRestartService"
-                  class="justify-start"
-                />
-                <Button
-                  label="重置通信密钥"
-                  outlined
-                  :loading="resettingKey"
-                  @click="handleResetAgentKey"
-                  class="justify-start"
-                />
-              </div>
-              <Divider />
-              <!-- 安装信息 -->
-              <InstallInfo
-                v-if="serverDetail"
-                :server="{
-                  ...props.editingServer!,
-                  agent_key: serverDetail.agent_key,
-                }"
-              />
-              <div v-else class="text-center py-8 text-muted-color">无法加载服务器详情</div>
-            </div>
-          </TabPanel>
-
-          <!-- 告警配置 Tab -->
-          <TabPanel v-if="isEditing" value="4">
-            <div class="space-y-4 pt-4">
-              <div v-if="loadingAlertRules" class="flex flex-col items-center justify-center py-10">
-                <ProgressSpinner
-                  style="width: 40px; height: 40px"
-                  strokeWidth="4"
-                  fill="transparent"
-                  animationDuration="0.5s"
-                />
-                <p class="mt-3 text-sm text-muted-color">加载告警规则中...</p>
-              </div>
-              <div v-else-if="alertRules" class="space-y-6">
-                <!-- 基础资源告警 -->
-                <div class="space-y-4">
-                  <h3 class="text-base font-semibold text-color flex items-center gap-2">
-                    <i class="pi pi-server text-primary"></i>
-                    基础资源告警
-                  </h3>
-                  <div class="grid grid-cols-3 gap-4 items-start">
-                    <!-- CPU 告警 -->
-                    <div
-                      class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
-                    >
-                      <div class="flex items-center justify-between">
-                        <label class="text-sm font-medium text-color">CPU 使用率</label>
-                        <InputSwitch v-model="alertRules.cpu.enabled" />
-                      </div>
-                      <div v-if="alertRules.cpu.enabled" class="space-y-2">
-                        <div>
-                          <label class="text-xs text-muted-color">警告阈值 (%)</label>
-                          <InputNumber
-                            v-model="alertRules.cpu.warning"
-                            :min="0"
-                            :max="100"
-                            :disabled="!alertRules.cpu.enabled"
-                            class="w-full"
-                          />
-                        </div>
-                        <div>
-                          <label class="text-xs text-muted-color">严重阈值 (%)</label>
-                          <InputNumber
-                            v-model="alertRules.cpu.critical"
-                            :min="0"
-                            :max="100"
-                            :disabled="!alertRules.cpu.enabled"
-                            class="w-full"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- 内存告警 -->
-                    <div
-                      class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
-                    >
-                      <div class="flex items-center justify-between">
-                        <label class="text-sm font-medium text-color">内存使用率</label>
-                        <InputSwitch v-model="alertRules.memory.enabled" />
-                      </div>
-                      <div v-if="alertRules.memory.enabled" class="space-y-2">
-                        <div>
-                          <label class="text-xs text-muted-color">警告阈值 (%)</label>
-                          <InputNumber
-                            v-model="alertRules.memory.warning"
-                            :min="0"
-                            :max="100"
-                            :disabled="!alertRules.memory.enabled"
-                            class="w-full"
-                          />
-                        </div>
-                        <div>
-                          <label class="text-xs text-muted-color">严重阈值 (%)</label>
-                          <InputNumber
-                            v-model="alertRules.memory.critical"
-                            :min="0"
-                            :max="100"
-                            :disabled="!alertRules.memory.enabled"
-                            class="w-full"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- 磁盘告警 -->
-                    <div
-                      class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
-                    >
-                      <div class="flex items-center justify-between">
-                        <label class="text-sm font-medium text-color">磁盘使用率</label>
-                        <InputSwitch v-model="alertRules.disk.enabled" />
-                      </div>
-                      <div v-if="alertRules.disk.enabled" class="space-y-2">
-                        <div>
-                          <label class="text-xs text-muted-color">警告阈值 (%)</label>
-                          <InputNumber
-                            v-model="alertRules.disk.warning"
-                            :min="0"
-                            :max="100"
-                            :disabled="!alertRules.disk.enabled"
-                            class="w-full"
-                          />
-                        </div>
-                        <div>
-                          <label class="text-xs text-muted-color">严重阈值 (%)</label>
-                          <InputNumber
-                            v-model="alertRules.disk.critical"
-                            :min="0"
-                            :max="100"
-                            :disabled="!alertRules.disk.enabled"
-                            class="w-full"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 网络资源告警 -->
-                <div class="space-y-4">
-                  <h3 class="text-base font-semibold text-color flex items-center gap-2">
-                    <i class="pi pi-wifi text-primary"></i>
-                    网络资源告警
-                  </h3>
-                  <div class="grid grid-cols-2 gap-4 items-start">
-                    <!-- 带宽峰值告警 -->
-                    <div
-                      class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
-                    >
-                      <div class="flex items-center justify-between">
-                        <label class="text-sm font-medium text-color">带宽峰值</label>
-                        <InputSwitch
-                          :model-value="alertRules?.bandwidth?.enabled ?? false"
-                          @update:model-value="
-                            (val: boolean) => {
-                              if (!alertRules) return
-                              if (!alertRules.bandwidth) {
-                                alertRules.bandwidth = { enabled: val, threshold: 100 }
-                              } else {
-                                alertRules.bandwidth.enabled = val
-                              }
-                            }
-                          "
-                        />
-                      </div>
-                      <div v-if="alertRules && alertRules.bandwidth?.enabled" class="space-y-2">
-                        <div>
-                          <label class="text-xs text-muted-color">峰值阈值 (Mbps)</label>
-                          <InputNumber
-                            v-model="alertRules.bandwidth!.threshold"
-                            :min="0"
-                            :disabled="!alertRules.bandwidth?.enabled"
-                            suffix=" Mbps"
-                            class="w-full"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- 流量耗尽告警 -->
-                    <div
-                      class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
-                    >
-                      <div class="flex items-center justify-between">
-                        <label class="text-sm font-medium text-color">流量耗尽</label>
-                        <InputSwitch
-                          :model-value="alertRules?.traffic?.enabled ?? false"
-                          @update:model-value="
-                            (val: boolean) => {
-                              if (!alertRules) return
-                              if (!alertRules.traffic) {
-                                alertRules.traffic = { enabled: val, threshold_percent: 80 }
-                              } else {
-                                alertRules.traffic.enabled = val
-                              }
-                            }
-                          "
-                        />
-                      </div>
-                      <div v-if="alertRules && alertRules.traffic?.enabled" class="space-y-2">
-                        <div>
-                          <label class="text-xs text-muted-color">告警阈值 (%)</label>
-                          <InputNumber
-                            v-model="alertRules.traffic!.threshold_percent"
-                            :min="0"
-                            :max="100"
-                            :disabled="!alertRules.traffic?.enabled"
-                            suffix=" %"
-                            class="w-full"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 其他告警 -->
-                <div class="space-y-4">
-                  <h3 class="text-base font-semibold text-color flex items-center gap-2">
-                    <i class="pi pi-bell text-primary"></i>
-                    其他告警
-                  </h3>
-                  <div class="grid grid-cols-1 gap-4">
-                    <!-- 到期提醒 -->
-                    <div
-                      class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
-                    >
-                      <div class="flex items-center justify-between">
-                        <label class="text-sm font-medium text-color">服务器到期提醒</label>
-                        <InputSwitch
-                          :model-value="alertRules?.expiration?.enabled ?? false"
-                          @update:model-value="
-                            (val: boolean) => {
-                              if (!alertRules) return
-                              if (!alertRules.expiration) {
-                                alertRules.expiration = { enabled: val, alert_days: 7 }
-                              } else {
-                                alertRules.expiration.enabled = val
-                              }
-                            }
-                          "
-                        />
-                      </div>
-                      <div v-if="alertRules && alertRules.expiration?.enabled" class="space-y-2">
-                        <div>
-                          <label class="text-xs text-muted-color">提前提醒天数</label>
-                          <InputNumber
-                            v-model="alertRules.expiration!.alert_days"
-                            :min="1"
-                            :disabled="!alertRules.expiration?.enabled"
-                            suffix=" 天"
-                            class="w-full"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div v-else class="text-center py-8 text-muted-color">无法加载告警规则</div>
-
-              <!-- 通知渠道配置 -->
-              <div class="mt-6 space-y-4">
+            <div v-else-if="alertRules" class="space-y-6">
+              <!-- 基础资源告警 -->
+              <div class="space-y-4">
                 <h3 class="text-base font-semibold text-color flex items-center gap-2">
-                  <i class="pi pi-send text-primary"></i>
-                  通知渠道
+                  <ri-server-line size="14px" />
+                  基础资源告警
                 </h3>
-                <p class="text-sm text-muted-color">
-                  选择此服务器告警时使用的通知方式。只有全局已配置的通知方式才能在此启用。
-                </p>
-                <div class="grid grid-cols-2 gap-4">
-                  <!-- 邮件通知 -->
-                  <div
-                    class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
-                  >
+                <div class="grid grid-cols-3 gap-4 items-start">
+                  <!-- CPU 告警 -->
+                  <n-card class="p-2">
                     <div class="flex items-center justify-between">
-                      <label class="text-sm font-medium text-color">邮件通知</label>
-                      <InputSwitch
-                        v-model="notificationChannels.email"
-                        :disabled="!globalNotificationChannels.email"
-                      />
+                      <label class="text-sm font-medium text-color">CPU 使用率</label>
+                      <n-switch v-model:value="alertRules.cpu.enabled" />
                     </div>
-                    <p v-if="!globalNotificationChannels.email" class="text-xs text-muted-color">
-                      全局邮件通知未配置
-                    </p>
-                    <p v-else class="text-xs text-muted-color">邮件通知可用</p>
-                  </div>
+                    <div v-if="alertRules.cpu.enabled" class="space-y-2">
+                      <div>
+                        <label class="text-xs text-muted-color">警告阈值 (%)</label>
+                        <n-input-number
+                          v-model:value="alertRules.cpu.warning"
+                          :min="0"
+                          :max="100"
+                          :disabled="!alertRules.cpu.enabled"
+                          class="w-full"
+                        />
+                      </div>
+                      <div>
+                        <label class="text-xs text-muted-color">严重阈值 (%)</label>
+                        <n-input-number
+                          v-model:value="alertRules.cpu.critical"
+                          :min="0"
+                          :max="100"
+                          :disabled="!alertRules.cpu.enabled"
+                          class="w-full"
+                        />
+                      </div>
+                    </div>
+                  </n-card>
 
-                  <!-- Webhook 通知 -->
-                  <div
-                    class="space-y-3 p-4 border border-surface-200 dark:border-surface-700 rounded-lg"
-                  >
+                  <!-- 内存告警 -->
+                  <n-card class="p-2">
                     <div class="flex items-center justify-between">
-                      <label class="text-sm font-medium text-color">Webhook 通知</label>
-                      <InputSwitch
-                        v-model="notificationChannels.webhook"
-                        :disabled="!globalNotificationChannels.webhook"
+                      <label class="text-sm font-medium text-color">内存使用率</label>
+                      <n-switch v-model:value="alertRules.memory.enabled" />
+                    </div>
+                    <div v-if="alertRules.memory.enabled" class="space-y-2">
+                      <div>
+                        <label class="text-xs text-muted-color">警告阈值 (%)</label>
+                        <n-input-number
+                          v-model:value="alertRules.memory.warning"
+                          :min="0"
+                          :max="100"
+                          :disabled="!alertRules.memory.enabled"
+                          class="w-full"
+                        />
+                      </div>
+                      <div>
+                        <label class="text-xs text-muted-color">严重阈值 (%)</label>
+                        <n-input-number
+                          v-model:value="alertRules.memory.critical"
+                          :min="0"
+                          :max="100"
+                          :disabled="!alertRules.memory.enabled"
+                          class="w-full"
+                        />
+                      </div>
+                    </div>
+                  </n-card>
+
+                  <!-- 磁盘告警 -->
+                  <n-card class="p-2">
+                    <div class="flex items-center justify-between">
+                      <label class="text-sm font-medium text-color">磁盘使用率</label>
+                      <n-switch v-model:value="alertRules.disk.enabled" />
+                    </div>
+                    <div v-if="alertRules.disk.enabled" class="space-y-2">
+                      <div>
+                        <label class="text-xs text-muted-color">警告阈值 (%)</label>
+                        <n-input-number
+                          v-model:value="alertRules.disk.warning"
+                          :min="0"
+                          :max="100"
+                          :disabled="!alertRules.disk.enabled"
+                          class="w-full"
+                        />
+                      </div>
+                      <div>
+                        <label class="text-xs text-muted-color">严重阈值 (%)</label>
+                        <n-input-number
+                          v-model:value="alertRules.disk.critical"
+                          :min="0"
+                          :max="100"
+                          :disabled="!alertRules.disk.enabled"
+                          class="w-full"
+                        />
+                      </div>
+                    </div>
+                  </n-card>
+                </div>
+              </div>
+
+              <!-- 网络资源告警 -->
+              <div class="space-y-4">
+                <h3 class="text-base font-semibold text-color flex items-center gap-2">
+                  <ri-wifi-line size="14px" />
+                  网络资源告警
+                </h3>
+                <div class="grid grid-cols-2 gap-4 items-start">
+                  <!-- 带宽峰值告警 -->
+                  <n-card class="p-2">
+                    <div class="flex items-center justify-between">
+                      <label class="text-sm font-medium text-color">带宽峰值</label>
+                      <n-switch
+                        :value="alertRules?.bandwidth?.enabled ?? false"
+                        @update:value="
+                          (val: boolean) => {
+                            if (!alertRules) return
+                            if (!alertRules.bandwidth) {
+                              alertRules.bandwidth = { enabled: val, threshold: 100 }
+                            } else {
+                              alertRules.bandwidth.enabled = val
+                            }
+                          }
+                        "
                       />
                     </div>
-                    <p v-if="!globalNotificationChannels.webhook" class="text-xs text-muted-color">
-                      全局 Webhook 通知未配置
-                    </p>
-                    <p v-else class="text-xs text-muted-color">Webhook通知可用</p>
-                  </div>
+                    <div v-if="alertRules && alertRules.bandwidth?.enabled" class="space-y-2">
+                      <div>
+                        <label class="text-xs text-muted-color">峰值阈值 (Mbps)</label>
+                        <n-input-number
+                          v-model:value="alertRules.bandwidth!.threshold"
+                          :min="0"
+                          :disabled="!alertRules.bandwidth?.enabled"
+                          class="w-full"
+                        >
+                          <template #suffix>Mbps</template>
+                        </n-input-number>
+                      </div>
+                    </div>
+                  </n-card>
+
+                  <!-- 流量耗尽告警 -->
+                  <n-card class="p-2">
+                    <div class="flex items-center justify-between">
+                      <label class="text-sm font-medium text-color">流量耗尽</label>
+                      <n-switch
+                        :value="alertRules?.traffic?.enabled ?? false"
+                        @update:value="
+                          (val: boolean) => {
+                            if (!alertRules) return
+                            if (!alertRules.traffic) {
+                              alertRules.traffic = { enabled: val, threshold_percent: 80 }
+                            } else {
+                              alertRules.traffic.enabled = val
+                            }
+                          }
+                        "
+                      />
+                    </div>
+                    <div v-if="alertRules && alertRules.traffic?.enabled" class="space-y-2">
+                      <div>
+                        <label class="text-xs text-muted-color">告警阈值 (%)</label>
+                        <n-input-number
+                          v-model:value="alertRules.traffic!.threshold_percent"
+                          :min="0"
+                          :max="100"
+                          :disabled="!alertRules.traffic?.enabled"
+                          class="w-full"
+                        >
+                          <template #suffix>%</template>
+                        </n-input-number>
+                      </div>
+                    </div>
+                  </n-card>
+                </div>
+              </div>
+
+              <!-- 其他告警 -->
+              <div class="space-y-4">
+                <h3 class="text-base font-semibold text-color flex items-center gap-2">
+                  <ri-notification-line size="14px" />
+                  其他告警
+                </h3>
+                <div class="grid grid-cols-1 gap-4">
+                  <!-- 到期提醒 -->
+                  <n-card class="p-2">
+                    <div class="flex items-center justify-between">
+                      <label class="text-sm font-medium text-color">服务器到期提醒</label>
+                      <n-switch
+                        :value="alertRules?.expiration?.enabled ?? false"
+                        @update:value="
+                          (val: boolean) => {
+                            if (!alertRules) return
+                            if (!alertRules.expiration) {
+                              alertRules.expiration = { enabled: val, alert_days: 7 }
+                            } else {
+                              alertRules.expiration.enabled = val
+                            }
+                          }
+                        "
+                      />
+                    </div>
+                    <div v-if="alertRules && alertRules.expiration?.enabled" class="space-y-2">
+                      <div>
+                        <label class="text-xs text-muted-color">提前提醒天数</label>
+                        <n-input-number
+                          v-model:value="alertRules.expiration!.alert_days"
+                          :min="1"
+                          :disabled="!alertRules.expiration?.enabled"
+                          class="w-full"
+                        >
+                          <template #suffix>天</template>
+                        </n-input-number>
+                      </div>
+                    </div>
+                  </n-card>
                 </div>
               </div>
             </div>
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
+            <div v-else class="text-center py-8 text-muted-color">无法加载告警规则</div>
+
+            <!-- 通知渠道配置 -->
+            <div class="mt-6 space-y-4">
+              <h3 class="text-base font-semibold text-color flex items-center gap-2">
+                <ri-send-plane-line size="14px" />
+                通知渠道
+              </h3>
+              <p class="text-sm text-muted-color">
+                选择此服务器告警时使用的通知方式。只有全局已配置的通知方式才能在此启用。
+              </p>
+              <div class="grid grid-cols-2 gap-4">
+                <!-- 邮件通知 -->
+                <n-card class="p-2">
+                  <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium text-color">邮件通知</label>
+                    <n-switch
+                      v-model:value="notificationChannels.email"
+                      :disabled="!globalNotificationChannels.email"
+                    />
+                  </div>
+                  <p v-if="!globalNotificationChannels.email" class="text-xs text-muted-color">
+                    全局邮件通知未配置
+                  </p>
+                  <p v-else class="text-xs text-muted-color">邮件通知可用</p>
+                </n-card>
+
+                <!-- Webhook 通知 -->
+                <n-card class="p-2">
+                  <div class="flex items-center justify-between">
+                    <label class="text-sm font-medium text-color">Webhook 通知</label>
+                    <n-switch
+                      v-model:value="notificationChannels.webhook"
+                      :disabled="!globalNotificationChannels.webhook"
+                    />
+                  </div>
+                  <p v-if="!globalNotificationChannels.webhook" class="text-xs text-muted-color">
+                    全局 Webhook 通知未配置
+                  </p>
+                  <p v-else class="text-xs text-muted-color">Webhook通知可用</p>
+                </n-card>
+              </div>
+            </div>
+          </div>
+        </n-tab-pane>
+
+        <!-- Agent配置 Tab -->
+        <n-tab-pane v-if="isEditing" name="4" tab="被控配置">
+          <div class="space-y-4 pt-4">
+            <div class="grid grid-cols-2 gap-6">
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-global-line size="14px" />
+                  时区
+                </label>
+                <n-select
+                  v-model:value="form.agent_timezone"
+                  :options="timezoneOptions"
+                  placeholder="请选择时区（留空使用默认）"
+                  class="w-full"
+                />
+              </div>
+
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-line-chart-line size="14px" />
+                  性能指标上报间隔
+                </label>
+                <n-input-number
+                  v-model:value="form.agent_metrics_interval"
+                  :min="1"
+                  placeholder="秒（默认30）"
+                  class="w-full"
+                >
+                  <template #suffix>秒</template>
+                </n-input-number>
+              </div>
+
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-information-line size="14px" />
+                  详细信息上报间隔
+                </label>
+                <n-input-number
+                  v-model:value="form.agent_detail_interval"
+                  :min="1"
+                  placeholder="秒（默认30）"
+                  class="w-full"
+                >
+                  <template #suffix>秒</template>
+                </n-input-number>
+              </div>
+
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-server-line size="14px" />
+                  系统信息上报间隔
+                </label>
+                <n-input-number
+                  v-model:value="form.agent_system_interval"
+                  :min="1"
+                  placeholder="秒（默认30）"
+                  class="w-full"
+                >
+                  <template #suffix>秒</template>
+                </n-input-number>
+              </div>
+
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-heart-line size="14px" />
+                  心跳间隔
+                </label>
+                <n-input-number
+                  v-model:value="form.agent_heartbeat_interval"
+                  :min="1"
+                  placeholder="秒（默认20）"
+                  class="w-full"
+                >
+                  <template #suffix>秒</template>
+                </n-input-number>
+              </div>
+
+              <div class="space-y-3">
+                <label class="text-sm font-medium text-color flex items-center gap-2">
+                  <ri-folder-line size="14px" />
+                  日志路径
+                </label>
+                <n-input
+                  v-model:value="form.agent_log_path"
+                  placeholder="logs（默认）"
+                  class="w-full"
+                />
+              </div>
+            </div>
+          </div>
+        </n-tab-pane>
+
+        <!-- 进程监控 Tab -->
+        <n-tab-pane name="5" tab="进程监控">
+          <div class="space-y-2 pt-4">
+            <div class="flex gap-2">
+              <n-input
+                v-model:value="newServiceName"
+                placeholder="输入服务名称，如: nginx, mysql"
+                class="flex-1"
+                @keydown.enter.prevent="addMonitoredService"
+              />
+              <n-button
+                type="primary"
+                :disabled="!newServiceName.trim()"
+                @click="addMonitoredService"
+              >
+                <template #icon>
+                  <ri-add-line />
+                </template>
+                添加服务
+              </n-button>
+            </div>
+
+            <n-data-table
+              :columns="serviceColumns"
+              :data="monitoredServicesList"
+              :max-height="400"
+              striped
+            >
+              <template #empty>
+                <n-empty description="暂无数据" class="py-4" />
+              </template>
+            </n-data-table>
+          </div>
+        </n-tab-pane>
+
+        <!-- 操作 Tab -->
+        <n-tab-pane v-if="isEditing" name="6" tab="操作">
+          <div class="space-y-4 pt-4">
+            <!-- 服务器操作 -->
+            <div class="flex flex-row gap-2">
+              <n-button
+                secondary
+                type="warning"
+                :loading="restarting"
+                @click="handleRestartService"
+                class="justify-start"
+              >
+                <template #icon>
+                  <ri-refresh-line />
+                </template>
+                重启服务
+              </n-button>
+              <n-button
+                secondary
+                :loading="resettingKey"
+                @click="handleResetAgentKey"
+                class="justify-start"
+              >
+                <template #icon>
+                  <ri-key2-line />
+                </template>
+                重置通信密钥
+              </n-button>
+            </div>
+            <n-divider />
+            <!-- 安装信息 -->
+            <InstallInfo
+              v-if="serverDetail"
+              :server="{
+                ...props.editingServer!,
+                agent_key: serverDetail.agent_key,
+              }"
+            />
+            <div v-else class="text-center py-8 text-muted-color">无法加载服务器详情</div>
+          </div>
+        </n-tab-pane>
+      </n-tabs>
     </form>
 
     <template #footer>
-      <div class="flex gap-3">
-        <Button label="取消" text @click="handleCancel" class="px-6 py-2" />
-        <Button
-          :label="isEditing ? '更新配置' : '添加服务器'"
-          :icon="isEditing ? 'pi pi-check' : 'pi pi-plus'"
-          @click="handleSave"
-          :loading="props.saving || savingAlertRules"
-          class="px-6 py-2 font-medium"
-        />
+      <div class="flex justify-end gap-2 mt-2">
+        <n-button type="default" @click="handleCancel" tertiary>取消</n-button>
+        <n-button type="primary" @click="handleSave" :loading="props.saving || savingAlertRules">
+          <template #icon>
+            <ri-check-line v-if="isEditing" />
+            <ri-add-line v-else />
+          </template>
+          {{ isEditing ? '更新配置' : '添加服务器' }}
+        </n-button>
       </div>
     </template>
-    <ConfirmPopup />
-  </Dialog>
+  </n-modal>
 </template>
+<style scoped>
+:deep(.n-card__content) {
+  padding: 8px !important;
+}
+</style>

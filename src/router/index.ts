@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { setupRouteGuards } from './guards'
+import { RiHome5Line, RiServerLine, RiSettings4Line } from '@remixicon/vue'
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -10,7 +11,7 @@ const router = createRouter({
       component: () => import('@/views/overview/OverviewView.vue'),
       meta: {
         title: '总览',
-        icon: 'pi pi-home',
+        icon: RiHome5Line,
         roles: ['guest', 'admin'],
       },
     },
@@ -20,7 +21,6 @@ const router = createRouter({
       component: () => import('@/views/login/LoginView.vue'),
       meta: {
         title: '登录',
-        icon: 'pi pi-sign-in',
         showToMenu: false,
         roles: ['*'],
       },
@@ -31,7 +31,7 @@ const router = createRouter({
       component: () => import('@/views/manager/servers/ServersView.vue'),
       meta: {
         title: '服务器',
-        icon: 'pi pi-server',
+        icon: RiServerLine,
         roles: ['admin'],
       },
     },
@@ -41,7 +41,7 @@ const router = createRouter({
       name: 'settings',
       meta: {
         title: '设置',
-        icon: 'pi pi-cog',
+        icon: RiSettings4Line,
         roles: ['admin'],
       },
       children: [
@@ -51,7 +51,6 @@ const router = createRouter({
           component: () => import('@/views/settings/panel/PanelView.vue'),
           meta: {
             title: '面板设置',
-            icon: 'pi pi-cog',
             roles: ['admin'],
           },
         },
@@ -61,7 +60,6 @@ const router = createRouter({
           component: () => import('@/views/settings/permissions/PermissionsView.vue'),
           meta: {
             title: '权限配置',
-            icon: 'pi pi-shield',
             roles: ['admin'],
           },
         },
@@ -71,7 +69,6 @@ const router = createRouter({
           component: () => import('@/views/settings/alerts/AlertsView.vue'),
           meta: {
             title: '告警设置',
-            icon: 'pi pi-bell',
             roles: ['admin'],
           },
         },
