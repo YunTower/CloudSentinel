@@ -59,15 +59,15 @@ const groupOptions = computed(() =>
 )
 
 const renderLabel = (option: { label: string; value: number; color?: string }) => {
-  return h('div', { class: 'flex items-center gap-2' }, [
-    option.color
-      ? h('span', {
-          class: 'w-3 h-3 rounded-full flex-shrink-0',
-          style: { backgroundColor: option.color },
-        })
-      : null,
-    h('span', option.label),
-  ])
+  return option.color
+    ? h(
+        'span',
+        {
+          style: { color: option.color },
+        },
+        option.label,
+      )
+    : h('span', { class: 'font-medium' }, option.label)
 }
 </script>
 
@@ -79,6 +79,7 @@ const renderLabel = (option: { label: string; value: number; color?: string }) =
     :loading="loading"
     :render-label="renderLabel"
     class="w-full"
+    clearable
     @update:value="handleChange"
   />
 </template>

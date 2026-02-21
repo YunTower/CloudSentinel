@@ -104,15 +104,15 @@ const columns = computed<DataTableColumn<ServerGroup>[]>(() => [
     title: '分组名称',
     minWidth: 160,
     render: (row: ServerGroup) =>
-      h('div', { class: 'flex items-center gap-2' }, [
-        row.color
-          ? h('span', {
-              class: 'w-3 h-3 rounded-full flex-shrink-0',
-              style: { backgroundColor: row.color },
-            })
-          : null,
-        h('span', { class: 'font-medium' }, row.name),
-      ]),
+      row.color
+        ? h(
+            'span',
+            {
+              style: { color: row.color },
+            },
+            row.name,
+          )
+        : h('span', { class: 'font-medium' }, row.name),
   },
   {
     key: 'description',
@@ -126,9 +126,7 @@ const columns = computed<DataTableColumn<ServerGroup>[]>(() => [
     title: '服务器数量',
     width: 120,
     render: (row: ServerGroup) =>
-      h(NTag, { type: 'info', size: 'small' }, () =>
-        String(groupServerCounts.value[row.id] ?? 0),
-      ),
+      h(NTag, { type: 'info', size: 'small' }, () => String(groupServerCounts.value[row.id] ?? 0)),
   },
   {
     key: 'actions',
@@ -139,8 +137,9 @@ const columns = computed<DataTableColumn<ServerGroup>[]>(() => [
         h(
           NButton,
           {
-            text: true,
+            secondary: true,
             size: 'small',
+
             onClick: () => handleEdit(row),
           },
           { default: () => h(RiEditLine, { size: '14px' }) },
@@ -148,7 +147,7 @@ const columns = computed<DataTableColumn<ServerGroup>[]>(() => [
         h(
           NButton,
           {
-            text: true,
+            secondary: true,
             size: 'small',
             type: 'error',
             onClick: () => handleDelete(row),
