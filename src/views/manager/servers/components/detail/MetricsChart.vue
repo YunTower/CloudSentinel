@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import type { MetricsData } from '@/types/manager/servers'
-import { initChart, getThemeColors, type ECOption } from '@/utils/echarts'
+import { initChart, getThemeColors, type ECOption } from '@/utils/echarts.ts'
 import type { LineSeriesOption } from 'echarts/charts'
 import type { YAXisOption } from 'echarts/types/dist/shared'
 import type { CallbackDataParams } from 'echarts/types/dist/shared'
 import { formatSpeed } from '@/utils/version.ts'
-import { useLayout } from '@/composables/useLayout'
+import { useLayout } from '@/composables/useLayout.ts'
 import { RiLineChartLine } from '@remixicon/vue'
 
 interface Props {
@@ -501,9 +501,7 @@ defineExpose({
 </script>
 
 <template>
-  <div
-    class="chart-card bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm"
-  >
+  <n-card>
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
         <ri-line-chart-line size="14px" />
@@ -523,5 +521,5 @@ defineExpose({
       </div>
     </div>
     <div ref="chartContainer" class="mt-4" style="height: 250px"></div>
-  </div>
+  </n-card>
 </template>

@@ -10,9 +10,7 @@ defineProps<Props>()
 </script>
 
 <template>
-  <div
-    class="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow"
-  >
+  <n-card>
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
         <ri-cpu-line size="14px" />
@@ -30,5 +28,5 @@ defineProps<Props>()
       :height="12"
       :border-radius="9999"
     />
-  </div>
+  </n-card>
 </template>

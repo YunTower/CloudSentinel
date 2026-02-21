@@ -12,9 +12,7 @@ defineProps<Props>()
 </script>
 
 <template>
-  <div
-    class="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow"
-  >
+  <n-card>
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
         <ri-ram-line size="14px" />
@@ -42,5 +40,5 @@ defineProps<Props>()
         <span class="font-medium text-color">{{ formatBytes(memoryInfo.memory_total) }}</span>
       </div>
     </div>
-  </div>
+  </n-card>
 </template>

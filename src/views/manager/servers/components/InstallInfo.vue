@@ -150,9 +150,7 @@ const copyInstallCommand = async () => {
           复制命令
         </n-tooltip>
       </div>
-      <div class="space-y-3">
-        <n-code :code="installCommand" language="bash" word-wrap />
-      </div>
+      <n-code :code="installCommand" language="bash" word-wrap />
     </div>
   </div>
 </template>
