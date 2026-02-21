@@ -5,15 +5,18 @@ export interface ApiResponse<T> {
   data: T
 }
 
+export type VersionType = 'dev' | 'beta' | 'release'
+
 export interface GetPanelSettingsData {
   panel_title: string
   current_version: string
   current_version_type: VersionType
   log_retention_days?: number
+  /** 更新渠道 */
+  update_channel?: VersionType
 }
 
 export type GetCheckUpdateResponse = ApiResponse<GetUpdateData>
-export type VersionType = 'dev' | 'alpha' | 'beta' | 'rc' | 'release'
 export interface GetUpdateData {
   latest_version: string
   latest_version_type: VersionType
@@ -35,6 +38,7 @@ export type GetPanelSettingsResponse = ApiResponse<GetPanelSettingsData>
 export interface SavePanelSettingsBody {
   title: string
   log_retention_days?: number
+  update_channel?: VersionType
 }
 
 // Permissions
