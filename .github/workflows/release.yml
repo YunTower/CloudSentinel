@@ -16,7 +16,6 @@ jobs:
       BACKEND_PAT: ${{ secrets.BACKEND_PAT }}
 
     steps:
-
       # ==========================
       # Checkout Frontend
       # ==========================
@@ -144,6 +143,9 @@ jobs:
 
           TAG=${{ steps.tag.outputs.tag_name }}
 
+          # 重新设置 origin 为带 token 的 URL
+          git remote set-url origin https://x-access-token:${{ secrets.BACKEND_PAT }}@github.com/${{ env.BACKEND_REPO }}.git
+
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag already exists"
           else
@@ -151,7 +153,6 @@ jobs:
             git push origin "$TAG"
             echo "Tag pushed to backend"
           fi
-
       # ==========================
       # 生成 Release Notes
       # ==========================
