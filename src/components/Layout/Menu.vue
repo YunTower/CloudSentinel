@@ -165,10 +165,10 @@ onMounted(() => {
         <!-- 深色模式切换 -->
         <n-tooltip>
           <template #trigger>
-            <n-button text circle size="small" @click="toggleDarkMode">
+            <n-button quaternary circle size="small" @click="toggleDarkMode">
               <template #icon>
-                <ri-sun-line v-if="isDarkMode" />
-                <ri-moon-line v-else />
+                <ri-sun-line v-if="isDarkMode" size="14px" />
+                <ri-moon-line v-else size="14px" />
               </template>
             </n-button>
           </template>
@@ -178,9 +178,9 @@ onMounted(() => {
         <!-- 访客：管理员登录 -->
         <n-tooltip v-if="isAuthenticated && currentUser?.role === 'guest'">
           <template #trigger>
-            <n-button text circle size="small" @click="showAdminLoginDialog = true">
+            <n-button quaternary circle size="small" @click="showAdminLoginDialog = true">
               <template #icon>
-                <ri-user-line />
+                <ri-user-line size="14px" />
               </template>
             </n-button>
           </template>
@@ -190,9 +190,9 @@ onMounted(() => {
         <!-- 管理员：退出登录 -->
         <n-tooltip v-if="isAuthenticated && currentUser?.role === 'admin'">
           <template #trigger>
-            <n-button text circle size="small" @click="handleLogout">
+            <n-button quaternary circle size="small" @click="handleLogout">
               <template #icon>
-                <ri-logout-box-line />
+                <ri-logout-box-line size="14px" />
               </template>
             </n-button>
           </template>
