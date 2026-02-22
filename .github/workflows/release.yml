@@ -12,18 +12,23 @@ jobs:
       contents: write
 
     env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
-      BACKEND_PAT: ${{ secrets.BACKEND_PAT }}
       BACKEND_REPO: YunTower/CloudSentinel-Backend
+      BACKEND_PAT: ${{ secrets.BACKEND_PAT }}
 
     steps:
+
+      # ==========================
+      # Checkout Frontend
+      # ==========================
       - name: Checkout frontend repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      # ==========================
+      # Setup Node
+      # ==========================
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
@@ -35,14 +40,16 @@ jobs:
           sed -i "s|outDir: '../backend/public'|outDir: 'dist'|" vite.config.ts
           pnpm run build
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      # ==========================
+      # Setup Go
+      # ==========================
+      - uses: actions/setup-go@v5
         with:
           go-version: '1.21'
 
-      # --------------------------
-      # 获取 tag 信息
-      # --------------------------
+      # ==========================
+      # 获取 Tag 信息
+      # ==========================
       - name: Get tag name
         id: tag
         run: |
@@ -50,21 +57,69 @@ jobs:
           VERSION="${TAG_NAME#v}"
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Tag: $TAG_NAME"
+          echo "Version: $VERSION"
 
-      # --------------------------
-      # Clone backend + 完整历史
-      # --------------------------
+      # ==========================
+      # Clone Backend
+      # ==========================
       - name: Clone backend repository
         run: |
           git clone https://x-access-token:${{ secrets.BACKEND_PAT }}@github.com/${{ env.BACKEND_REPO }}.git backend-repo
           cd backend-repo
           git fetch --tags --force
-          git fetch --unshallow || true
-          git checkout ${{ steps.tag.outputs.tag_name }}
 
-      # --------------------------
-      # Build backend
-      # --------------------------
+      # ==========================
+      # Frontend Changelog
+      # ==========================
+      - name: Generate frontend changelog
+        run: |
+          TAG=${{ steps.tag.outputs.tag_name }}
+          git fetch --tags --force
+
+          PREV=$(git tag --sort=-v:refname | grep -A1 "^$TAG$" | tail -n1)
+
+          if [ -z "$PREV" ]; then
+            RANGE="$TAG"
+          else
+            RANGE="$PREV..$TAG"
+          fi
+
+          git log $RANGE \
+            --pretty=format:"- [%h](https://github.com/${{ github.repository }}/commit/%H) %s" \
+            --reverse > frontend_changelog.txt
+
+          if [ ! -s frontend_changelog.txt ]; then
+            echo "- 无变更" > frontend_changelog.txt
+          fi
+
+      # ==========================
+      # Backend Changelog
+      # ==========================
+      - name: Generate backend changelog
+        run: |
+          cd backend-repo
+          git fetch --tags --force
+
+          PREV=$(git tag --sort=-v:refname | head -n 1)
+
+          if [ -z "$PREV" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="$PREV..HEAD"
+          fi
+
+          git log $RANGE \
+            --pretty=format:"- [%h](https://github.com/YunTower/CloudSentinel-Backend/commit/%H) %s" \
+            --reverse > $GITHUB_WORKSPACE/backend_changelog.txt
+
+          if [ ! -s $GITHUB_WORKSPACE/backend_changelog.txt ]; then
+            echo "- 无变更" > $GITHUB_WORKSPACE/backend_changelog.txt
+          fi
+
+      # ==========================
+      # Build Backend
+      # ==========================
       - name: Build backend (amd64)
         run: |
           cd backend-repo
@@ -77,58 +132,33 @@ jobs:
           chmod +x scripts/build_ci.sh
           ./scripts/build_ci.sh "${{ github.workspace }}/dist" "${{ steps.tag.outputs.version }}" linux arm64
 
-      # --------------------------
-      # Frontend changelog
-      # --------------------------
-      - name: Generate frontend changelog
-        run: |
-          TAG=${{ steps.tag.outputs.tag_name }}
-          git fetch --tags --force
-          PREV=$(git tag --sort=-v:refname | grep -A1 "^$TAG$" | tail -n1)
-
-          if [ -z "$PREV" ]; then
-            RANGE="$TAG"
-          else
-            RANGE="$PREV..$TAG"
-          fi
-
-          git log $RANGE --pretty=format:"- [%h](https://github.com/${{ github.repository }}/commit/%H) %s" --reverse \
-            > frontend_changelog.txt
-
-          if [ ! -s frontend_changelog.txt ]; then
-            echo "- 无变更" > frontend_changelog.txt
-          fi
-
-      # --------------------------
-      # Backend changelog（已修复）
-      # --------------------------
-      - name: Generate backend changelog
+      # ==========================
+      # 给 Backend 打 Tag
+      # ==========================
+      - name: Create tag in backend repository
         run: |
           cd backend-repo
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
           TAG=${{ steps.tag.outputs.tag_name }}
 
-          git fetch --tags --force
-          PREV=$(git tag --sort=-v:refname | grep -A1 "^$TAG$" | tail -n1)
-
-          if [ -z "$PREV" ]; then
-            RANGE="$TAG"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag already exists"
           else
-            RANGE="$PREV..$TAG"
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "Tag pushed to backend"
           fi
 
-          git log $RANGE --pretty=format:"- [%h](https://github.com/YunTower/CloudSentinel-Backend/commit/%H) %s" --reverse \
-            > $GITHUB_WORKSPACE/backend_changelog.txt
-
-          if [ ! -s $GITHUB_WORKSPACE/backend_changelog.txt ]; then
-            echo "- 无变更" > $GITHUB_WORKSPACE/backend_changelog.txt
-          fi
-
-      # --------------------------
+      # ==========================
       # 生成 Release Notes
-      # --------------------------
+      # ==========================
       - name: Prepare release notes
         run: |
           TAG=${{ steps.tag.outputs.tag_name }}
+
           {
             echo "# 🎉 $TAG"
             echo ""
@@ -139,9 +169,9 @@ jobs:
             cat backend_changelog.txt
           } > release_notes.md
 
-      # --------------------------
+      # ==========================
       # 创建 Release
-      # --------------------------
+      # ==========================
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
