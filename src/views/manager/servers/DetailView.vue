@@ -273,12 +273,7 @@ watch(serverId, (id) => {
         </n-button>
         <h1 class="text-2xl font-bold text-color">{{ server?.name || '加载中' }}</h1>
       </div>
-      <n-button
-        type="primary"
-        secondary
-        :disabled="!server"
-        @click="openServerDialog"
-      >
+      <n-button type="primary" secondary :disabled="!server" @click="openServerDialog">
         <template #icon>
           <ri-wrench-line />
         </template>
@@ -431,8 +426,8 @@ watch(serverId, (id) => {
         </div>
 
         <!-- 图表区域 -->
-        <div class="mt-2 grid grid-cols-2 gap-2">
-          <div class="flex flex-col gap-2">
+        <div class="mt-2 grid grid-cols-1 gap-2">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
             <metrics-chart
               :server-id="server.id"
               chart-type="cpu"
@@ -448,7 +443,7 @@ watch(serverId, (id) => {
               @update:time-range="(h: number) => updateChartTimeRange('memory', h)"
             />
           </div>
-          <div class="flex flex-col gap-2">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
             <metrics-chart
               :server-id="server.id"
               chart-type="disk"

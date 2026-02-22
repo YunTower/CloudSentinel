@@ -25,6 +25,11 @@ import Menu from '@/components/layout/Menu.vue'
 }
 
 .base-layout-content {
-  padding-top: var(--header-height, 56px);
+  padding-top: 56px;
+}
+
+.base-layout-header :deep(.n-menu .n-menu-item) {
+  --n-item-height: 55px !important
+;
 }
 </style>
