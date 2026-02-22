@@ -10,226 +10,146 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
       BACKEND_PAT: ${{ secrets.BACKEND_PAT }}
       BACKEND_REPO: YunTower/CloudSentinel-Backend
-      FRONTEND_REPO: ${{ github.repository }}
 
     steps:
       - name: Checkout frontend repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          fetch-tags: false
-          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Install frontend dependencies
-        run: pnpm install
+      - run: npm install -g pnpm
+      - run: pnpm install
 
       - name: Build frontend
         run: |
-          # 临时修改 vite.config.ts 输出目录为 dist
           sed -i "s|outDir: '../backend/public'|outDir: 'dist'|" vite.config.ts
           pnpm run build
-        env:
-          VITE_API_URL_PREFIX: /api
-          VITE_API_SERVER: http://localhost:8080
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
 
+      # --------------------------
+      # 获取 tag 信息
+      # --------------------------
       - name: Get tag name
         id: tag
         run: |
-          # 对于 create 事件，使用 github.event.ref 获取 tag 名称
-          TAG_NAME="${{ github.event.ref }}"
-          # 如果 TAG_NAME 包含 refs/tags/，则去掉前缀
-          TAG_NAME=${TAG_NAME#refs/tags/}
-          VERSION=${TAG_NAME#v}
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG_NAME#v}"
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Tag: $TAG_NAME"
-          echo "Version: $VERSION"
 
+      # --------------------------
+      # Clone backend + 完整历史
+      # --------------------------
       - name: Clone backend repository
         run: |
-          if [ -n "$BACKEND_PAT" ]; then
-            git clone https://x-access-token:$BACKEND_PAT@github.com/$BACKEND_REPO.git backend-repo
-          else
-            git clone https://github.com/$BACKEND_REPO.git backend-repo
-          fi
+          git clone https://x-access-token:${{ secrets.BACKEND_PAT }}@github.com/${{ env.BACKEND_REPO }}.git backend-repo
+          cd backend-repo
+          git fetch --tags --force
+          git fetch --unshallow || true
+          git checkout ${{ steps.tag.outputs.tag_name }}
 
-      - name: Build backend for Linux AMD64 using script
+      # --------------------------
+      # Build backend
+      # --------------------------
+      - name: Build backend (amd64)
         run: |
           cd backend-repo
           chmod +x scripts/build_ci.sh
           ./scripts/build_ci.sh "${{ github.workspace }}/dist" "${{ steps.tag.outputs.version }}" linux amd64
 
-      - name: Build backend for Linux ARM64 using script
+      - name: Build backend (arm64)
         run: |
           cd backend-repo
           chmod +x scripts/build_ci.sh
           ./scripts/build_ci.sh "${{ github.workspace }}/dist" "${{ steps.tag.outputs.version }}" linux arm64
 
-      - name: Get frontend changelog
-        id: frontend_changelog
+      # --------------------------
+      # Frontend changelog
+      # --------------------------
+      - name: Generate frontend changelog
         run: |
-          TAG_NAME="${{ steps.tag.outputs.tag_name }}"
-          REPO_URL="https://github.com/${{ github.repository }}"
-          cd ${{ github.workspace }}
-          
-          # 获取所有 tags（使用 --force 避免标签冲突）
+          TAG=${{ steps.tag.outputs.tag_name }}
           git fetch --tags --force
-          
-          # 获取所有 tag 列表，按版本排序
-          ALL_TAGS=$(git tag -l "v*" | sort -V)
-          
-          # 查找当前 tag 的上一个 tag
-          PREV_TAG=""
-          for tag in $ALL_TAGS; do
-            if [ "$tag" = "$TAG_NAME" ]; then
-              break
-            fi
-            PREV_TAG=$tag
-          done
-          
-          DELIM=":::CL:::"
-          if [ -z "$PREV_TAG" ]; then
-            echo "No previous tag found, getting all commits"
-            RAW_COMMITS=$(git log --pretty=format:"%H${DELIM}%h${DELIM}%s" --reverse)
-          else
-            echo "Previous tag: $PREV_TAG"
-            RAW_COMMITS=$(git log ${PREV_TAG}..${TAG_NAME} --pretty=format:"%H${DELIM}%h${DELIM}%s" --reverse)
-          fi
-          
-          if [ -z "$RAW_COMMITS" ]; then
-            COMMITS="- 无变更"
-          else
-            # 格式：- [hash](url) message（用显式分隔符解析，避免 IFS/$'\t' 在 runner 下失效）
-            COMMITS=$(echo "$RAW_COMMITS" | while IFS= read -r line; do
-              [ -z "$line" ] && continue
-              full_hash="${line%%${DELIM}*}"
-              rest="${line#*${DELIM}}"
-              short_hash="${rest%%${DELIM}*}"
-              message="${rest#*${DELIM}}"
-              [ -z "$full_hash" ] && continue
-              hash_link="[${short_hash}](${REPO_URL}/commit/${full_hash})"
-              linked_message=$(echo "$message" | sed -E "s/#([0-9]+)/[#\1](${REPO_URL}\/pull\/\1)/g")
-              echo "- ${hash_link} ${linked_message}"
-            done)
-          fi
-          echo "$COMMITS" > "$GITHUB_WORKSPACE/frontend_changelog.txt"
+          PREV=$(git tag --sort=-v:refname | grep -A1 "^$TAG$" | tail -n1)
 
-      - name: Get backend changelog
-        id: backend_changelog
+          if [ -z "$PREV" ]; then
+            RANGE="$TAG"
+          else
+            RANGE="$PREV..$TAG"
+          fi
+
+          git log $RANGE --pretty=format:"- [%h](https://github.com/${{ github.repository }}/commit/%H) %s" --reverse \
+            > frontend_changelog.txt
+
+          if [ ! -s frontend_changelog.txt ]; then
+            echo "- 无变更" > frontend_changelog.txt
+          fi
+
+      # --------------------------
+      # Backend changelog（已修复）
+      # --------------------------
+      - name: Generate backend changelog
         run: |
-          TAG_NAME="${{ steps.tag.outputs.tag_name }}"
-          REPO_URL="https://github.com/YunTower/CloudSentinel-Backend"
           cd backend-repo
-          
-          # 获取所有 tags（使用 --force 避免标签冲突）
+          TAG=${{ steps.tag.outputs.tag_name }}
+
           git fetch --tags --force
-          
-          # 获取所有 tag 列表，按版本排序
-          ALL_TAGS=$(git tag -l "v*" | sort -V)
-          
-          # 查找当前 tag 的上一个 tag
-          PREV_TAG=""
-          for tag in $ALL_TAGS; do
-            if [ "$tag" = "$TAG_NAME" ]; then
-              break
-            fi
-            PREV_TAG=$tag
-          done
-          
-          DELIM=":::CL:::"
-          if [ -z "$PREV_TAG" ]; then
-            echo "No previous tag found, getting all commits"
-            RAW_COMMITS=$(git log --pretty=format:"%H${DELIM}%h${DELIM}%s" --reverse)
+          PREV=$(git tag --sort=-v:refname | grep -A1 "^$TAG$" | tail -n1)
+
+          if [ -z "$PREV" ]; then
+            RANGE="$TAG"
           else
-            echo "Previous tag: $PREV_TAG"
-            RAW_COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%H${DELIM}%h${DELIM}%s" --reverse)
-          fi
-          
-          if [ -z "$RAW_COMMITS" ]; then
-            COMMITS="- 无变更"
-          else
-            COMMITS=$(echo "$RAW_COMMITS" | while IFS= read -r line; do
-              [ -z "$line" ] && continue
-              full_hash="${line%%${DELIM}*}"
-              rest="${line#*${DELIM}}"
-              short_hash="${rest%%${DELIM}*}"
-              message="${rest#*${DELIM}}"
-              [ -z "$full_hash" ] && continue
-              hash_link="[${short_hash}](${REPO_URL}/commit/${full_hash})"
-              linked_message=$(echo "$message" | sed -E "s/#([0-9]+)/[#\1](${REPO_URL}\/pull\/\1)/g")
-              echo "- ${hash_link} ${linked_message}"
-            done)
-          fi
-          echo "$COMMITS" > "$GITHUB_WORKSPACE/backend_changelog.txt"
-
-      - name: Create tag in backend repository
-        run: |
-          set -e
-          TAG_NAME="${{ steps.tag.outputs.tag_name }}"
-          cd backend-repo
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          if [ -z "$BACKEND_PAT" ]; then
-            echo "❌ BACKEND_PAT not set"
-            exit 1
+            RANGE="$PREV..$TAG"
           fi
 
-          git remote set-url origin https://x-access-token:$BACKEND_PAT@github.com/YunTower/CloudSentinel-Backend.git
+          git log $RANGE --pretty=format:"- [%h](https://github.com/YunTower/CloudSentinel-Backend/commit/%H) %s" --reverse \
+            > $GITHUB_WORKSPACE/backend_changelog.txt
 
-          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-            echo "ℹ️ Tag already exists"
-          else
-            git tag "$TAG_NAME"
-            git push origin "$TAG_NAME"
-            echo "✅ Tag pushed"
+          if [ ! -s $GITHUB_WORKSPACE/backend_changelog.txt ]; then
+            echo "- 无变更" > $GITHUB_WORKSPACE/backend_changelog.txt
           fi
-        env:
-          BACKEND_PAT: ${{ secrets.BACKEND_PAT }}
 
+      # --------------------------
+      # 生成 Release Notes
+      # --------------------------
       - name: Prepare release notes
         run: |
-          TAG_NAME="${{ steps.tag.outputs.tag_name }}"
+          TAG=${{ steps.tag.outputs.tag_name }}
           {
-            echo "# 🎉 $TAG_NAME"
+            echo "# 🎉 $TAG"
             echo ""
             echo "## Panel Frontend Changes"
-            cat "$GITHUB_WORKSPACE/frontend_changelog.txt"
+            cat frontend_changelog.txt
             echo ""
             echo "## Panel Backend Changes"
-            cat "$GITHUB_WORKSPACE/backend_changelog.txt"
-          } > "$GITHUB_WORKSPACE/release_notes.md"
+            cat backend_changelog.txt
+          } > release_notes.md
 
+      # --------------------------
+      # 创建 Release
+      # --------------------------
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.tag.outputs.tag_name }}
           name: Release ${{ steps.tag.outputs.tag_name }}
-          body_path: ${{ github.workspace }}/release_notes.md
+          body_path: release_notes.md
           files: |
             backend-repo/dashboard-linux-amd64.tar.gz
             backend-repo/dashboard-linux-amd64.sha256
             backend-repo/dashboard-linux-arm64.tar.gz
             backend-repo/dashboard-linux-arm64.sha256
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN || github.token }}
