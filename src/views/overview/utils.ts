@@ -32,15 +32,15 @@ export function formatOS(os: string): string {
 export function getStatusColor(status: string): string {
   switch (status) {
     case 'online':
-      return 'bg-green-500 dark:bg-green-400'
+      return 'text-green-500 dark:text-green-400'
     case 'offline':
-      return 'bg-red-500 dark:bg-red-400'
+      return 'text-red-500 dark:text-red-400'
     case 'maintenance':
-      return 'bg-yellow-500 dark:bg-yellow-400'
+      return 'text-yellow-500 dark:text-yellow-400'
     case 'error':
-      return 'bg-red-600 dark:bg-red-500'
+      return 'text-red-600 dark:text-red-500'
     default:
-      return 'bg-surface-400'
+      return 'text-surface-400'
   }
 }
 

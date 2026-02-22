@@ -8,9 +8,9 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    AdminLoginDialog: typeof import('./src/components/Layout/AdminLoginDialog.vue')['default']
+    AdminLoginDialog: typeof import('./src/components/layout/AdminLoginDialog.vue')['default']
     Loading: typeof import('./src/components/Loading/Loading.vue')['default']
-    Menu: typeof import('./src/components/Layout/Menu.vue')['default']
+    Menu: typeof import('./src/components/layout/Menu.vue')['default']
     NAlert: typeof import('naive-ui')['NAlert']
     NButton: typeof import('naive-ui')['NButton']
     NCard: typeof import('naive-ui')['NCard']
