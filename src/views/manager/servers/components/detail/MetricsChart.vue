@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import type { MetricsData } from '@/types/manager/servers'
-import VChart, { type ILineChartSpec } from '@visactor/vchart'
+import VChart, { type ILineChartSpec } from '@/utils/vcharts'
 import { RiLineChartLine } from '@remixicon/vue'
 
 interface Props {
