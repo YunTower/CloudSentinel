@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -99,11 +99,4 @@ body {
 
 .container {
   padding-top: 1rem;
-}
-
-.n-code,
-.__code__ {
-  background-color: #18181c;
-  padding: 6px;
-  border-radius: var(--n-border-radius);
 }

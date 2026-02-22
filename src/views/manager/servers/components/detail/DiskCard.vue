@@ -11,9 +11,7 @@ defineProps<Props>()
 </script>
 
 <template>
-  <div
-    class="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow"
-  >
+  <n-card>
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
         <ri-hard-drive-line size="14px" />
@@ -46,5 +44,5 @@ defineProps<Props>()
       </div>
     </div>
     <n-empty v-else description="暂无磁盘信息" class="py-2" />
-  </div>
+  </n-card>
 </template>

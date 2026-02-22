@@ -2,7 +2,9 @@
 import { h } from 'vue'
 import type { ServerItem } from '@/types/server'
 import { formatSpeed, formatOS, getStatusColor } from '../utils'
-import { getProgressBarColor, getProgressTextColor } from '@/utils/version.ts'
+import { getProgressBarColor } from '@/utils/version.ts'
+import { RiArrowDownLine, RiArrowUpLine } from '@remixicon/vue'
+import { NProgress } from 'naive-ui'
 
 interface Props {
   servers: ServerItem[]
@@ -17,12 +19,7 @@ const columns = [
     sorter: (a: ServerItem, b: ServerItem) => a.name.localeCompare(b.name),
     minWidth: 150,
     render(row: ServerItem) {
-      return h('div', { class: 'flex flex-row items-center gap-2' }, [
-        h('div', {
-          class: getStatusColor(row.status) + ' w-2 h-2 rounded-full shadow-sm animate-pulse-slow',
-        }),
-        h('span', { class: 'font-medium text-color' }, row.name),
-      ])
+      return h('span', { class: getStatusColor(row.status) }, row.name)
     },
   },
   {
@@ -52,23 +49,13 @@ const columns = [
     title: 'CPU',
     sorter: (a: ServerItem, b: ServerItem) => a.cpuUsage - b.cpuUsage,
     render(row: ServerItem) {
-      return h('div', { class: 'flex flex-row gap-2 w-full items-center' }, [
-        h(
-          'span',
-          { class: 'text-sm font-semibold ' + getProgressTextColor(row.cpuUsage) },
-          row.cpuUsage + '%',
-        ),
-        h('div', { class: 'flex-1' }, [
-          h('n-progress', {
-            type: 'line',
-            percentage: row.cpuUsage,
-            showIndicator: false,
-            height: 8,
-            color: getProgressBarColor(row.cpuUsage),
-            style: 'transition: all 0.5s',
-          }),
-        ]),
-      ])
+      return h(NProgress, {
+        type: 'line',
+        percentage: row.cpuUsage,
+        color: getProgressBarColor(row.cpuUsage),
+        indicatorTextColor: '#fff',
+        indicatorPlacement: 'inside',
+      })
     },
   },
   {
@@ -76,23 +63,13 @@ const columns = [
     title: '内存',
     sorter: (a: ServerItem, b: ServerItem) => a.memoryUsage - b.memoryUsage,
     render(row: ServerItem) {
-      return h('div', { class: 'flex flex-row gap-2 w-full items-center' }, [
-        h(
-          'span',
-          { class: 'text-sm font-semibold ' + getProgressTextColor(row.memoryUsage) },
-          row.memoryUsage + '%',
-        ),
-        h('div', { class: 'flex-1' }, [
-          h('n-progress', {
-            type: 'line',
-            percentage: row.memoryUsage,
-            showIndicator: false,
-            height: 8,
-            color: getProgressBarColor(row.memoryUsage),
-            style: 'transition: all 0.5s',
-          }),
-        ]),
-      ])
+      return h(NProgress, {
+        type: 'line',
+        percentage: row.memoryUsage,
+        color: getProgressBarColor(row.memoryUsage),
+        indicatorTextColor: '#fff',
+        indicatorPlacement: 'inside',
+      })
     },
   },
   {
@@ -100,38 +77,27 @@ const columns = [
     title: '磁盘',
     sorter: (a: ServerItem, b: ServerItem) => a.diskUsage - b.diskUsage,
     render(row: ServerItem) {
-      return h('div', { class: 'flex flex-row gap-2 w-full items-center' }, [
-        h(
-          'span',
-          { class: 'text-sm font-semibold ' + getProgressTextColor(row.diskUsage) },
-          row.diskUsage + '%',
-        ),
-        h('div', { class: 'flex-1' }, [
-          h('n-progress', {
-            type: 'line',
-            percentage: row.diskUsage,
-            showIndicator: false,
-            height: 8,
-            color: getProgressBarColor(row.diskUsage),
-            style: 'transition: all 0.5s',
-          }),
-        ]),
-      ])
+      return h(NProgress, {
+        type: 'line',
+        percentage: row.diskUsage,
+        color: getProgressBarColor(row.diskUsage),
+        indicatorTextColor: '#fff',
+        indicatorPlacement: 'inside',
+      })
     },
   },
   {
     key: 'networkIO',
     title: '网络',
-    width: 150,
     render(row: ServerItem) {
-      return h('div', { class: 'flex flex-row text-xs gap-2' }, [
+      return h('div', { class: 'flex flex-row  gap-2' }, [
         h('div', { class: 'flex items-center gap-1' }, [
-          h('i', { class: 'ri-arrow-up-line text-sm text-green-600 dark:text-green-400' }),
-          h('span', { class: 'text-muted-color' }, formatSpeed(row.networkIO.upload)),
+          h(RiArrowUpLine, { className: ' text-green-600 dark:text-green-400', size: '14px' }),
+          h('span', {}, formatSpeed(row.networkIO.upload)),
         ]),
         h('div', { class: 'flex items-center gap-1' }, [
-          h('i', { class: 'ri-arrow-down-line text-sm text-blue-600 dark:text-blue-400' }),
-          h('span', { class: 'text-muted-color' }, formatSpeed(row.networkIO.download)),
+          h(RiArrowDownLine, { className: 'text-blue-600 dark:text-blue-400', size: '14px' }),
+          h('span', {}, formatSpeed(row.networkIO.download)),
         ]),
       ])
     },

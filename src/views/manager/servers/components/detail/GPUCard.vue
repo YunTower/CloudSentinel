@@ -28,10 +28,7 @@ const formatMemory = (mb: number): string => {
 </script>
 
 <template>
-  <div
-    v-if="gpuInfo && gpuInfo.available && gpuInfo.gpus.length > 0"
-    class="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow"
-  >
+  <n-card v-if="gpuInfo && gpuInfo.available && gpuInfo.gpus.length > 0">
     <div class="flex items-center gap-2 mb-4">
       <ri-cpu-line size="14px" />
       <span class="font-medium">GPU 信息</span>
@@ -96,7 +93,7 @@ const formatMemory = (mb: number): string => {
         class="border-t border-zinc-200 dark:border-zinc-700 mt-3"
       ></div>
     </div>
-  </div>
+  </n-card>
 
   <!-- GPU不可用提示 -->
   <div

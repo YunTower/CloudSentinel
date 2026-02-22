@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { useMessage, useDialog } from 'naive-ui'
+import { ref, computed, onMounted, watch, h } from 'vue'
+import { useMessage, useDialog, NButton, NTag } from 'naive-ui'
+import type { DataTableColumn } from 'naive-ui'
 import serversApi from '@/apis/servers'
 import type { ServerGroup, Server } from '@/types/manager/servers'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/vue'
@@ -96,6 +97,67 @@ const handleEdit = (group: ServerGroup) => {
   emit('edit-group', group)
 }
 
+// 表格列定义
+const columns = computed<DataTableColumn<ServerGroup>[]>(() => [
+  {
+    key: 'name',
+    title: '分组名称',
+    minWidth: 160,
+    render: (row: ServerGroup) =>
+      row.color
+        ? h(
+            'span',
+            {
+              style: { color: row.color },
+            },
+            row.name,
+          )
+        : h('span', { class: 'font-medium' }, row.name),
+  },
+  {
+    key: 'description',
+    title: '描述',
+    minWidth: 180,
+    ellipsis: { tooltip: true },
+    render: (row: ServerGroup) => row.description || '-',
+  },
+  {
+    key: 'serverCount',
+    title: '服务器数量',
+    width: 120,
+    render: (row: ServerGroup) =>
+      h(NTag, { type: 'info', size: 'small' }, () => String(groupServerCounts.value[row.id] ?? 0)),
+  },
+  {
+    key: 'actions',
+    title: '操作',
+    width: 120,
+    render: (row: ServerGroup) =>
+      h('div', { class: 'flex gap-2' }, [
+        h(
+          NButton,
+          {
+            secondary: true,
+            size: 'small',
+
+            onClick: () => handleEdit(row),
+          },
+          { default: () => h(RiEditLine, { size: '14px' }) },
+        ),
+        h(
+          NButton,
+          {
+            secondary: true,
+            size: 'small',
+            type: 'error',
+            onClick: () => handleDelete(row),
+          },
+          { default: () => h(RiDeleteBinLine, { size: '14px' }) },
+        ),
+      ]),
+  },
+])
+
 onMounted(() => {
   if (props.visible) {
     loadGroups()
@@ -121,62 +183,18 @@ watch(
     class="w-[700px]!"
     preset="card"
   >
-    <div v-if="loading" class="flex items-center justify-center py-12">
-      <n-spin size="large" />
-    </div>
-
-    <div v-else>
-      <div v-if="groups.length === 0" class="py-12">
-        <n-empty description="暂无分组" />
-      </div>
-
-      <table v-else class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-surface-200 dark:border-surface-700">
-            <th class="text-left py-2 px-3 font-medium">分组名称</th>
-            <th class="text-left py-2 px-3 font-medium">描述</th>
-            <th class="text-left py-2 px-3 font-medium">服务器数量</th>
-            <th class="text-left py-2 px-3 font-medium" style="width: 150px">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="group in groups"
-            :key="group.id"
-            class="border-b border-surface-100 dark:border-surface-800 hover:bg-surface-50 dark:hover:bg-surface-800"
-          >
-            <td class="py-2 px-3">
-              <div class="flex items-center gap-2">
-                <span
-                  v-if="group.color"
-                  class="w-3 h-3 rounded-full flex-shrink-0"
-                  :style="{ backgroundColor: group.color }"
-                />
-                <span class="font-medium">{{ group.name }}</span>
-              </div>
-            </td>
-            <td class="py-2 px-3 text-muted-color">{{ group.description || '-' }}</td>
-            <td class="py-2 px-3">
-              <n-tag type="info">{{ groupServerCounts[group.id] || 0 }}</n-tag>
-            </td>
-            <td class="py-2 px-3">
-              <div class="flex gap-2">
-                <n-button text size="small" @click="handleEdit(group)">
-                  <template #icon>
-                    <ri-edit-line />
-                  </template>
-                </n-button>
-                <n-button text size="small" type="error" @click="handleDelete(group)">
-                  <template #icon>
-                    <ri-delete-bin-line />
-                  </template>
-                </n-button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <n-data-table
+      :columns="columns"
+      :data="groups"
+      :loading="loading"
+      :row-key="(row: ServerGroup) => row.id"
+      size="small"
+      class="w-full"
+    >
+      <template #empty>
+        <n-empty description="暂无分组" class="py-8" />
+      </template>
+    </n-data-table>
 
     <template #footer>
       <div class="flex justify-end">

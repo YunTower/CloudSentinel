@@ -19,9 +19,7 @@ const swapUsage = computed(() => {
 </script>
 
 <template>
-  <div
-    class="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow"
-  >
+  <n-card>
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
         <ri-database-line size="14px" />
@@ -34,7 +32,6 @@ const swapUsage = computed(() => {
       >
         {{ swapUsage.toFixed(2) }}%
       </span>
-      <span v-else class="text-lg text-muted-color">未配置</span>
     </div>
     <n-progress
       v-if="swapInfo && swapInfo.swap_total > 0"
@@ -62,11 +59,8 @@ const swapUsage = computed(() => {
         <span class="font-medium text-color">{{ formatBytes(swapInfo.swap_free) }}</span>
       </div>
     </div>
-    <div
-      v-else
-      class="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 text-sm text-muted-color"
-    >
-      <p>系统未配置Swap分区</p>
+    <div v-else>
+      <n-empty description="系统未配置Swap分区" />
     </div>
-  </div>
+  </n-card>
 </template>

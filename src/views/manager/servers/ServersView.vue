@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import ServerTable from './components/ServerTable.vue'
 import ServerDialog from './components/ServerDialog.vue'
@@ -15,33 +16,26 @@ import type { VersionType } from '@/utils/version.ts'
 import type {
   Server,
   ServerForm,
-  ServerDetailResponse,
-  ExtendedServerDetailData,
   CreateServerResponse,
   GetServersResponse,
   DeleteServerResponse,
   UpdateServerResponse,
-  RestartServiceResponse,
   ServerListItemData,
 } from '@/types/manager/servers'
 import {
   RiAddLine,
   RiCheckLine,
   RiCloseLine,
-  RiFileCodeLine,
-  RiFileCopyFill,
   RiFileCopyLine,
   RiFolderLine,
-  RiInformationLine,
-  RiSearchLine,
 } from '@remixicon/vue'
 
+const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
 const saving = ref(false)
 const filterLoading = ref(false)
-const expandingServerId = ref<string>('')
 const deletingServerId = ref<string>('')
-const restartingServerId = ref<string>('')
 const searchQuery = ref('')
 const statusFilter = ref<string>('all')
 const groupFilter = ref<number | null>(null)
@@ -101,19 +95,8 @@ const websocket = useWebSocket({
       if (data.uptime !== undefined) server.uptime = data.uptime
     }
   },
-  onMetricsRealtime: (data) => {
-    if (serverTableRef.value) {
-      serverTableRef.value.addRealtimeDataPoint(data.server_id, {
-        timestamp: data.timestamp,
-        cpu_usage: data.cpu_usage,
-        memory_usage: data.memory_usage,
-        disk_usage: data.disk_usage,
-        disk_read: data.disk_read,
-        disk_write: data.disk_write,
-        network_upload: data.network_upload,
-        network_download: data.network_download,
-      })
-    }
+  onMetricsRealtime: () => {
+    // 实时指标在列表页仅更新列表数据；详情页可单独订阅
   },
   onSystemInfoUpdate: (data) => {
     const server = servers.value.find((s) => s.id === data.server_id)
@@ -228,24 +211,6 @@ const handleDeleteServer = async (server: Server) => {
     message.error(errorMessage, { duration: 3000 })
   } finally {
     deletingServerId.value = ''
-  }
-}
-
-const handleRestartServer = async (server: Server) => {
-  restartingServerId.value = server.id
-  try {
-    const response = (await serversApi.restartService(server.id)) as RestartServiceResponse
-
-    if (response.status) {
-      message.success(`服务器 "${server.name}" 的重启命令已发送`, { duration: 3000 })
-    } else {
-      throw new Error(response.message || '重启失败')
-    }
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : '请稍后重试'
-    message.error(errorMessage, { duration: 3000 })
-  } finally {
-    restartingServerId.value = ''
   }
 }
 
@@ -384,54 +349,6 @@ const loadServers = async () => {
   }
 }
 
-// 加载服务器详细信息
-const loadServerDetail = async (serverId: string) => {
-  const server = servers.value.find((s) => s.id === serverId)
-  if (!server) {
-    return
-  }
-
-  const response = (await serversApi.getServerDetail(serverId)) as ServerDetailResponse
-  if (!response.status || !response.data) {
-    throw new Error(response.message || '获取服务器详细信息失败')
-  }
-
-  const detail = response.data
-  // 更新服务器详细信息
-  server.os = detail.os || ''
-  server.architecture = detail.architecture || ''
-  server.kernel = detail.kernel || ''
-  server.hostname = detail.hostname || ''
-  server.agent_key = detail.agent_key || ''
-
-  // 使用后端计算的运行时间，否则使用uptime_days
-  const detailWithUptime = detail as ExtendedServerDetailData
-  server.uptime =
-    detailWithUptime.uptime || (detail.uptime_days ? `${detail.uptime_days}天` : '0天0时0分')
-
-  // 更新新增的字段
-  if (detailWithUptime.disks) {
-    server.disks = detailWithUptime.disks
-  }
-  if (detailWithUptime.cpus) {
-    server.cpus = detailWithUptime.cpus
-  }
-  if (detailWithUptime.memory) {
-    server.memoryInfo = detailWithUptime.memory
-  }
-  if (detailWithUptime.swap) {
-    server.swapInfo = detailWithUptime.swap
-  }
-  if (detailWithUptime.traffic) {
-    server.traffic = detailWithUptime.traffic
-  }
-  if (detailWithUptime.service_status) {
-    server.process_status = detailWithUptime.service_status
-  }
-
-  server._detailLoaded = true
-}
-
 // 处理查看安装信息
 const handleViewInstallInfo = (server: Server) => {
   selectedServerForInstall.value = server
@@ -464,59 +381,16 @@ watch(statusFilter, async (newValue, oldValue) => {
   }
 })
 
-// 监听URL参数变化
+// 监听 URL 参数 ?server=id，跳转到详情页
 watch(
-  () => window.location.search,
-  (newSearch) => {
-    const urlParams = new URLSearchParams(newSearch)
-    const serverId = urlParams.get('server')
-    if (serverId && serverTableRef.value) {
-      // 清除之前的展开状态
-      expandingServerId.value = ''
-      // 展开新的服务器
-      nextTick(() => {
-        serverTableRef.value?.autoExpandServer(serverId)
-      })
+  () => route.query.server,
+  (serverId) => {
+    if (serverId && typeof serverId === 'string') {
+      router.replace({ path: `/servers/${serverId}` })
     }
   },
   { immediate: false },
 )
-
-// 展开详情处理
-const handleExpandServer = async (serverId: string) => {
-  const server = servers.value.find((s) => s.id === serverId)
-  if (!server) {
-    return
-  }
-
-  // 如果数据已加载过，先展开显示现有数据，然后后台刷新
-  const hasData = server._detailLoaded
-
-  // 设置 loading 状态
-  if (!hasData) {
-    expandingServerId.value = serverId
-  }
-
-  try {
-    await loadServerDetail(serverId)
-    if (serverTableRef.value && 'confirmExpand' in serverTableRef.value) {
-      await (
-        serverTableRef.value as { confirmExpand: (id: string) => Promise<void> }
-      ).confirmExpand(serverId)
-    }
-  } catch (error: unknown) {
-    if (!hasData) {
-      if (serverTableRef.value && 'cancelExpand' in serverTableRef.value) {
-        ;(serverTableRef.value as { cancelExpand: (id: string) => void }).cancelExpand(serverId)
-      }
-    }
-
-    const errorMessage = error instanceof Error ? error.message : '获取服务器详细信息失败'
-    message.error(errorMessage, { duration: 3000 })
-  } finally {
-    expandingServerId.value = ''
-  }
-}
 
 // 获取 Agent 最新版本信息
 const loadAgentVersion = async () => {
@@ -556,14 +430,12 @@ const handleCopyAlertRulesSuccess = () => {
 
 // 处理保存成功
 const handleSaveSuccess = async () => {
-  // 如果对话框仍然打开，重新加载服务器列表和详情
-  if (showAddDialog.value && editingServer.value) {
-    await loadServers()
-    const updatedServer = servers.value.find((s) => s.id === editingServer.value!.id)
-    if (updatedServer) {
-      // 创建一个新对象，确保触发 watch
-      editingServer.value = { ...updatedServer }
-    }
+  const currentEditing = editingServer.value
+  if (!showAddDialog.value || !currentEditing) return
+  await loadServers()
+  const updatedServer = servers.value.find((s) => s.id === currentEditing.id)
+  if (updatedServer) {
+    editingServer.value = { ...updatedServer }
   }
 }
 
@@ -578,14 +450,9 @@ onMounted(async () => {
   await loadAgentVersion()
   websocket.connect()
 
-  const urlParams = new URLSearchParams(window.location.search)
-  const serverId = urlParams.get('server')
-  if (serverId) {
-    await nextTick(() => {
-      if (serverTableRef.value) {
-        serverTableRef.value.autoExpandServer(serverId)
-      }
-    })
+  const serverId = route.query.server
+  if (serverId && typeof serverId === 'string') {
+    router.replace({ path: `/servers/${serverId}` })
   }
 
   loading.value = false
@@ -684,16 +551,12 @@ onMounted(async () => {
         ref="serverTableRef"
         :servers="filteredServers"
         :loading="loading || filterLoading"
-        :expanding-server-id="expandingServerId"
         :deleting-server-id="deletingServerId"
-        :restarting-server-id="restartingServerId"
         :latest-agent-version="latestAgentVersion"
         :latest-agent-version-type="latestAgentVersionType"
         :selected-servers="selectedServers"
         @edit-server="handleEditServer"
         @delete-server="handleDeleteServer"
-        @restart-server="handleRestartServer"
-        @expand-server="handleExpandServer"
         @view-install-info="handleViewInstallInfo"
         @update-agent="handleUpdateAgent"
         @selection-change="handleSelectionChange"
@@ -731,7 +594,6 @@ onMounted(async () => {
       @save="handleSaveServer"
       @save-success="handleSaveSuccess"
       @cancel="handleCancelDialog"
-      @restart-server="handleRestartServer"
     />
 
     <!-- Agent Key和安装命令显示对话框 -->
@@ -756,22 +618,14 @@ onMounted(async () => {
             :server-i-p="serverIP"
             :websocket-u-r-l="websocketURL"
           />
-          <div class="mt-4 p-3 border rounded-lg">
-            <div class="flex items-start gap-2">
-              <div>
-                <p class="font-medium mb-1 gap-2">
-                  <ri-information-line class-name="mt-0.5 mr-2" />
-                  <span class="font-bold">安装说明</span>
-                </p>
-                <ul class="space-y-1">
-                  <li>• 在目标Linux服务器上执行上述安装命令</li>
-                  <li>• 安装完成后，探针会自动连接到控制中心</li>
-                  <li>• 系统信息（地域、操作系统等）将自动获取</li>
-                  <li>• 请妥善保管Agent Key避免泄露，此Agent Key用于服务器之间身份验证</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+          <n-alert type="info">
+            <ul class="space-y-1">
+              <li>• 在目标Linux服务器上执行上述安装命令</li>
+              <li>• 安装完成后，探针会自动连接到控制中心</li>
+              <li>• 系统信息（地域、操作系统等）将自动获取</li>
+              <li>• 请妥善保管Agent Key避免泄露，此Agent Key用于服务器之间身份验证</li>
+            </ul>
+          </n-alert>
         </div>
         <template #footer>
           <div class="flex justify-end">

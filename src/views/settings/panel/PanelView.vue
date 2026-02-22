@@ -7,7 +7,13 @@ import panelApi from '@/apis/settings/panel'
 import { useAuthStore } from '@/stores/auth'
 import type { PanelSettings } from '@/types/settings/panel'
 import type { GetUpdateData } from '@/types/settings/api'
-import { hasUpdate as checkHasUpdate, getVersionTypeConfig } from '@/utils/version.ts'
+import {
+  hasUpdate as checkHasUpdate,
+  getVersionTypeConfig,
+  isNoLatestVersionResponse,
+  VERSION_TYPE_CONFIG,
+} from '@/utils/version'
+import type { VersionType } from '@/utils/version'
 import {
   RiAlignLeft,
   RiCheckboxCircleLine,
@@ -40,8 +46,16 @@ const message = useMessage()
 const dialog = useDialog()
 const authStore = useAuthStore()
 const panelFormRef = ref<FormInst | null>(null)
+/** 可选更新渠道 */
+const UPDATE_CHANNEL_OPTIONS: { value: VersionType; label: string }[] = [
+  { value: 'release', label: VERSION_TYPE_CONFIG.release.label },
+  { value: 'beta', label: VERSION_TYPE_CONFIG.beta.label },
+  { value: 'dev', label: VERSION_TYPE_CONFIG.dev.label },
+]
+
 const panelSettings = ref<PanelSettings>({
   title: 'CloudSentinel',
+  update_channel: 'release',
 })
 const panelRules: FormRules = {
   title: [{ required: true, message: '请输入面板标题', trigger: 'blur' }],
@@ -74,12 +88,23 @@ const checkForUpdate = async () => {
   try {
     const response = await panelApi.checkUpdate()
     if (!response?.status) {
-      message.warning(response?.message || '无法获取版本信息', { duration: 3000 })
+      // 未找到最新版本视为当前已是最新，不按错误处理
+      if (isNoLatestVersionResponse(response as { code?: string })) {
+        hasCheckedUpdate.value = true
+        versionInfo.value = {
+          ...versionInfo.value,
+          latest_version: versionInfo.value.current_version || '',
+          latest_version_type: (versionInfo.value.current_version_type as VersionType) || 'release',
+          has_update: false,
+        }
+        message.success('当前已是最新版本', { duration: 3000 })
+      } else {
+        message.warning(response?.message || '无法获取版本信息', { duration: 3000 })
+      }
       return
     }
     versionInfo.value = { ...response?.data, has_update: false }
     hasCheckedUpdate.value = true
-
     message.info('有新版本了！！！', { duration: 3000 })
   } catch (error) {
     console.error('Failed to check for updates:', error)
@@ -254,6 +279,11 @@ const loadPanelSettings = async () => {
       panelSettings.value.log_retention_days = Number(logRetentionDays)
     }
 
+    const updateChannel = res?.data?.update_channel
+    if (updateChannel === 'dev' || updateChannel === 'beta' || updateChannel === 'release') {
+      panelSettings.value.update_channel = updateChannel
+    }
+
     if (versionInfo.value) {
       versionInfo.value.current_version = res?.data?.current_version || ''
       versionInfo.value.current_version_type = res?.data?.current_version_type || ''
@@ -275,6 +305,7 @@ const savePanelSettings = async () => {
     await panelApi.savePanelSettings({
       title: panelSettings.value.title,
       log_retention_days: panelSettings.value.log_retention_days,
+      update_channel: panelSettings.value.update_channel ?? 'release',
     })
 
     const publicSettings = authStore.getPublicSettings()
@@ -341,6 +372,17 @@ onMounted(() => {
             >
               <template #suffix> 天 </template>
             </n-input-number>
+          </n-form-item>
+          <n-form-item label="更新渠道" path="update_channel">
+            <n-select
+              v-model:value="panelSettings.update_channel"
+              :options="UPDATE_CHANNEL_OPTIONS"
+              placeholder="请选择更新渠道"
+              class="w-full"
+            />
+            <template #feedback>
+              <span class="text-muted-color text-xs">检查更新与安装时将使用所选渠道的最新版本</span>
+            </template>
           </n-form-item>
         </n-form>
       </n-card>
@@ -460,9 +502,9 @@ onMounted(() => {
             </n-card>
 
             <!-- 无更新状态 -->
-            <div
+            <n-card
               v-else
-              class="flex flex-col items-center justify-center py-10 text-center rounded-xl bg-surface-0 dark:bg-surface-800"
+              content-class="flex flex-col items-center justify-center text-center "
             >
               <div
                 class="w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4"
@@ -473,7 +515,7 @@ onMounted(() => {
               <p class="text-sm text-muted-color">
                 您的系统版本 v{{ versionInfo.current_version }} 是最新的，无需更新
               </p>
-            </div>
+            </n-card>
           </div>
         </div>
       </n-card>

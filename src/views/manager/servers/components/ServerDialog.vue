@@ -53,7 +53,6 @@ const emit = defineEmits<{
   'update:visible': [value: boolean]
   save: [form: ServerForm]
   cancel: []
-  'restart-server': [server: Server]
   'save-success': []
 }>()
 
@@ -393,7 +392,13 @@ const handleSave = async () => {
     return
   }
 
-  const submitForm: ServerFormWithAlertRules = { ...form.value }
+  const submitForm: ServerFormWithAlertRules & { clear_group?: boolean } = {
+    ...form.value,
+  }
+  // 清空分组时告知后端清除 group_id
+  if (form.value.group_id == null) {
+    submitForm.clear_group = true
+  }
 
   // 如果是编辑模式且有告警规则，将告警规则一起提交
   if (isEditing.value && props.editingServer && alertRules.value) {
@@ -448,7 +453,6 @@ const handleRestartService = () => {
           message.success(`服务器 "${props.editingServer!.name}" 的重启命令已发送`, {
             duration: 3000,
           })
-          emit('restart-server', props.editingServer!)
         } else {
           throw new Error(response.message || '重启失败')
         }
@@ -589,7 +593,7 @@ const serviceColumns = [
 <template>
   <n-modal
     v-model:show="isVisible"
-    :title="isEditing ? `编辑服务器 - ${props.editingServer?.name}` : '添加服务器'"
+    :title="isEditing ? `服务器设置 - ${props.editingServer?.name}` : '添加服务器'"
     :mask-closable="false"
     class="w-[700px]!"
     preset="card"

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useMessage } from 'naive-ui'
-import type { Server } from '@/types/manager/servers'
 import { RiFileCopyLine } from '@remixicon/vue'
+import hljs from 'highlight.js/lib/core'
+import bash from 'highlight.js/lib/languages/bash'
+import type { Server } from '@/types/manager/servers'
 
 interface Props {
   server?: Server | null
@@ -37,7 +39,6 @@ const installCommand = computed(() => {
 
 // 获取当前使用的 Agent Key
 const currentAgentKey = computed(() => {
-  console.log(props)
   return props.server?.agent_key || props.agentKey || '未设置'
 })
 
@@ -107,11 +108,14 @@ const copyInstallCommand = async () => {
     message.error('请手动复制安装命令', { duration: 3000 })
   }
 }
+
+onMounted(() => {
+  hljs.registerLanguage('bash', bash)
+})
 </script>
 
 <template>
   <div class="space-y-4">
-    <!-- 连接密钥 -->
     <div>
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center">
@@ -129,11 +133,9 @@ const copyInstallCommand = async () => {
         </n-tooltip>
       </div>
       <div class="space-y-3">
-        <n-code :code="currentAgentKey" language="bash" inline> </n-code>
+        <n-code :hljs="hljs" :code="currentAgentKey" language="bash" inline> </n-code>
       </div>
     </div>
-
-    <!-- 安装命令 -->
     <div>
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center">
@@ -150,9 +152,7 @@ const copyInstallCommand = async () => {
           复制命令
         </n-tooltip>
       </div>
-      <div class="space-y-3">
-        <n-code :code="installCommand" language="bash" word-wrap />
-      </div>
+      <n-code :hljs="hljs" :code="installCommand" language="bash" word-wrap />
     </div>
   </div>
 </template>

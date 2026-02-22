@@ -175,7 +175,7 @@ export interface ServerForm {
   kernel: string
   hostname: string
   // 分组和付费相关字段
-  group_id?: number
+  group_id?: number | null
   billing_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'one_time' | 'custom'
   custom_cycle_days?: number
   price?: number

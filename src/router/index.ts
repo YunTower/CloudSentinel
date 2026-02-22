@@ -35,6 +35,16 @@ const router = createRouter({
         roles: ['admin'],
       },
     },
+    {
+      path: '/servers/:id',
+      name: 'serverDetail',
+      component: () => import('@/views/manager/servers/DetailView.vue'),
+      meta: {
+        title: '服务器详情',
+        showToMenu: false,
+        roles: ['admin'],
+      },
+    },
     // 监控面板已移除
     {
       path: '/settings',

@@ -2,9 +2,9 @@
 import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { darkTheme } from 'naive-ui'
+import { initChartThemeWatcher } from '@/utils/vcharts'
 import BaseLayout from '@/layout/BaseLayout.vue'
 import BlankLayout from '@/layout/BlankLayout.vue'
-import Loading from '@/components/Loading/Loading.vue'
 import { useLayout } from '@/composables/useLayout'
 
 const loading = ref(true)
@@ -106,32 +106,23 @@ router.afterEach(async () => {
   }, 200)
 })
 
-import hljs from 'highlight.js/lib/core'
-import bash from 'highlight.js/lib/languages/bash'
-
 onMounted(() => {
-  hljs.registerLanguage('bash', bash)
+  initChartThemeWatcher()
   initializeLoading()
 })
 </script>
 
 <template>
-  <n-config-provider :theme="naiveTheme" :hljs="hljs">
+  <n-config-provider :theme="naiveTheme">
     <n-message-provider>
       <n-notification-provider>
         <n-dialog-provider>
           <component :is="layout" class="min-h-dvh h-full w-full">
-            <Loading
-              :loading="isLoading"
-              :size="50"
-              :strokeWidth="8"
-              animationDuration="0.5s"
-              :overlay="true"
-            />
-
-            <router-view v-slot="{ Component }">
-              <component :is="Component" :key="$route.fullPath" />
-            </router-view>
+            <n-spin :show="isLoading" size="large">
+              <router-view v-slot="{ Component }">
+                <component :is="Component" :key="$route.fullPath" />
+              </router-view>
+            </n-spin>
           </component>
         </n-dialog-provider>
       </n-notification-provider>

@@ -364,7 +364,7 @@ onMounted(() => {
           </div>
         </template>
         <n-alert v-if="!hasNotificationChannel" type="info" class="mb-4">
-          请先在上方「通知设置」中配置并启用至少一个通知渠道（邮件或 Webhook）后，方可开启以下告警。
+          在「通知设置」中配置并启用至少一个通知渠道（邮件或 Webhook）后，可配置。
         </n-alert>
         <div class="space-y-4">
           <div class="flex items-center justify-between">

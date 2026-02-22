@@ -52,15 +52,13 @@ export const formatBytes = (bytes: number) => {
 }
 
 // 版本类型定义
-export type VersionType = 'dev' | 'alpha' | 'beta' | 'rc' | 'release'
+export type VersionType = 'dev' | 'beta' | 'release'
 
-// 版本类型优先级：dev < alpha < beta < rc < release
+// 版本类型优先级：dev < beta < release
 export const VERSION_TYPE_PRIORITY: Record<VersionType, number> = {
   dev: 0,
-  alpha: 1,
-  beta: 2,
-  rc: 3,
-  release: 4,
+  beta: 1,
+  release: 2,
 }
 
 // 版本类型标签配置
@@ -69,18 +67,37 @@ export const VERSION_TYPE_CONFIG: Record<
   { label: string; severity: 'danger' | 'warn' | 'info' | 'success' }
 > = {
   dev: { label: '开发版', severity: 'danger' },
-  alpha: { label: '内测版', severity: 'warn' },
   beta: { label: '测试版', severity: 'info' },
-  rc: { label: '预览版', severity: 'success' },
   release: { label: '正式版', severity: 'success' },
 }
 
 /**
  * 获取版本类型标签配置
  */
-export const getVersionTypeConfig = (type: VersionType) => {
-  return VERSION_TYPE_CONFIG[type] || VERSION_TYPE_CONFIG.release
+export const NORMALIZE_VERSION_TYPE: Record<string, VersionType> = {
+  dev: 'dev',
+  alpha: 'beta',
+  beta: 'beta',
+  rc: 'beta',
+  release: 'release',
 }
+
+/**
+ * 获取版本类型标签配置
+ * @param type 版本类型
+ */
+export const getVersionTypeConfig = (type: VersionType | string) => {
+  const normalized = NORMALIZE_VERSION_TYPE[type] ?? 'release'
+  return VERSION_TYPE_CONFIG[normalized]
+}
+
+export const CHECK_UPDATE_NO_LATEST_CODE = 'LATEST_VERSION_NOT_FOUND'
+
+/**
+ * 判断检查更新接口的响应是否表示“没有更新 / 已是最新”
+ */
+export const isNoLatestVersionResponse = (response: { code?: string } | undefined): boolean =>
+  response?.code === CHECK_UPDATE_NO_LATEST_CODE
 
 /**
  * 比较两个版本号
@@ -126,19 +143,12 @@ export const parseVersion = (
 
   if (parts.length > 1) {
     const preRelease = parts[1]
-    // 尝试提取预发布版本序号（如 beta.1 中的 1）
     const preReleaseParts = preRelease.split('.')
+    const rawType = preReleaseParts.length > 1 ? preReleaseParts[0] : preRelease
+    versionType = (NORMALIZE_VERSION_TYPE[rawType] ?? 'release') as VersionType
     if (preReleaseParts.length > 1) {
-      // 提取类型（如 "beta"）
-      versionType = (preReleaseParts[0] as VersionType) || 'release'
-      // 提取序号（如 "1"）
       const num = parseInt(preReleaseParts[1], 10)
-      if (!isNaN(num)) {
-        preReleaseNum = num
-      }
-    } else {
-      // 没有序号，直接使用整个字符串作为类型
-      versionType = (preRelease as VersionType) || 'release'
+      if (!isNaN(num)) preReleaseNum = num
     }
   }
 
@@ -165,9 +175,9 @@ export const hasUpdate = (
   const current = parseVersion(currentVersion)
   const latest = parseVersion(latestVersion)
 
-  // 使用传入的类型或解析出的类型
-  const currentType = currentVersionType || current.versionType
-  const latestType = latestVersionType || latest.versionType
+  // 使用传入的类型或解析出的类型，并规范为 dev/beta/release
+  const currentType = (NORMALIZE_VERSION_TYPE[currentVersionType || current.versionType] ?? 'release') as VersionType
+  const latestType = (NORMALIZE_VERSION_TYPE[latestVersionType || latest.versionType] ?? 'release') as VersionType
 
   // 比较版本号
   const versionCompare = compareVersions(latest.version, current.version)
@@ -183,8 +193,8 @@ export const hasUpdate = (
   }
 
   // 版本号相同，比较版本类型优先级
-  const latestPriority = VERSION_TYPE_PRIORITY[latestType] ?? 0
-  const currentPriority = VERSION_TYPE_PRIORITY[currentType] ?? 0
+  const latestPriority = VERSION_TYPE_PRIORITY[latestType]
+  const currentPriority = VERSION_TYPE_PRIORITY[currentType]
 
   if (latestPriority > currentPriority) {
     // 最新版本类型优先级更高，需要更新

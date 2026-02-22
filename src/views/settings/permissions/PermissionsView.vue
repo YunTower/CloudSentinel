@@ -8,7 +8,8 @@ import { RiSaveLine } from '@remixicon/vue'
 
 const message = useMessage()
 
-const permissionsFormRef = ref<FormInst | null>(null)
+const accessFormRef = ref<FormInst | null>(null)
+const sessionFormRef = ref<FormInst | null>(null)
 const usernameFormRef = ref<FormInst | null>(null)
 const passwordFormRef = ref<FormInst | null>(null)
 
@@ -42,7 +43,7 @@ const guestPasswordDisplay = ref('')
 // 标记用户是否正在编辑密码
 const isEditingPassword = ref(false)
 
-const permissionRules: FormRules = {
+const accessRules: FormRules = {
   guestPassword: [
     {
       validator: (_rule, value: string) => {
@@ -54,6 +55,9 @@ const permissionRules: FormRules = {
       trigger: ['blur', 'input'],
     },
   ],
+}
+
+const sessionRules: FormRules = {
   sessionTimeout: [
     { required: true, type: 'number', message: '请输入会话超时时间', trigger: 'blur' },
     { type: 'number', min: 5, max: 1440, message: '范围 5-1440 分钟', trigger: ['blur', 'input'] },
@@ -145,10 +149,11 @@ const handlePasswordBlur = () => {
   }
 }
 
-// 保存权限设置
+// 保存权限设置（校验访问控制 + 会话管理两个表单后统一提交）
 const savePermissions = async () => {
   try {
-    await permissionsFormRef.value?.validate()
+    await accessFormRef.value?.validate()
+    await sessionFormRef.value?.validate()
   } catch {
     return
   }
@@ -165,7 +170,6 @@ const savePermissions = async () => {
       jwtSecret: permissions.value.jwtSecret,
       jwtExpiration: permissions.value.jwtExpiration,
     })
-
     message.success('权限设置已更新', { duration: 3000 })
   } catch {
     message.error('请稍后重试', { duration: 5000 })
@@ -308,13 +312,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <n-form
-      ref="permissionsFormRef"
-      :model="permissions"
-      :rules="permissionRules"
-      label-placement="top"
-      class="masonry-container"
-    >
+    <div class="masonry-container">
       <!-- 访问控制 -->
       <n-card class="masonry-item">
         <template #header>
@@ -322,152 +320,131 @@ onMounted(() => {
             <span>访问控制</span>
           </div>
         </template>
-        <div class="space-y-6">
-          <div class="flex items-center justify-between">
-            <div>
-              <label class="text-sm font-medium text-color">允许游客访问</label>
-              <p class="text-xs text-muted-color mt-1">开启后，未登录用户可以访问监控面板</p>
-            </div>
+        <n-form ref="accessFormRef" :model="permissions" :rules="accessRules" label-placement="top">
+          <n-form-item label="允许游客访问" path="allowGuest">
             <n-switch v-model:value="permissions.allowGuest" />
-          </div>
+            <template #feedback> 开启后，未登录用户可以访问监控面板 </template>
+          </n-form-item>
 
-          <div class="flex flex-col gap-3">
-            <div class="flex items-center justify-between">
-              <div>
-                <label class="text-sm font-medium text-color">启用访问密码</label>
-                <p class="text-xs text-muted-color mt-1">设置后，游客需要输入密码才能访问</p>
-              </div>
-              <n-switch v-model:value="permissions.enablePassword" />
-            </div>
-            <n-form-item
-              v-if="permissions.enablePassword"
-              path="guestPassword"
-              label="访问密码"
-              class="ml-4 pl-4 border-l-2 border-gray-200 dark:border-gray-700"
-            >
-              <n-input
-                :value="guestPasswordDisplay"
-                type="password"
-                show-password-on="click"
-                :placeholder="
-                  permissions.hasPassword ? '已设置密码，输入新密码可修改' : '请设置访问密码'
-                "
-                class="w-full"
-                @update:value="handleGuestPasswordInput"
-                @focus="handlePasswordFocus"
-                @blur="handlePasswordBlur"
-              />
-            </n-form-item>
-          </div>
+          <n-form-item label="启用访问密码" path="enablePassword">
+            <n-switch v-model:value="permissions.enablePassword" />
+            <template #feedback> 设置后，游客需要输入密码才能访问 </template>
+          </n-form-item>
 
-          <div class="flex items-center justify-between">
-            <div>
-              <label class="text-sm font-medium text-color">隐藏服务器敏感信息</label>
-              <p class="text-xs text-muted-color mt-1">
-                对游客隐藏服务器详细配置、IP地址等敏感信息
-              </p>
-            </div>
+          <n-form-item v-if="permissions.enablePassword" label="访问密码" path="guestPassword">
+            <n-input
+              :value="guestPasswordDisplay"
+              type="password"
+              show-password-on="click"
+              :placeholder="
+                permissions.hasPassword ? '已设置密码，输入新密码可修改' : '请设置访问密码'
+              "
+              class="w-full"
+              @update:value="handleGuestPasswordInput"
+              @focus="handlePasswordFocus"
+              @blur="handlePasswordBlur"
+            />
+            <template #feedback> 请设置具有一定强度的密码 </template>
+          </n-form-item>
+          <n-form-item label="隐藏服务器敏感信息" path="hideSensitiveInfo">
             <n-switch v-model:value="permissions.hideSensitiveInfo" />
-          </div>
-        </div>
+            <template #feedback> 对游客隐藏服务器详细配置、IP地址等敏感信息 </template>
+          </n-form-item>
+        </n-form>
       </n-card>
 
-      <!-- 管理员账户 -->
+      <!-- 修改用户名 -->
       <n-card class="masonry-item">
         <template #header>
           <div class="flex items-center gap-2">
-            <span>管理员账户</span>
+            <span>修改用户名</span>
           </div>
         </template>
-        <div class="space-y-4">
-          <div>
-            <n-divider title-placement="left">修改用户名</n-divider>
-            <n-form
-              ref="usernameFormRef"
-              :model="adminAccount"
-              :rules="usernameRules"
-              label-placement="top"
-            >
-              <n-form-item label="当前用户名" path="username">
-                <n-input :value="adminAccount.username" disabled class="w-full" />
-              </n-form-item>
-              <n-form-item label="新用户名" path="newUsername" required>
-                <n-input
-                  v-model:value="adminAccount.newUsername"
-                  placeholder="请输入新用户名"
-                  class="w-full"
-                />
-              </n-form-item>
-              <n-form-item label="当前密码" path="currentPassword" required>
-                <n-input
-                  v-model:value="adminAccount.currentPassword"
-                  type="password"
-                  show-password-on="click"
-                  placeholder="请输入当前密码以验证身份"
-                  class="w-full"
-                />
-              </n-form-item>
-              <div class="w-full flex justify-end mt-4">
-                <n-button
-                  class="w-full"
-                  type="primary"
-                  :loading="updatingUsername"
-                  @click="updateUsername"
-                >
-                  修改用户名
-                </n-button>
-              </div>
-            </n-form>
-          </div>
+        <n-form
+          ref="usernameFormRef"
+          :model="adminAccount"
+          :rules="usernameRules"
+          label-placement="top"
+        >
+          <n-form-item label="当前用户名" path="username">
+            <n-input :value="adminAccount.username" disabled class="w-full" />
+          </n-form-item>
+          <n-form-item label="新用户名" path="newUsername" required>
+            <n-input
+              v-model:value="adminAccount.newUsername"
+              placeholder="请输入新用户名"
+              class="w-full"
+            />
+          </n-form-item>
+          <n-form-item label="当前密码" path="currentPassword" required>
+            <n-input
+              v-model:value="adminAccount.currentPassword"
+              type="password"
+              show-password-on="click"
+              placeholder="请输入当前密码以验证身份"
+              class="w-full"
+            />
+          </n-form-item>
+          <n-button
+            type="primary"
+            block
+            :loading="updatingUsername"
+            @click="updateUsername"
+          >
+            修改用户名
+          </n-button>
+        </n-form>
+      </n-card>
 
-          <div>
-            <n-divider title-placement="left">修改密码</n-divider>
-            <n-form
-              ref="passwordFormRef"
-              :model="adminAccount"
-              :rules="passwordRules"
-              label-placement="top"
-            >
-              <n-form-item label="当前密码" path="currentPassword" required>
-                <n-input
-                  v-model:value="adminAccount.currentPassword"
-                  type="password"
-                  show-password-on="click"
-                  placeholder="请输入当前密码以验证身份"
-                  class="w-full"
-                />
-              </n-form-item>
-              <n-form-item label="新密码" path="newPassword" required>
-                <n-input
-                  v-model:value="adminAccount.newPassword"
-                  type="password"
-                  show-password-on="click"
-                  placeholder="请输入新密码（至少6位）"
-                  class="w-full"
-                />
-              </n-form-item>
-              <n-form-item label="确认新密码" path="confirmPassword" required>
-                <n-input
-                  v-model:value="adminAccount.confirmPassword"
-                  type="password"
-                  show-password-on="click"
-                  placeholder="请再次输入新密码"
-                  class="w-full"
-                />
-              </n-form-item>
-              <div class="w-full flex justify-end mt-4">
-                <n-button
-                  type="primary"
-                  class="w-full"
-                  :loading="updatingPassword"
-                  @click="updatePassword"
-                >
-                  修改密码
-                </n-button>
-              </div>
-            </n-form>
+      <!-- 修改密码 -->
+      <n-card class="masonry-item">
+        <template #header>
+          <div class="flex items-center gap-2">
+            <span>修改密码</span>
           </div>
-        </div>
+        </template>
+        <n-form
+          ref="passwordFormRef"
+          :model="adminAccount"
+          :rules="passwordRules"
+          label-placement="top"
+        >
+          <n-form-item label="当前密码" path="currentPassword" required>
+            <n-input
+              v-model:value="adminAccount.currentPassword"
+              type="password"
+              show-password-on="click"
+              placeholder="请输入当前密码以验证身份"
+              class="w-full"
+            />
+          </n-form-item>
+          <n-form-item label="新密码" path="newPassword" required>
+            <n-input
+              v-model:value="adminAccount.newPassword"
+              type="password"
+              show-password-on="click"
+              placeholder="请输入新密码（至少6位）"
+              class="w-full"
+            />
+          </n-form-item>
+          <n-form-item label="确认新密码" path="confirmPassword" required>
+            <n-input
+              v-model:value="adminAccount.confirmPassword"
+              type="password"
+              show-password-on="click"
+              placeholder="请再次输入新密码"
+              class="w-full"
+            />
+          </n-form-item>
+          <n-button
+            type="primary"
+            block
+            :loading="updatingPassword"
+            @click="updatePassword"
+          >
+            修改密码
+          </n-button>
+        </n-form>
       </n-card>
 
       <!-- 会话管理 -->
@@ -477,7 +454,12 @@ onMounted(() => {
             <span>会话管理</span>
           </div>
         </template>
-        <div class="space-y-4">
+        <n-form
+          ref="sessionFormRef"
+          :model="permissions"
+          :rules="sessionRules"
+          label-placement="top"
+        >
           <n-form-item label="会话超时时间" path="sessionTimeout" required>
             <n-input-number
               v-model:value="permissions.sessionTimeout"
@@ -485,6 +467,7 @@ onMounted(() => {
               :max="1440"
               :show-button="false"
               class="w-full"
+              placeholder="请输入会话超时时间"
             >
               <template #suffix> 分钟 </template>
             </n-input-number>
@@ -496,6 +479,7 @@ onMounted(() => {
               :max="10"
               :show-button="false"
               class="w-full"
+              placeholder="请输入最大登录尝试次数"
             >
               <template #suffix> 次 </template>
             </n-input-number>
@@ -508,18 +492,20 @@ onMounted(() => {
                 :max="60"
                 :show-button="false"
                 class="w-full"
+                placeholder="请输入锁定时间"
               >
                 <template #suffix> 分钟 </template>
               </n-input-number>
               <n-alert type="default" :show-icon="false" class="mt-2">
                 游客/管理员使用密码登录失败达到
-                <b>{{ permissions.maxLoginAttempts }}</b> 次后锁定IP的时间
+                <b>{{ permissions.maxLoginAttempts || 0 }}</b> 次后锁定IP
+                <b>{{ permissions.lockoutDuration || 0 }}</b> 分钟
               </n-alert>
             </div>
           </n-form-item>
-        </div>
+        </n-form>
       </n-card>
-    </n-form>
+    </div>
   </div>
 </template>
 <style scoped>

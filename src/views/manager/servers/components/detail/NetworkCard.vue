@@ -15,9 +15,7 @@ defineProps<Props>()
 </script>
 
 <template>
-  <div
-    class="bg-white dark:bg-zinc-900 rounded-lg p-4 border border-zinc-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow"
-  >
+  <n-card>
     <div class="flex items-center gap-2 mb-3">
       <ri-wifi-line size="14px" />
       <span class="font-medium">网络 I/O</span>
@@ -67,5 +65,5 @@ defineProps<Props>()
     <div v-else class="pt-3 border-t border-zinc-200 dark:border-zinc-700">
       <n-empty description="暂无流量数据" class="py-2" />
     </div>
-  </div>
+  </n-card>
 </template>

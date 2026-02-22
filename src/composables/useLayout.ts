@@ -24,6 +24,7 @@ export function useLayout(): UseLayoutReturn {
     } else {
       document.documentElement.classList.remove('dark')
     }
+    window.dispatchEvent(new CustomEvent('theme-change', { detail: value }))
   }
 
   function toggleDarkMode(): void {
