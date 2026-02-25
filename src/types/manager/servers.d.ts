@@ -52,6 +52,8 @@ export interface CreateServerData {
   agent_key: string
   created_at: number
   updated_at: number
+  billing?: BillingInfo
+  network?: NetworkInfo
 }
 
 // 创建服务器响应类型
@@ -74,18 +76,8 @@ export interface ServerListItemData {
   // 分组和付费相关字段
   group_id?: number
   group?: ServerGroup
-  billing_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'one_time' | 'custom'
-  custom_cycle_days?: number
-  price?: number
-  expire_time?: string
-  bandwidth_mbps?: number
-  traffic_limit_type?: 'unlimited' | 'permanent' | 'periodic'
-  traffic_limit_bytes?: number
-  traffic_reset_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
-  traffic_custom_cycle_days?: number
-  show_billing_cycle?: boolean
-  show_traffic_limit?: boolean
-  show_traffic_reset_cycle?: boolean
+  billing?: BillingInfo
+  network?: NetworkInfo
   service_status?: Record<string, ProcessStatus>
 }
 
@@ -105,6 +97,26 @@ export interface ServerGroup {
   color?: string
   created_at?: string
   updated_at?: string
+}
+
+// 付费信息接口
+export interface BillingInfo {
+  billing_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'one_time' | 'custom'
+  custom_cycle_days?: number
+  price?: number
+  expire_time?: string
+  bandwidth_mbps?: number
+  traffic_limit_type?: 'unlimited' | 'permanent' | 'periodic'
+  traffic_limit_bytes?: number
+  traffic_reset_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
+  traffic_custom_cycle_days?: number
+  show_billing_cycle?: boolean
+}
+
+// 网络信息接口
+export interface NetworkInfo {
+  show_traffic_limit?: boolean
+  show_traffic_reset_cycle?: boolean
 }
 
 // 服务器接口定义
@@ -137,15 +149,8 @@ export interface Server {
   // 分组和付费相关字段
   group_id?: number
   group?: ServerGroup
-  billing_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'one_time' | 'custom'
-  custom_cycle_days?: number
-  price?: number
-  expire_time?: string
-  bandwidth_mbps?: number
-  traffic_limit_type?: 'unlimited' | 'permanent' | 'periodic'
-  traffic_limit_bytes?: number
-  traffic_reset_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
-  traffic_custom_cycle_days?: number
+  billing?: BillingInfo
+  network?: NetworkInfo
   // Agent配置字段
   agent_timezone?: string
   agent_metrics_interval?: number
@@ -154,9 +159,6 @@ export interface Server {
   agent_heartbeat_interval?: number
   agent_log_path?: string
   // 显示开关字段
-  show_billing_cycle?: boolean
-  show_traffic_limit?: boolean
-  show_traffic_reset_cycle?: boolean
   monitored_services?: string[]
   process_status?: Record<string, ProcessStatus>
   createdAt: string
@@ -176,15 +178,8 @@ export interface ServerForm {
   hostname: string
   // 分组和付费相关字段
   group_id?: number | null
-  billing_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'one_time' | 'custom'
-  custom_cycle_days?: number
-  price?: number
-  expire_time?: string
-  bandwidth_mbps?: number
-  traffic_limit_type?: 'unlimited' | 'permanent' | 'periodic'
-  traffic_limit_bytes?: number
-  traffic_reset_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
-  traffic_custom_cycle_days?: number
+  billing: BillingInfo
+  network: NetworkInfo
   // Agent配置字段
   agent_timezone?: string
   agent_metrics_interval?: number
@@ -193,9 +188,6 @@ export interface ServerForm {
   agent_heartbeat_interval?: number
   agent_log_path?: string
   // 显示开关字段
-  show_billing_cycle?: boolean
-  show_traffic_limit?: boolean
-  show_traffic_reset_cycle?: boolean
   monitored_services?: string[]
 }
 
@@ -289,15 +281,8 @@ export interface ExtendedServerDetailData extends ServerDetailData {
   gpuInfo?: GPUData
   group_id?: number
   group?: ServerGroup
-  billing_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'one_time' | 'custom'
-  custom_cycle_days?: number
-  price?: number
-  expire_time?: string
-  bandwidth_mbps?: number
-  traffic_limit_type?: 'unlimited' | 'permanent' | 'periodic'
-  traffic_limit_bytes?: number
-  traffic_reset_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
-  traffic_custom_cycle_days?: number
+  billing?: BillingInfo
+  network?: NetworkInfo
   // Agent配置字段
   agent_timezone?: string
   agent_metrics_interval?: number
@@ -306,9 +291,6 @@ export interface ExtendedServerDetailData extends ServerDetailData {
   agent_heartbeat_interval?: number
   agent_log_path?: string
   // 显示开关字段
-  show_billing_cycle?: boolean
-  show_traffic_limit?: boolean
-  show_traffic_reset_cycle?: boolean
   alert_rules?: ServerAlertRules
   notification_channels?: ServerNotificationChannels
   service_status?: Record<string, ProcessStatus>
