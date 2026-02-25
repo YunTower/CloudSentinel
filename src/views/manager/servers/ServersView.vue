@@ -59,6 +59,8 @@ const serverForm = ref<ServerForm>({
   architecture: '',
   kernel: '',
   hostname: '',
+  billing: {},
+  network: {},
 })
 
 const message = useMessage()
@@ -321,15 +323,8 @@ const loadServers = async () => {
           uptime: server.uptime || '0天0时0分',
           group_id: server.group_id,
           group: server.group,
-          billing_cycle: server.billing_cycle,
-          custom_cycle_days: server.custom_cycle_days,
-          price: server.price,
-          expire_time: server.expire_time,
-          bandwidth_mbps: server.bandwidth_mbps,
-          traffic_limit_type: server.traffic_limit_type,
-          traffic_limit_bytes: server.traffic_limit_bytes,
-          traffic_reset_cycle: server.traffic_reset_cycle,
-          traffic_custom_cycle_days: server.traffic_custom_cycle_days,
+          billing: server.billing || {},
+          network: server.network || {},
           cpu,
           memory,
           disk,
@@ -370,6 +365,8 @@ const resetForm = () => {
     architecture: '',
     kernel: '',
     hostname: '',
+    billing: {},
+    network: {},
   }
   editingServer.value = null
 }

@@ -116,36 +116,38 @@ const timezoneOptions = [
   { label: 'Australia/Sydney (澳大利亚东部时间)', value: 'Australia/Sydney' },
 ]
 
-const showCustomCycleDays = computed(() => form.value.billing_cycle === 'custom')
-const showTrafficCustomCycleDays = computed(() => form.value.traffic_reset_cycle === 'custom')
-const showTrafficLimitBytes = computed(() => form.value.traffic_limit_type === 'periodic')
+const showCustomCycleDays = computed(() => form.value.billing?.billing_cycle === 'custom')
+const showTrafficCustomCycleDays = computed(() => form.value.billing?.traffic_reset_cycle === 'custom')
+const showTrafficLimitBytes = computed(() => form.value.billing?.traffic_limit_type === 'periodic')
 
 const showTrafficResetCycle = computed(() => true)
 
 // 到期时间的 timestamp 转换 (n-date-picker uses ms timestamps)
 const expireTimestamp = computed({
   get: () => {
-    if (!form.value.expire_time) return null
-    return new Date(form.value.expire_time).getTime()
+    if (!form.value.billing?.expire_time) return null
+    return new Date(form.value.billing.expire_time).getTime()
   },
   set: (val: number | null) => {
-    form.value.expire_time = val ? new Date(val).toISOString() : undefined
+    if (!form.value.billing) form.value.billing = {}
+    form.value.billing.expire_time = val ? new Date(val).toISOString() : undefined
   },
 })
 
 // 流量GB到bytes的转换
 const trafficLimitGB = computed({
   get: () => {
-    if (!form.value.traffic_limit_bytes || form.value.traffic_limit_bytes === 0) return null
+    if (!form.value.billing?.traffic_limit_bytes || form.value.billing.traffic_limit_bytes === 0) return null
     // bytes转GB: bytes / (1024 * 1024 * 1024)
-    return form.value.traffic_limit_bytes / (1024 * 1024 * 1024)
+    return form.value.billing.traffic_limit_bytes / (1024 * 1024 * 1024)
   },
   set: (value: number | null) => {
+    if (!form.value.billing) form.value.billing = {}
     if (value === null || value === 0) {
-      form.value.traffic_limit_bytes = 0
+      form.value.billing.traffic_limit_bytes = 0
     } else {
       // GB转bytes: GB * (1024 * 1024 * 1024)
-      form.value.traffic_limit_bytes = Math.round(value * 1024 * 1024 * 1024)
+      form.value.billing.traffic_limit_bytes = Math.round(value * 1024 * 1024 * 1024)
     }
   },
 })
@@ -161,15 +163,22 @@ const form = defineModel<ServerForm>('form', {
     kernel: '',
     hostname: '',
     group_id: undefined,
-    billing_cycle: undefined,
-    custom_cycle_days: undefined,
-    price: undefined,
-    expire_time: undefined,
-    bandwidth_mbps: 0,
-    traffic_limit_type: undefined,
-    traffic_limit_bytes: 0,
-    traffic_reset_cycle: undefined,
-    traffic_custom_cycle_days: undefined,
+    billing: {
+        billing_cycle: undefined,
+        custom_cycle_days: undefined,
+        price: undefined,
+        expire_time: undefined,
+        bandwidth_mbps: 0,
+        traffic_limit_type: undefined,
+        traffic_limit_bytes: 0,
+        traffic_reset_cycle: undefined,
+        traffic_custom_cycle_days: undefined,
+        show_billing_cycle: false,
+    },
+    network: {
+        show_traffic_limit: false,
+        show_traffic_reset_cycle: false,
+    },
     // Agent配置字段
     agent_timezone: 'Asia/Shanghai',
     agent_metrics_interval: undefined,
@@ -177,10 +186,6 @@ const form = defineModel<ServerForm>('form', {
     agent_system_interval: undefined,
     agent_heartbeat_interval: undefined,
     agent_log_path: undefined,
-    // 显示开关字段
-    show_billing_cycle: false,
-    show_traffic_limit: false,
-    show_traffic_reset_cycle: false,
     monitored_services: [],
   }),
 })
@@ -211,15 +216,8 @@ const loadServerDetail = async () => {
         kernel: detail.kernel || '',
         hostname: detail.hostname || '',
         group_id: detail.group_id,
-        billing_cycle: detail.billing_cycle,
-        custom_cycle_days: detail.custom_cycle_days,
-        price: detail.price,
-        expire_time: detail.expire_time,
-        bandwidth_mbps: detail.bandwidth_mbps || 0,
-        traffic_limit_type: detail.traffic_limit_type,
-        traffic_limit_bytes: detail.traffic_limit_bytes || 0,
-        traffic_reset_cycle: detail.traffic_reset_cycle,
-        traffic_custom_cycle_days: detail.traffic_custom_cycle_days,
+        billing: detail.billing || {},
+        network: detail.network || {},
         // Agent配置字段
         agent_timezone: detail.agent_timezone,
         agent_metrics_interval: detail.agent_metrics_interval,
@@ -228,9 +226,6 @@ const loadServerDetail = async () => {
         agent_heartbeat_interval: detail.agent_heartbeat_interval,
         agent_log_path: detail.agent_log_path,
         monitored_services: detail.monitored_services || [],
-        show_billing_cycle: detail.show_billing_cycle || false,
-        show_traffic_limit: detail.show_traffic_limit ?? false,
-        show_traffic_reset_cycle: detail.show_traffic_reset_cycle ?? false,
       }
       // 从服务器详情中获取告警规则
       if (detail.alert_rules) {
@@ -265,15 +260,8 @@ const loadServerDetail = async () => {
         kernel: props.editingServer.kernel || '',
         hostname: props.editingServer.hostname || '',
         group_id: props.editingServer.group_id,
-        billing_cycle: props.editingServer.billing_cycle,
-        custom_cycle_days: props.editingServer.custom_cycle_days,
-        price: props.editingServer.price,
-        expire_time: props.editingServer.expire_time,
-        bandwidth_mbps: props.editingServer.bandwidth_mbps || 0,
-        traffic_limit_type: props.editingServer.traffic_limit_type,
-        traffic_limit_bytes: props.editingServer.traffic_limit_bytes || 0,
-        traffic_reset_cycle: props.editingServer.traffic_reset_cycle,
-        traffic_custom_cycle_days: props.editingServer.traffic_custom_cycle_days,
+        billing: props.editingServer.billing || {},
+        network: props.editingServer.network || {},
         // Agent配置字段
         agent_timezone: props.editingServer.agent_timezone,
         agent_metrics_interval: props.editingServer.agent_metrics_interval,
@@ -281,10 +269,7 @@ const loadServerDetail = async () => {
         agent_system_interval: props.editingServer.agent_system_interval,
         agent_heartbeat_interval: props.editingServer.agent_heartbeat_interval,
         agent_log_path: props.editingServer.agent_log_path,
-        // 显示开关字段
-        show_billing_cycle: props.editingServer.show_billing_cycle ?? false,
-        show_traffic_limit: props.editingServer.show_traffic_limit ?? false,
-        show_traffic_reset_cycle: props.editingServer.show_traffic_reset_cycle ?? false,
+        monitored_services: [],
       }
     }
   } finally {
@@ -353,15 +338,8 @@ watch(
         kernel: server.kernel || '',
         hostname: server.hostname || '',
         group_id: server.group_id,
-        billing_cycle: server.billing_cycle,
-        custom_cycle_days: server.custom_cycle_days,
-        price: server.price,
-        expire_time: server.expire_time,
-        bandwidth_mbps: server.bandwidth_mbps || 0,
-        traffic_limit_type: server.traffic_limit_type,
-        traffic_limit_bytes: server.traffic_limit_bytes || 0,
-        traffic_reset_cycle: server.traffic_reset_cycle,
-        traffic_custom_cycle_days: server.traffic_custom_cycle_days,
+        billing: server.billing || {},
+        network: server.network || {},
         // Agent配置字段
         agent_timezone: server.agent_timezone,
         agent_metrics_interval: server.agent_metrics_interval,
@@ -369,10 +347,7 @@ watch(
         agent_system_interval: server.agent_system_interval,
         agent_heartbeat_interval: server.agent_heartbeat_interval,
         agent_log_path: server.agent_log_path,
-        // 显示开关字段
-        show_billing_cycle: server.show_billing_cycle ?? false,
-        show_traffic_limit: server.show_traffic_limit ?? false,
-        show_traffic_reset_cycle: server.show_traffic_reset_cycle ?? false,
+        monitored_services: [],
       }
     }
   },
@@ -649,8 +624,8 @@ const serviceColumns = [
           </div>
         </n-tab-pane>
 
-        <!-- 计费信息 Tab -->
-        <n-tab-pane name="1" tab="计费">
+        <!-- 付费信息 Tab -->
+        <n-tab-pane name="1" tab="付费">
           <div class="space-y-4 pt-4">
             <div class="grid grid-cols-2 gap-6">
               <div class="space-y-3">
@@ -659,7 +634,7 @@ const serviceColumns = [
                   付费周期
                 </label>
                 <n-select
-                  v-model:value="form.billing_cycle"
+                  v-model:value="form.billing.billing_cycle"
                   :options="billingCycleOptions"
                   placeholder="请选择付费周期"
                   class="w-full"
@@ -672,7 +647,7 @@ const serviceColumns = [
                   自定义周期天数
                 </label>
                 <n-input-number
-                  v-model:value="form.custom_cycle_days"
+                  v-model:value="form.billing.custom_cycle_days"
                   :min="1"
                   placeholder="请输入天数"
                   class="w-full"
@@ -685,7 +660,7 @@ const serviceColumns = [
                   价格
                 </label>
                 <n-input-number
-                  v-model:value="form.price"
+                  v-model:value="form.billing.price"
                   :min="0"
                   :precision="2"
                   placeholder="请输入价格"
@@ -710,14 +685,14 @@ const serviceColumns = [
               <div class="space-y-3">
                 <label class="text-sm font-medium text-color flex items-center gap-2">
                   <ri-eye-line size="14px" />
-                  显示付费周期
+                  显示付费信息
                 </label>
                 <n-card>
                   <div class="flex gap-2">
                     <span class="text-sm text-muted-color flex-1"
-                      >在概览和详情中显示付费周期信息</span
+                      >在概览和详情中显示付费信息</span
                     >
-                    <n-switch v-model:value="form.show_billing_cycle" />
+                    <n-switch v-model:value="form.billing.show_billing_cycle" />
                   </div>
                 </n-card>
               </div>
@@ -735,7 +710,7 @@ const serviceColumns = [
                   带宽大小
                 </label>
                 <n-input-number
-                  v-model:value="form.bandwidth_mbps"
+                  v-model:value="form.billing.bandwidth_mbps"
                   :min="0"
                   placeholder="0表示无限制"
                   class="w-full"
@@ -750,7 +725,7 @@ const serviceColumns = [
                   流量限制类型
                 </label>
                 <n-select
-                  v-model:value="form.traffic_limit_type"
+                  v-model:value="form.billing.traffic_limit_type"
                   :options="trafficLimitTypeOptions"
                   placeholder="请选择流量限制类型"
                   class="w-full"
@@ -779,7 +754,7 @@ const serviceColumns = [
                   流量重置周期
                 </label>
                 <n-select
-                  v-model:value="form.traffic_reset_cycle"
+                  v-model:value="form.billing.traffic_reset_cycle"
                   :options="trafficResetCycleOptions"
                   placeholder="请选择重置周期"
                   class="w-full"
@@ -796,7 +771,7 @@ const serviceColumns = [
                     <span class="text-sm text-muted-color flex-1"
                       >在概览和详情中显示流量限制信息</span
                     >
-                    <n-switch v-model:value="form.show_traffic_limit" />
+                    <n-switch v-model:value="form.network.show_traffic_limit" />
                   </div>
                 </n-card>
               </div>
@@ -811,7 +786,7 @@ const serviceColumns = [
                     <span class="text-sm text-muted-color flex-1"
                       >在概览和详情中显示流量重置周期信息</span
                     >
-                    <n-switch v-model:value="form.show_traffic_reset_cycle" />
+                    <n-switch v-model:value="form.network.show_traffic_reset_cycle" />
                   </div>
                 </n-card>
               </div>
@@ -822,7 +797,7 @@ const serviceColumns = [
                   自定义重置周期天数
                 </label>
                 <n-input-number
-                  v-model:value="form.traffic_custom_cycle_days"
+                  v-model:value="form.billing.traffic_custom_cycle_days"
                   :min="1"
                   placeholder="请输入天数"
                   class="w-full"
@@ -1065,9 +1040,15 @@ const serviceColumns = [
                 <ri-send-plane-line size="14px" />
                 通知渠道
               </h3>
-              <p class="text-sm text-muted-color">
-                选择此服务器告警时使用的通知方式。只有全局已配置的通知方式才能在此启用。
-              </p>
+              <div>
+                <p class="text-sm text-muted-color">选择此服务器告警时使用的通知方式。</p>
+                <p
+                  class="text-sm text-muted-color"
+                  v-if="!globalNotificationChannels.email && !globalNotificationChannels.webhook"
+                >
+                  只有在 [设置]->[告警设置] 中配置任意通知方式后，才能启用。
+                </p>
+              </div>
               <div class="grid grid-cols-2 gap-4">
                 <!-- 邮件通知 -->
                 <n-card class="p-2">
