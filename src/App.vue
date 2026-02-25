@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { darkTheme } from 'naive-ui'
+import { darkTheme, type NLocale, zhCN } from 'naive-ui'
 import { initChartThemeWatcher } from '@/utils/vcharts'
 import BaseLayout from '@/layout/BaseLayout.vue'
 import BlankLayout from '@/layout/BlankLayout.vue'
@@ -113,7 +113,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <n-config-provider :theme="naiveTheme">
+  <n-config-provider :locale="zhCN" :theme="naiveTheme">
     <n-message-provider>
       <n-notification-provider>
         <n-dialog-provider>
