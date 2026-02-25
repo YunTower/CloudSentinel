@@ -275,46 +275,25 @@ watch(serverId, (id) => {
       </template>
 
       <template v-else-if="server">
-        <div class="w-full columns-1 md:columns-2 gap-2 space-y-2">
-          <!-- 基本信息 -->
-          <div class="break-inside-avoid w-full min-w-0">
+        <div class="flex flex-col md:flex-row gap-2 w-full items-stretch">
+          <div class="flex flex-col gap-2 w-full md:w-1/2 min-w-0">
             <basic-info :server="server" />
-          </div>
-          <div class="break-inside-avoid w-full min-w-0">
             <cpu-card :cpu="server.cpu" />
-          </div>
-          <div class="break-inside-avoid w-full min-w-0">
             <memory-card :memory="server.memory" :memory-info="server.memoryInfo" />
-          </div>
-          <div class="break-inside-avoid w-full min-w-0">
             <swap-card :swap-info="server.swapInfo" />
+            <g-p-u-card v-if="server.gpuInfo" :gpu-info="server.gpuInfo" />
           </div>
-          <div class="break-inside-avoid w-full min-w-0">
+          <div class="flex flex-col gap-2 w-full md:w-1/2 min-w-0">
             <disk-card :disks="server.disks" />
-          </div>
-          <div class="break-inside-avoid w-full min-w-0">
             <network-card :network-i-o="server.networkIO" :traffic="server.traffic" />
-          </div>
-
-          <!-- GPU -->
-          <div v-if="server.gpuInfo" class="break-inside-avoid w-full min-w-0">
-            <g-p-u-card :gpu-info="server.gpuInfo" />
-          </div>
-
-          <!-- 进程监控 -->
-          <div class="break-inside-avoid w-full min-w-0">
-            <process-card :process-status="server.process_status" />
-          </div>
-
-          <!-- 流量限制 -->
-          <div
-            v-if="
-              server.network?.show_traffic_limit &&
-              (server.billing?.traffic_limit_type || (server.billing?.traffic_limit_bytes ?? 0) > 0)
-            "
-            class="break-inside-avoid w-full min-w-0"
-          >
+            <div class="flex-1 min-h-0 flex flex-col">
+              <process-card :process-status="server.process_status" />
+            </div>
             <div
+              v-if="
+                server.network?.show_traffic_limit &&
+                (server.billing?.traffic_limit_type || (server.billing?.traffic_limit_bytes ?? 0) > 0)
+              "
               class="w-full min-w-0 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
             >
               <div class="mb-3 flex items-center gap-2">
@@ -343,14 +322,8 @@ watch(serverId, (id) => {
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- 流量重置周期 -->
-          <div
-            v-if="server.network?.show_traffic_reset_cycle && server.billing?.traffic_reset_cycle"
-            class="break-inside-avoid w-full min-w-0"
-          >
             <div
+              v-if="server.network?.show_traffic_reset_cycle && server.billing?.traffic_reset_cycle"
               class="w-full min-w-0 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
             >
               <div class="mb-3 flex items-center gap-2">
