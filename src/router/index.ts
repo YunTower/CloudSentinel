@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { setupRouteGuards } from './guards'
-import { RiHome5Line, RiServerLine, RiSettings4Line } from '@remixicon/vue'
+import { RiHome5Line, RiServerLine, RiSettings4Line, RiRadarLine } from '@remixicon/vue'
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -32,6 +32,16 @@ const router = createRouter({
       meta: {
         title: '服务器',
         icon: RiServerLine,
+        roles: ['admin'],
+      },
+    },
+    {
+      path: '/monitor',
+      name: 'monitor',
+      component: () => import('@/views/monitor/ServiceMonitorView.vue'),
+      meta: {
+        title: '服务监测',
+        icon: RiRadarLine,
         roles: ['admin'],
       },
     },
