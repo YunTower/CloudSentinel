@@ -136,7 +136,6 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
     if (message.type === 'auth_success') {
       // 认证成功消息
       console.log('[useWebSocket] WebSocket 认证成功，连接已建立')
-      callbacks.onOpen?.()
       return
     }
 
