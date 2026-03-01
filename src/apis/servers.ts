@@ -15,7 +15,14 @@ export default {
     }
     return requester.Get(url)
   },
-  getServerDetail: (id: string) => requester.Get(`/servers/${id}`),
+  getServerDetail: (id: string, revealAgentKey = false) => {
+    const params = new URLSearchParams()
+    if (revealAgentKey) {
+      params.append('reveal_agent_key', 'true')
+    }
+    const suffix = params.toString() ? `?${params.toString()}` : ''
+    return requester.Get(`/servers/${id}${suffix}`)
+  },
   updateServer: (id: string, form: ServerForm) => requester.Patch(`/servers/${id}`, form),
   deleteServer: (id: string) => requester.Delete(`/servers/${id}`),
   restartService: (id: string) => requester.Post(`/servers/${id}/agent/restart`),

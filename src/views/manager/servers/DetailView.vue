@@ -186,7 +186,7 @@ const loadDetail = async () => {
   loading.value = true
   error.value = null
   try {
-    const response = (await serversApi.getServerDetail(id)) as ServerDetailResponse
+    const response = (await serversApi.getServerDetail(id, true)) as ServerDetailResponse
     if (!response.status || !response.data) {
       throw new Error(response.message || '获取服务器详情失败')
     }

@@ -199,9 +199,7 @@ const loadServerDetail = async () => {
 
   loadingDetail.value = true
   try {
-    const response = (await serversApi.getServerDetail(
-      props.editingServer.id,
-    )) as ServerDetailResponse
+    const response = (await serversApi.getServerDetail(props.editingServer.id, true)) as ServerDetailResponse
 
     if (response.status && response.data) {
       serverDetail.value = response.data
