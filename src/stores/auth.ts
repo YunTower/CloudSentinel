@@ -152,7 +152,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     // 默认配置
     return {
-      allowGuest: true,
+      allowGuest: false,
       enablePassword: false,
       hideSensitiveInfo: true,
     }
