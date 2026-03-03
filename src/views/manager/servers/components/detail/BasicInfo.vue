@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { NCard, NDescriptions, NDescriptionsItem, NTag } from 'naive-ui'
 import type { Server } from '@/types/manager/servers'
+import { getBillingCycle, getExpireCountdown } from '@/utils/billing'
 import { getStatusText, getStatusSeverity } from '@/utils/version.ts'
-import { RiInformationLine } from '@remixicon/vue'
 
 interface Props {
   server: Server
@@ -21,6 +21,12 @@ const severityToTagType = (
     info: 'info',
   }
   return map[severity] ?? 'default'
+}
+
+/** 到期剩余展示：已过期 或 X天/时/分后到期 */
+function expireCountdownLabel(expireTime: string): string {
+  const countdown = getExpireCountdown(expireTime)
+  return countdown === '已过期' ? '已过期' : `${countdown}后到期`
 }
 </script>
 
@@ -60,6 +66,22 @@ const severityToTagType = (
       <n-descriptions-item label="主机名">
         {{ server.hostname || '-' }}
       </n-descriptions-item>
+
+      <!-- 付费信息 -->
+      <template v-if="server.billing?.show_billing_cycle">
+        <n-descriptions-item v-if="server.billing?.billing_cycle" label="付费周期">
+          {{ getBillingCycle(server.billing.billing_cycle) }}
+        </n-descriptions-item>
+        <n-descriptions-item v-if="server.billing?.price != null" label="价格">
+          ¥{{ server.billing.price.toFixed(2) }}
+        </n-descriptions-item>
+        <n-descriptions-item v-if="server.billing?.expire_time" label="到期时间">
+          {{ new Date(server.billing.expire_time).toLocaleDateString('zh-CN') }}
+        </n-descriptions-item>
+        <n-descriptions-item v-if="server.billing?.expire_time" label="剩余时间">
+          {{ expireCountdownLabel(server.billing.expire_time) }}
+        </n-descriptions-item>
+      </template>
     </n-descriptions>
   </n-card>
 </template>

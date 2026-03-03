@@ -52,17 +52,8 @@ function detailToServer(detail: ExtendedServerDetailData): Server {
     gpuInfo: detail.gpuInfo,
     group_id: detail.group_id,
     group: detail.group,
-    billing_cycle: detail.billing_cycle,
-    custom_cycle_days: detail.custom_cycle_days,
-    price: detail.price,
-    expire_time: detail.expire_time,
-    traffic_limit_type: detail.traffic_limit_type,
-    traffic_limit_bytes: detail.traffic_limit_bytes,
-    traffic_reset_cycle: detail.traffic_reset_cycle,
-    traffic_custom_cycle_days: detail.traffic_custom_cycle_days,
-    show_billing_cycle: detail.show_billing_cycle,
-    show_traffic_limit: detail.show_traffic_limit,
-    show_traffic_reset_cycle: detail.show_traffic_reset_cycle,
+    billing: detail.billing || {},
+    network: detail.network || {},
     process_status: detail.service_status ?? {},
     createdAt: detail.created_at ?? '',
     updatedAt: detail.updated_at ?? '',
@@ -94,13 +85,6 @@ const chartTimeRange = ref({
   network: 1,
 })
 
-const billingCycleOptions = [
-  { label: '月付', value: 'monthly' },
-  { label: '季付', value: 'quarterly' },
-  { label: '年付', value: 'yearly' },
-  { label: '一次性', value: 'one_time' },
-  { label: '自定义', value: 'custom' },
-]
 const trafficLimitTypeOptions = [
   { label: '无限制', value: 'unlimited' },
   { label: '周期', value: 'periodic' },
@@ -202,7 +186,7 @@ const loadDetail = async () => {
   loading.value = true
   error.value = null
   try {
-    const response = (await serversApi.getServerDetail(id)) as ServerDetailResponse
+    const response = (await serversApi.getServerDetail(id, true)) as ServerDetailResponse
     if (!response.status || !response.data) {
       throw new Error(response.message || '获取服务器详情失败')
     }
@@ -291,85 +275,25 @@ watch(serverId, (id) => {
       </template>
 
       <template v-else-if="server">
-        <div class="w-full columns-1 md:columns-2 gap-2 space-y-2">
-          <!-- 基本信息 -->
-          <div class="break-inside-avoid w-full min-w-0">
+        <div class="flex flex-col md:flex-row gap-2 w-full items-stretch">
+          <div class="flex flex-col gap-2 w-full md:w-1/2 min-w-0">
             <basic-info :server="server" />
-          </div>
-          <div class="break-inside-avoid w-full min-w-0">
             <cpu-card :cpu="server.cpu" />
-          </div>
-          <div class="break-inside-avoid w-full min-w-0">
             <memory-card :memory="server.memory" :memory-info="server.memoryInfo" />
-          </div>
-          <div class="break-inside-avoid w-full min-w-0">
             <swap-card :swap-info="server.swapInfo" />
+            <g-p-u-card v-if="server.gpuInfo" :gpu-info="server.gpuInfo" />
           </div>
-          <div class="break-inside-avoid w-full min-w-0">
+          <div class="flex flex-col gap-2 w-full md:w-1/2 min-w-0">
             <disk-card :disks="server.disks" />
-          </div>
-          <div class="break-inside-avoid w-full min-w-0">
             <network-card :network-i-o="server.networkIO" :traffic="server.traffic" />
-          </div>
-
-          <!-- GPU -->
-          <div v-if="server.gpuInfo" class="break-inside-avoid w-full min-w-0">
-            <g-p-u-card :gpu-info="server.gpuInfo" />
-          </div>
-
-          <!-- 进程监控 -->
-          <div class="break-inside-avoid w-full min-w-0">
-            <process-card :process-status="server.process_status" />
-          </div>
-
-          <!-- 付费周期 -->
-          <div
-            v-if="
-              server.show_billing_cycle &&
-              (server.billing_cycle || server.price != null || server.expire_time)
-            "
-            class="break-inside-avoid w-full min-w-0"
-          >
-            <div
-              class="w-full min-w-0 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
-            >
-              <div class="mb-3 flex items-center gap-2">
-                <i class="ri-calendar-line text-primary" />
-                <span class="text-sm font-semibold text-color">付费周期</span>
-              </div>
-              <div class="space-y-2 text-sm">
-                <div v-if="server.billing_cycle" class="flex justify-between">
-                  <span class="text-muted-color">周期类型</span>
-                  <span class="font-medium text-color">
-                    {{
-                      billingCycleOptions.find((o) => o.value === server!.billing_cycle)?.label ??
-                      server.billing_cycle
-                    }}
-                  </span>
-                </div>
-                <div v-if="server.price != null" class="flex justify-between">
-                  <span class="text-muted-color">价格</span>
-                  <span class="font-medium text-color">¥{{ server.price.toFixed(2) }}</span>
-                </div>
-                <div v-if="server.expire_time" class="flex justify-between">
-                  <span class="text-muted-color">到期时间</span>
-                  <span class="font-medium text-color">
-                    {{ new Date(server.expire_time).toLocaleDateString('zh-CN') }}
-                  </span>
-                </div>
-              </div>
+            <div class="flex-1 min-h-0 flex flex-col">
+              <process-card :process-status="server.process_status" />
             </div>
-          </div>
-
-          <!-- 流量限制 -->
-          <div
-            v-if="
-              server.show_traffic_limit &&
-              (server.traffic_limit_type || (server.traffic_limit_bytes ?? 0) > 0)
-            "
-            class="break-inside-avoid w-full min-w-0"
-          >
             <div
+              v-if="
+                server.network?.show_traffic_limit &&
+                (server.billing?.traffic_limit_type || (server.billing?.traffic_limit_bytes ?? 0) > 0)
+              "
               class="w-full min-w-0 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
             >
               <div class="mb-3 flex items-center gap-2">
@@ -377,35 +301,29 @@ watch(serverId, (id) => {
                 <span class="text-sm font-semibold text-color">流量限制</span>
               </div>
               <div class="space-y-2 text-sm">
-                <div v-if="server.traffic_limit_type" class="flex justify-between">
+                <div v-if="server.billing?.traffic_limit_type" class="flex justify-between">
                   <span class="text-muted-color">限制类型</span>
                   <span class="font-medium text-color">
                     {{
-                      trafficLimitTypeOptions.find((o) => o.value === server!.traffic_limit_type)
-                        ?.label ?? server.traffic_limit_type
+                      trafficLimitTypeOptions.find((o) => o.value === server!.billing?.traffic_limit_type)
+                        ?.label ?? server.billing?.traffic_limit_type
                     }}
                   </span>
                 </div>
                 <div
-                  v-if="server.traffic_limit_bytes != null && server.traffic_limit_bytes > 0"
+                  v-if="server.billing?.traffic_limit_bytes != null && server.billing?.traffic_limit_bytes > 0"
                   class="flex justify-between"
                 >
                   <span class="text-muted-color">限制大小</span>
                   <span class="font-medium text-color">
-                    {{ (server.traffic_limit_bytes / (1024 * 1024 * 1024)).toFixed(2) }}
+                    {{ (server.billing?.traffic_limit_bytes / (1024 * 1024 * 1024)).toFixed(2) }}
                     GB
                   </span>
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- 流量重置周期 -->
-          <div
-            v-if="server.show_traffic_reset_cycle && server.traffic_reset_cycle"
-            class="break-inside-avoid w-full min-w-0"
-          >
             <div
+              v-if="server.network?.show_traffic_reset_cycle && server.billing?.traffic_reset_cycle"
               class="w-full min-w-0 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
             >
               <div class="mb-3 flex items-center gap-2">
@@ -416,8 +334,8 @@ watch(serverId, (id) => {
                 <span class="text-muted-color">重置周期</span>
                 <span class="font-medium text-color">
                   {{
-                    trafficResetCycleOptions.find((o) => o.value === server?.traffic_reset_cycle)
-                      ?.label ?? server?.traffic_reset_cycle
+                    trafficResetCycleOptions.find((o) => o.value === server?.billing?.traffic_reset_cycle)
+                      ?.label ?? server?.billing?.traffic_reset_cycle
                   }}
                 </span>
               </div>

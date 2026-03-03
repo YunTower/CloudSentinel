@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, h } from 'vue'
 import { useRouter } from 'vue-router'
-import { NTag, NButton, NEmpty, type PaginationInfo, type DataTableColumn } from 'naive-ui'
+import { NTag, NButton, NEmpty, NSpace, type PaginationInfo, type DataTableColumn } from 'naive-ui'
 import { useMessage, useDialog } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
 import type { Server } from '@/types/manager/servers'
 import serversApi from '@/apis/servers'
+import { getBillingCycle, getBillingType, getExpireCountdown } from '@/utils/billing'
 import {
   getStatusText,
   getStatusSeverity,
@@ -22,26 +23,6 @@ import {
   RiEyeLine,
 } from '@remixicon/vue'
 
-// 计算到期天数
-const getExpireDays = (expireTime?: string): number | null => {
-  if (!expireTime) return null
-  const expire = new Date(expireTime)
-  const now = new Date()
-  const diff = expire.getTime() - now.getTime()
-  return Math.ceil(diff / (1000 * 60 * 60 * 24))
-}
-
-// 获取到期状态颜色
-const getExpireStatus = (expireTime?: string): { severity: string; label: string } | null => {
-  const days = getExpireDays(expireTime)
-  if (days === null) return null
-  if (days < 0) return { severity: 'danger', label: '已过期' }
-  if (days <= 1) return { severity: 'danger', label: '即将过期' }
-  if (days <= 3) return { severity: 'warning', label: '3天内到期' }
-  if (days <= 7) return { severity: 'warning', label: '7天内到期' }
-  return { severity: 'success', label: `${days}天后到期` }
-}
-
 // Map PrimeVue severity to Naive UI NTag type
 const severityToNaiveType = (
   severity: string,
@@ -57,25 +38,20 @@ const severityToNaiveType = (
   return map[severity] ?? 'default'
 }
 
+// 格式化字节
+const formatBytes = (bytes: number, decimals = 2) => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const dm = decimals < 0 ? 0 : decimals
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
+}
+
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.role === 'admin')
 const message = useMessage()
 const dialog = useDialog()
-
-// 付费周期选项
-const billingCycleOptions = [
-  { label: '月付', value: 'monthly' },
-  { label: '季付', value: 'quarterly' },
-  { label: '年付', value: 'yearly' },
-  { label: '一次性', value: 'one_time' },
-  { label: '自定义', value: 'custom' },
-]
-
-// 流量限制类型选项
-const trafficLimitTypeOptions = [
-  { label: '无限制', value: 'unlimited' },
-  { label: '周期', value: 'periodic' },
-]
 
 // 流量重置周期选项
 const trafficResetCycleOptions = [
@@ -259,49 +235,119 @@ const columns = computed(() => {
           h('div', { class: 'text-sm font-medium text-color' }, row.uptime || '-'),
         ]),
     },
-    {
-      key: 'actions',
-      title: '操作',
-      width: 160,
-      fixed: 'right',
-      render: (row: Server) =>
-        h('div', { class: 'flex items-center gap-2' }, [
-          h(
-            NButton,
-            {
-              size: 'small',
-              secondary: true,
-              title: '查看详情',
-              onClick: () => goToDetail(row),
-            },
-            { default: () => h(RiEyeLine, { size: '14px' }) },
-          ),
-          h(
-            NButton,
-            {
-              size: 'small',
-              secondary: true,
-              onClick: () => emit('edit-server', row),
-            },
-            { default: () => h(RiEditLine, { size: '14px' }) },
-          ),
-          h(
-            NButton,
-            {
-              size: 'small',
-              secondary: true,
-              type: 'error',
-              loading: props.deletingServerId === row.id,
-              title: '删除',
-              onClick: (e: MouseEvent) => confirmDelete(e, row),
-            },
-            { default: () => h(RiDeleteBinLine, { size: '14px' }) },
-          ),
-        ]),
-    },
   ]
 
-  // Agent版本列（仅管理员可见）
+  // 付费信息列
+  if (props.servers.some((s) => s.billing?.show_billing_cycle)) {
+    cols.push({
+      key: 'billing',
+      title: '付费信息',
+      minWidth: 150,
+      render: (row: Server) => {
+        if (!row.billing?.show_billing_cycle) return h('span', {}, '-')
+        const billingChildren = [
+          h(NTag, { size: 'small' }, `￥${row.billing?.price}`),
+          h(
+            NTag,
+            {
+              size: 'small',
+              type: getBillingType(row.billing?.billing_cycle ?? ''),
+            },
+            getBillingCycle(row.billing?.billing_cycle ?? ''),
+          ),
+        ]
+        if (row.billing?.expire_time) {
+          billingChildren.push(
+            h(NTag, { size: 'small', type: 'info' }, `${getExpireCountdown(row.billing.expire_time)}后到期`),
+          )
+        }
+        return h(NSpace, { size: 2 }, billingChildren)
+      },
+    })
+  }
+
+  // 流量信息列
+  if (
+    props.servers.some(
+      (s) => s.network?.show_traffic_limit || s.network?.show_traffic_reset_cycle,
+    )
+  ) {
+    cols.push({
+      key: 'traffic',
+      title: '流量信息',
+      minWidth: 150,
+      render: (row: Server) => {
+        const parts = []
+        if (row.network?.show_traffic_limit) {
+          if (row.billing?.traffic_limit_type === 'periodic') {
+            const limit = row.billing.traffic_limit_bytes
+              ? formatBytes(row.billing.traffic_limit_bytes)
+              : '无限制'
+            parts.push(h('div', {}, `限制: ${limit}`))
+          } else {
+            parts.push(h('div', {}, '无限制'))
+          }
+        }
+        if (row.network?.show_traffic_reset_cycle && row.billing?.traffic_reset_cycle) {
+          const option = trafficResetCycleOptions.find(
+            (o) => o.value === row.billing?.traffic_reset_cycle,
+          )
+          parts.push(
+            h(
+              'div',
+              { class: 'text-xs text-muted-color' },
+              `重置: ${option ? option.label : row.billing?.traffic_reset_cycle}`,
+            ),
+          )
+        }
+        if (parts.length === 0) return h('span', {}, '-')
+        return h('div', { class: 'flex flex-col items-start gap-1' }, parts)
+      },
+    })
+  }
+
+  cols.push({
+    key: 'actions',
+    title: '操作',
+    width: 160,
+    fixed: 'right',
+    render: (row: Server) =>
+      h('div', { class: 'flex items-center gap-2' }, [
+        h(
+          NButton,
+          {
+            size: 'small',
+            secondary: true,
+            title: '查看详情',
+            onClick: () => goToDetail(row),
+          },
+          { default: () => h(RiEyeLine, { size: '14px' }) },
+        ),
+        h(
+          NButton,
+          {
+            size: 'small',
+            secondary: true,
+            onClick: () => emit('edit-server', row),
+          },
+          { default: () => h(RiEditLine, { size: '14px' }) },
+        ),
+        h(
+          NButton,
+          {
+            size: 'small',
+            secondary: true,
+            type: 'error',
+            loading: props.deletingServerId === row.id,
+            title: '删除',
+            onClick: (e: MouseEvent) => confirmDelete(e, row),
+          },
+          { default: () => h(RiDeleteBinLine, { size: '14px' }) },
+        ),
+      ]),
+  })
+
+  // Agent版本列
   if (isAdmin.value) {
     cols.splice(4, 0, {
       key: 'agent_version',

@@ -89,17 +89,16 @@ class WebSocketManager {
 
       if (isDev) {
         // 开发环境
-        wsUrl = `ws://127.0.0.1:3000/api/ws/frontend?token=${encodeURIComponent(token)}`
+        wsUrl = 'ws://127.0.0.1:3000/api/ws/frontend'
       } else {
         // 生产环境
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
         const host = window.location.host
-        wsUrl = `${protocol}//${host}/api/ws/frontend?token=${encodeURIComponent(token)}`
+        wsUrl = `${protocol}//${host}/api/ws/frontend`
       }
 
       console.log(
-        `[WebSocketManager] 正在建立WebSocket连接 (尝试 ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts}):`,
-        wsUrl,
+        `[WebSocketManager] 正在建立WebSocket连接 (尝试 ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`,
       )
 
       const websocket = new WebSocket(wsUrl)
@@ -116,32 +115,44 @@ class WebSocketManager {
       websocket.onopen = () => {
         clearTimeout(connectTimeout)
         this.isConnecting = false
-        console.log('[WebSocketManager] WebSocket连接已建立')
-        console.log(`[WebSocketManager] 当前注册的消息处理器数量: ${this.messageHandlers.length}`)
-        console.log(`[WebSocketManager] 当前注册的回调数量: ${this.callbacks.size}`)
-        this.isConnected.value = true
-        this.reconnectAttempts = 0
-        this.tokenInvalid = false // 连接成功，重置 token 无效标志
-        this.shouldReconnect = true // 重新启用重连
-        this.broadcastOpen()
+        console.log('[WebSocketManager] WebSocket连接已建立，发送认证消息')
+        this.isConnected.value = false
 
-        // 启动心跳
-        this.heartbeatInterval = setInterval(() => {
-          if (websocket && websocket.readyState === WebSocket.OPEN) {
-            websocket.send(JSON.stringify({ type: 'ping' }))
-          } else {
-            if (this.heartbeatInterval) {
-              clearInterval(this.heartbeatInterval)
-              this.heartbeatInterval = null
-            }
-          }
-        }, this.heartbeatIntervalTime)
+        websocket.send(
+          JSON.stringify({
+            type: 'auth',
+            data: { token },
+          }),
+        )
       }
 
       websocket.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data)
           console.log('[WebSocketManager] 收到消息:', message.type, message)
+
+          if (message.type === 'auth_success') {
+            this.isConnected.value = true
+            this.reconnectAttempts = 0
+            this.tokenInvalid = false
+            this.shouldReconnect = true
+            this.broadcastOpen()
+
+            if (this.heartbeatInterval) {
+              clearInterval(this.heartbeatInterval)
+              this.heartbeatInterval = null
+            }
+            this.heartbeatInterval = setInterval(() => {
+              if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({ type: 'ping' }))
+              } else {
+                if (this.heartbeatInterval) {
+                  clearInterval(this.heartbeatInterval)
+                  this.heartbeatInterval = null
+                }
+              }
+            }, this.heartbeatIntervalTime)
+          }
 
           // 检查是否是错误消息（token 无效）
           if (message.type === 'error' && message.status === 'error') {

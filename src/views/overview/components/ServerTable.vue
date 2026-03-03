@@ -2,16 +2,16 @@
 import { h } from 'vue'
 import type { ServerItem } from '@/types/server'
 import { formatSpeed, formatOS, getStatusColor } from '../utils'
+import { getBillingCycle, getBillingType, getExpireCountdown } from '@/utils/billing'
 import { getProgressBarColor } from '@/utils/version.ts'
 import { RiArrowDownLine, RiArrowUpLine } from '@remixicon/vue'
-import { NProgress } from 'naive-ui'
+import { NProgress, NSpace, NTag } from 'naive-ui'
 
 interface Props {
   servers: ServerItem[]
 }
 
 const props = defineProps<Props>()
-
 const columns = [
   {
     key: 'name',
@@ -19,7 +19,24 @@ const columns = [
     sorter: (a: ServerItem, b: ServerItem) => a.name.localeCompare(b.name),
     minWidth: 150,
     render(row: ServerItem) {
-      return h('span', { class: getStatusColor(row.status) }, row.name)
+      const children = [h('span', { class: getStatusColor(row.status) }, row.name)]
+      if (row.billing?.show_billing_cycle) {
+        const billingChildren = [
+          h(NTag, { size: 'small' }, `￥${row.billing?.price}`),
+          h(
+            NTag,
+            { size: 'small', type: getBillingType(row.billing?.billing_cycle || '') },
+            getBillingCycle(row.billing?.billing_cycle || ''),
+          ),
+        ]
+        if (row.billing?.expire_time) {
+          billingChildren.push(
+            h(NTag, {size: 'small', type: 'info'}, `${getExpireCountdown(row.billing.expire_time)}后到期`),
+          )
+        }
+        children.push(h(NSpace, { size: 2, class: 'ml-2' }, billingChildren))
+      }
+      return h('div', { class: 'flex items-center' }, children)
     },
   },
   {

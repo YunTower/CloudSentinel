@@ -2,12 +2,12 @@
 import { computed } from 'vue'
 import type { ServerItem } from '@/types/server'
 import { getProgressBarColor, getProgressTextColor } from '@/utils/version.ts'
+import { getBillingCycle } from '@/utils/billing'
 import { formatSpeed, formatOS, getStatusColor, getStatusText as getStatusTextUtil } from '../utils'
 import {
   RiArrowDownLine,
   RiArrowUpLine,
   RiCalendarLine,
-  RiHardDriveFill,
   RiHardDriveLine,
   RiLineChartLine,
   RiMapPinLine,
@@ -20,18 +20,6 @@ const props = defineProps<ServerItem>()
 const statusClass = computed(() => getStatusColor(props.status))
 
 const statusText = computed(() => getStatusTextUtil(props.status))
-
-// 付费周期标签
-const getBillingCycleLabel = (cycle?: string): string => {
-  const options: Record<string, string> = {
-    monthly: '月付',
-    quarterly: '季付',
-    yearly: '年付',
-    one_time: '一次性',
-    custom: '自定义',
-  }
-  return cycle ? options[cycle] || cycle : '-'
-}
 
 // 流量限制类型标签
 const getTrafficLimitTypeLabel = (type?: string): string => {
@@ -174,7 +162,7 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
 
       <!-- 付费周期信息 -->
       <div
-        v-if="props.show_billing_cycle && (props.billing_cycle || props.price || props.expire_time)"
+        v-if="props.billing?.show_billing_cycle && (props.billing?.billing_cycle || props.billing?.price || props.billing?.expire_time)"
         class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800"
       >
         <div class="flex items-center gap-2 mb-2">
@@ -182,23 +170,23 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
           <span class="text-sm font-medium text-color">付费周期</span>
         </div>
         <div class="space-y-1 text-xs">
-          <div v-if="props.billing_cycle" class="flex justify-between">
+          <div v-if="props.billing?.billing_cycle" class="flex justify-between">
             <span class="text-muted-color">周期</span>
             <span class="font-medium text-color">{{
-              getBillingCycleLabel(props.billing_cycle)
+              getBillingCycle(props.billing?.billing_cycle ?? '')
             }}</span>
           </div>
           <div
-            v-if="props.price !== undefined && props.price !== null"
+            v-if="props.billing?.price !== undefined && props.billing?.price !== null"
             class="flex justify-between"
           >
             <span class="text-muted-color">价格</span>
-            <span class="font-medium text-color">¥{{ props.price.toFixed(2) }}</span>
+            <span class="font-medium text-color">¥{{ props.billing?.price.toFixed(2) }}</span>
           </div>
-          <div v-if="props.expire_time" class="flex justify-between">
+          <div v-if="props.billing?.expire_time" class="flex justify-between">
             <span class="text-muted-color">到期</span>
             <span class="font-medium text-color">{{
-              new Date(props.expire_time).toLocaleDateString('zh-CN')
+              new Date(props.billing?.expire_time).toLocaleDateString('zh-CN')
             }}</span>
           </div>
         </div>
@@ -206,7 +194,7 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
 
       <!-- 流量限制信息 -->
       <div
-        v-if="props.show_traffic_limit && (props.traffic_limit_type || props.traffic_limit_bytes)"
+        v-if="props.network?.show_traffic_limit && (props.billing?.traffic_limit_type || props.billing?.traffic_limit_bytes)"
         class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800"
       >
         <div class="flex items-center gap-2 mb-2">
@@ -214,19 +202,19 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
           <span class="text-sm font-medium text-color">流量限制</span>
         </div>
         <div class="space-y-1 text-xs">
-          <div v-if="props.traffic_limit_type" class="flex justify-between">
+          <div v-if="props.billing?.traffic_limit_type" class="flex justify-between">
             <span class="text-muted-color">类型</span>
             <span class="font-medium text-color">{{
-              getTrafficLimitTypeLabel(props.traffic_limit_type)
+              getTrafficLimitTypeLabel(props.billing?.traffic_limit_type)
             }}</span>
           </div>
           <div
-            v-if="props.traffic_limit_bytes && props.traffic_limit_bytes > 0"
+            v-if="props.billing?.traffic_limit_bytes && props.billing?.traffic_limit_bytes > 0"
             class="flex justify-between"
           >
             <span class="text-muted-color">限制</span>
             <span class="font-medium text-color"
-              >{{ (props.traffic_limit_bytes / (1024 * 1024 * 1024)).toFixed(2) }} GB</span
+              >{{ (props.billing?.traffic_limit_bytes / (1024 * 1024 * 1024)).toFixed(2) }} GB</span
             >
           </div>
         </div>
@@ -234,7 +222,7 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
 
       <!-- 流量重置周期信息 -->
       <div
-        v-if="props.show_traffic_reset_cycle && props.traffic_reset_cycle"
+        v-if="props.network?.show_traffic_reset_cycle && props.billing?.traffic_reset_cycle"
         class="p-3 rounded-lg bg-surface-50 dark:bg-surface-800"
       >
         <div class="flex items-center gap-2 mb-2">
@@ -245,12 +233,12 @@ const getTrafficResetCycleLabel = (cycle?: string): string => {
           <div class="flex justify-between">
             <span class="text-muted-color">周期</span>
             <span class="font-medium text-color">{{
-              getTrafficResetCycleLabel(props.traffic_reset_cycle)
+              getTrafficResetCycleLabel(props.billing?.traffic_reset_cycle)
             }}</span>
           </div>
-          <div v-if="props.traffic_custom_cycle_days" class="flex justify-between">
+          <div v-if="props.billing?.traffic_custom_cycle_days" class="flex justify-between">
             <span class="text-muted-color">自定义</span>
-            <span class="font-medium text-color">{{ props.traffic_custom_cycle_days }} 天</span>
+            <span class="font-medium text-color">{{ props.billing?.traffic_custom_cycle_days }} 天</span>
           </div>
         </div>
       </div>

@@ -123,5 +123,7 @@ export function mapServerListItemToServerItem(server: ServerListItemData): Serve
     },
     group_id: server.group_id,
     group: server.group,
+    billing: server.billing || {},
+    network: server.network || {},
   }
 }
