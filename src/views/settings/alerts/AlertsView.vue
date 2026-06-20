@@ -253,7 +253,7 @@ const loadAlertSettings = async () => {
   }
 }
 
-// 校验表单（保存或测试前调用）
+// 校验表单
 const validateAlertsForm = async (): Promise<boolean> => {
   try {
     await alertsFormRef.value?.validate()
@@ -335,208 +335,203 @@ onMounted(() => {
 })
 </script>
 <template>
-  <div class="alerts-view">
-    <div class="mb-6 flex items-center justify-between">
+  <div class="space-y-4">
+    <div class="flex items-start justify-between gap-2">
       <div>
-        <h1 class="text-3xl font-bold text-color mb-2">告警设置</h1>
+        <h1 class="text-3xl font-bold text-color mb-1">告警设置</h1>
         <p class="text-muted-color">配置告警通知方式</p>
       </div>
-      <div>
-        <n-button type="primary" :loading="saving" :disabled="loading" @click="saveAlertSettings">
-          <template #icon>
-            <ri-save-line />
+      <n-button type="primary" :loading="saving" :disabled="loading" @click="saveAlertSettings">
+        <template #icon>
+          <ri-save-line />
+        </template>
+        保存设置
+      </n-button>
+    </div>
+
+    <n-spin :show="loading" description="加载中...">
+      <div class="space-y-2">
+        <n-card>
+          <template #header>
+            <div class="flex items-center gap-2">
+              <span>服务器状态告警</span>
+            </div>
           </template>
-          保存设置
-        </n-button>
-      </div>
-    </div>
-
-    <div v-if="loading" class="flex items-center justify-center py-12">
-      <n-spin size="large" />
-    </div>
-
-    <div v-else class="space-y-2">
-      <!-- 服务器离线/上线告警 -->
-      <n-card>
-        <template #header>
-          <div class="flex items-center gap-2">
-            <span>服务器状态告警</span>
-          </div>
-        </template>
-        <n-alert v-if="!hasNotificationChannel" type="info" class="mb-4">
-          在「通知设置」中配置并启用至少一个通知渠道（邮件或 Webhook）后，可配置。
-        </n-alert>
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <div>
-              <label class="text-sm font-medium text-color">服务器离线告警</label>
-              <p class="text-sm text-muted-color mt-1">当服务器 Agent 断开连接时发送告警通知</p>
-            </div>
-            <n-switch
-              v-model:value="alertServerOfflineEnabled"
-              :disabled="!hasNotificationChannel"
-            />
-          </div>
-          <div class="flex items-center justify-between">
-            <div>
-              <label class="text-sm font-medium text-color">服务器上线告警</label>
-              <p class="text-sm text-muted-color mt-1">当服务器从离线恢复上线时发送通知</p>
-            </div>
-            <n-switch
-              v-model:value="alertServerOnlineEnabled"
-              :disabled="!hasNotificationChannel"
-            />
-          </div>
-        </div>
-      </n-card>
-
-      <!-- 通知设置 -->
-      <n-card>
-        <template #header>
-          <div class="flex items-center gap-2">
-            <span>通知设置</span>
-          </div>
-        </template>
-        <n-form
-          ref="alertsFormRef"
-          :model="notifications"
-          :rules="alertRules"
-          label-placement="top"
-        >
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- 邮件通知 -->
-            <div class="space-y-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="text-sm font-medium text-color">邮件通知</label>
-                  <p class="text-sm text-muted-color mt-1">通过邮件发送告警通知</p>
-                </div>
-                <n-switch v-model:value="notifications.email.enabled" />
+          <n-alert v-if="!hasNotificationChannel" type="info" class="mb-4">
+            在「通知设置」中配置并启用至少一个通知渠道（邮件或 Webhook）后，可配置。
+          </n-alert>
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-color">服务器离线告警</label>
+                <p class="text-sm text-muted-color mt-1">当服务器 Agent 断开连接时发送告警通知</p>
               </div>
+              <n-switch
+                v-model:value="alertServerOfflineEnabled"
+                :disabled="!hasNotificationChannel"
+              />
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-color">服务器上线告警</label>
+                <p class="text-sm text-muted-color mt-1">当服务器从离线恢复上线时发送通知</p>
+              </div>
+              <n-switch
+                v-model:value="alertServerOnlineEnabled"
+                :disabled="!hasNotificationChannel"
+              />
+            </div>
+          </div>
+        </n-card>
 
-              <div v-if="notifications.email.enabled">
-                <n-form-item label="SMTP 服务器" path="email.smtp" required>
-                  <n-input
-                    v-model:value="notifications.email.smtp"
-                    placeholder="smtp.example.com"
-                  />
-                </n-form-item>
-                <div class="grid grid-cols-2 gap-3">
-                  <n-form-item label="端口" path="email.port" required>
-                    <n-input-number
-                      v-model:value="notifications.email.port"
-                      :min="1"
-                      :max="65535"
-                      class="w-full"
+        <!-- 通知设置 -->
+        <n-card>
+          <template #header>
+            <div class="flex items-center gap-2">
+              <span>通知设置</span>
+            </div>
+          </template>
+          <n-form
+            ref="alertsFormRef"
+            :model="notifications"
+            :rules="alertRules"
+            label-placement="top"
+          >
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              <!-- 邮件通知 -->
+              <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <label class="text-sm font-medium text-color">邮件通知</label>
+                    <p class="text-sm text-muted-color mt-1">通过邮件发送告警通知</p>
+                  </div>
+                  <n-switch v-model:value="notifications.email.enabled" />
+                </div>
+
+                <div v-if="notifications.email.enabled">
+                  <n-form-item label="SMTP 服务器" path="email.smtp" required>
+                    <n-input
+                      v-model:value="notifications.email.smtp"
+                      placeholder="smtp.example.com"
                     />
                   </n-form-item>
-                  <n-form-item label="加密方式" path="email.security">
-                    <n-select
-                      v-model:value="notifications.email.security"
-                      :options="securityOptions"
+                  <div class="grid grid-cols-2 gap-2">
+                    <n-form-item label="端口" path="email.port" required>
+                      <n-input-number
+                        v-model:value="notifications.email.port"
+                        :min="1"
+                        :max="65535"
+                        class="w-full"
+                      />
+                    </n-form-item>
+                    <n-form-item label="加密方式" path="email.security">
+                      <n-select
+                        v-model:value="notifications.email.security"
+                        :options="securityOptions"
+                      />
+                    </n-form-item>
+                  </div>
+                  <n-form-item label="SMTP 密码" path="email.password">
+                    <n-input
+                      v-model:value="notifications.email.password"
+                      type="password"
+                      show-password-on="click"
+                      :placeholder="
+                        notifications.email.hasPassword
+                          ? '已设置，留空则不修改'
+                          : '请输入 SMTP 密码'
+                      "
                     />
                   </n-form-item>
-                </div>
-                <n-form-item label="SMTP 密码" path="email.password">
-                  <n-input
-                    v-model:value="notifications.email.password"
-                    type="password"
-                    show-password-on="click"
-                    :placeholder="
-                      notifications.email.hasPassword ? '已设置，留空则不修改' : '请输入 SMTP 密码'
-                    "
-                  />
-                </n-form-item>
-                <n-form-item label="发件人邮箱" path="email.from" required>
-                  <n-input
-                    v-model:value="notifications.email.from"
-                    placeholder="alert@example.com"
-                  />
-                </n-form-item>
-                <n-form-item label="收件人邮箱" path="email.to" required>
-                  <n-input v-model:value="notifications.email.to" placeholder="admin@example.com" />
-                </n-form-item>
-                <div class="w-full flex justify-end">
-                  <n-button
-                    secondary
-                    :loading="testing.email"
-                    :disabled="testing.email"
-                    @click="testAlert('email')"
-                  >
-                    <template #icon>
-                      <ri-send-plane-line />
-                    </template>
-                    发送测试邮件
-                  </n-button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Webhook 通知 -->
-            <div class="space-y-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <label class="text-sm font-medium text-color">Webhook 通知</label>
-                  <p class="text-sm text-muted-color mt-1">通过 Webhook 发送告警通知</p>
-                </div>
-                <n-switch v-model:value="notifications.webhook.enabled" />
-              </div>
-
-              <div v-if="notifications.webhook.enabled">
-                <n-form-item label="平台类型" path="webhook.platform">
-                  <n-select
-                    v-model:value="notifications.webhook.platform"
-                    :options="webhookPlatformOptions"
-                    placeholder="选择平台"
-                  />
-                </n-form-item>
-                <n-form-item label="Webhook URL" path="webhook.webhook" required>
-                  <n-input
-                    v-model:value="notifications.webhook.webhook"
-                    :placeholder="webhookPlaceholder"
-                  />
-                </n-form-item>
-                <div v-if="supportsMention" class="flex flex-col gap-2">
-                  <label class="text-sm font-medium text-color">提及用户</label>
-                  <n-input
-                    v-model:value="mentionedInput"
-                    placeholder="输入用户ID后按回车添加"
-                    @keydown.enter.prevent="addMentionedUser"
-                  />
-                  <div v-if="mentionedUsers.length > 0" class="flex flex-wrap gap-2 mt-2">
-                    <n-tag
-                      v-for="(user, index) in mentionedUsers"
-                      :key="index"
-                      closable
-                      @close="removeMentionedUser(index)"
+                  <n-form-item label="发件人邮箱" path="email.from" required>
+                    <n-input
+                      v-model:value="notifications.email.from"
+                      placeholder="alert@example.com"
+                    />
+                  </n-form-item>
+                  <n-form-item label="收件人邮箱" path="email.to" required>
+                    <n-input
+                      v-model:value="notifications.email.to"
+                      placeholder="admin@example.com"
+                    />
+                  </n-form-item>
+                  <div class="w-full flex justify-end">
+                    <n-button
+                      secondary
+                      :loading="testing.email"
+                      :disabled="testing.email"
+                      @click="testAlert('email')"
                     >
-                      {{ user }}
-                    </n-tag>
+                      <template #icon>
+                        <ri-send-plane-line />
+                      </template>
+                      发送测试邮件
+                    </n-button>
                   </div>
                 </div>
-                <div class="w-full flex justify-end">
-                  <n-button
-                    secondary
-                    :loading="testing.webhook"
-                    :disabled="testing.webhook"
-                    @click="testAlert('webhook')"
-                  >
-                    <template #icon>
-                      <ri-send-plane-line />
-                    </template>
-                    发送测试消息
-                  </n-button>
+              </div>
+
+              <!-- Webhook 通知 -->
+              <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <label class="text-sm font-medium text-color">Webhook 通知</label>
+                    <p class="text-sm text-muted-color mt-1">通过 Webhook 发送告警通知</p>
+                  </div>
+                  <n-switch v-model:value="notifications.webhook.enabled" />
+                </div>
+
+                <div v-if="notifications.webhook.enabled">
+                  <n-form-item label="平台类型" path="webhook.platform">
+                    <n-select
+                      v-model:value="notifications.webhook.platform"
+                      :options="webhookPlatformOptions"
+                      placeholder="选择平台"
+                    />
+                  </n-form-item>
+                  <n-form-item label="Webhook URL" path="webhook.webhook" required>
+                    <n-input
+                      v-model:value="notifications.webhook.webhook"
+                      :placeholder="webhookPlaceholder"
+                    />
+                  </n-form-item>
+                  <div v-if="supportsMention" class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-color">提及用户</label>
+                    <n-input
+                      v-model:value="mentionedInput"
+                      placeholder="输入用户ID后按回车添加"
+                      @keydown.enter.prevent="addMentionedUser"
+                    />
+                    <div v-if="mentionedUsers.length > 0" class="flex flex-wrap gap-2 mt-2">
+                      <n-tag
+                        v-for="(user, index) in mentionedUsers"
+                        :key="index"
+                        closable
+                        @close="removeMentionedUser(index)"
+                      >
+                        {{ user }}
+                      </n-tag>
+                    </div>
+                  </div>
+                  <div class="w-full flex justify-end">
+                    <n-button
+                      secondary
+                      :loading="testing.webhook"
+                      :disabled="testing.webhook"
+                      @click="testAlert('webhook')"
+                    >
+                      <template #icon>
+                        <ri-send-plane-line />
+                      </template>
+                      发送测试消息
+                    </n-button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </n-form>
-      </n-card>
-    </div>
+          </n-form>
+        </n-card>
+      </div>
+    </n-spin>
   </div>
 </template>
-<style scoped>
-.alerts-view {
-  margin: 0 auto;
-}
-</style>
