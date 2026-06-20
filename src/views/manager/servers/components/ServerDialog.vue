@@ -16,6 +16,7 @@ import type {
   ServerNotificationChannels,
 } from '@/types/manager/servers'
 import alertsApi from '@/apis/settings/alerts'
+import { resolveTrafficCycle } from '@/utils/billing'
 import {
   RiAddLine,
   RiCalendarCloseLine,
@@ -88,17 +89,12 @@ const billingCycleOptions = [
   { label: '自定义', value: 'custom' },
 ]
 
-// 流量限制类型选项
-const trafficLimitTypeOptions = [
-  { label: '无限制', value: 'unlimited' },
-  { label: '周期', value: 'periodic' },
-]
-
-// 流量重置周期选项
-const trafficResetCycleOptions = [
+// 流量周期选项
+const trafficCycleOptions = [
   { label: '每月', value: 'monthly' },
   { label: '每季度', value: 'quarterly' },
   { label: '每年', value: 'yearly' },
+  { label: '无限', value: 'unlimited' },
   { label: '自定义', value: 'custom' },
 ]
 
@@ -117,10 +113,47 @@ const timezoneOptions = [
 ]
 
 const showCustomCycleDays = computed(() => form.value.billing?.billing_cycle === 'custom')
-const showTrafficCustomCycleDays = computed(() => form.value.billing?.traffic_reset_cycle === 'custom')
-const showTrafficLimitBytes = computed(() => form.value.billing?.traffic_limit_type === 'periodic')
+const trafficCycleValue = computed<string | null>({
+  get: () =>
+    resolveTrafficCycle(
+      form.value.billing?.traffic_reset_cycle,
+      form.value.billing?.traffic_limit_type,
+    ) || null,
+  set: (value) => {
+    if (!form.value.billing) form.value.billing = {}
 
-const showTrafficResetCycle = computed(() => true)
+    if (!value) {
+      form.value.billing.traffic_limit_type = undefined
+      form.value.billing.traffic_reset_cycle = undefined
+      form.value.billing.traffic_custom_cycle_days = undefined
+      return
+    }
+
+    if (value === 'unlimited') {
+      form.value.billing.traffic_limit_type = 'permanent'
+      form.value.billing.traffic_reset_cycle = 'unlimited'
+      form.value.billing.traffic_custom_cycle_days = undefined
+      return
+    }
+
+    form.value.billing.traffic_limit_type = 'periodic'
+    form.value.billing.traffic_reset_cycle = value as 'monthly' | 'quarterly' | 'yearly' | 'custom'
+    if (value !== 'custom') {
+      form.value.billing.traffic_custom_cycle_days = undefined
+    }
+  },
+})
+const showTrafficCustomCycleDays = computed(() => trafficCycleValue.value === 'custom')
+const showTrafficLimitBytes = computed(() => !!trafficCycleValue.value)
+const showTrafficInfo = computed({
+  get: () =>
+    !!(form.value.network?.show_traffic_limit || form.value.network?.show_traffic_reset_cycle),
+  set: (value) => {
+    if (!form.value.network) form.value.network = {}
+    form.value.network.show_traffic_limit = value
+    form.value.network.show_traffic_reset_cycle = value
+  },
+})
 
 // 到期时间的 timestamp 转换 (n-date-picker uses ms timestamps)
 const expireTimestamp = computed({
@@ -137,7 +170,8 @@ const expireTimestamp = computed({
 // 流量GB到bytes的转换
 const trafficLimitGB = computed({
   get: () => {
-    if (!form.value.billing?.traffic_limit_bytes || form.value.billing.traffic_limit_bytes === 0) return null
+    if (!form.value.billing?.traffic_limit_bytes || form.value.billing.traffic_limit_bytes === 0)
+      return null
     // bytes转GB: bytes / (1024 * 1024 * 1024)
     return form.value.billing.traffic_limit_bytes / (1024 * 1024 * 1024)
   },
@@ -164,20 +198,20 @@ const form = defineModel<ServerForm>('form', {
     hostname: '',
     group_id: undefined,
     billing: {
-        billing_cycle: undefined,
-        custom_cycle_days: undefined,
-        price: undefined,
-        expire_time: undefined,
-        bandwidth_mbps: 0,
-        traffic_limit_type: undefined,
-        traffic_limit_bytes: 0,
-        traffic_reset_cycle: undefined,
-        traffic_custom_cycle_days: undefined,
-        show_billing_cycle: false,
+      billing_cycle: undefined,
+      custom_cycle_days: undefined,
+      price: undefined,
+      expire_time: undefined,
+      bandwidth_mbps: 0,
+      traffic_limit_type: undefined,
+      traffic_limit_bytes: 0,
+      traffic_reset_cycle: undefined,
+      traffic_custom_cycle_days: undefined,
+      show_billing_cycle: false,
     },
     network: {
-        show_traffic_limit: false,
-        show_traffic_reset_cycle: false,
+      show_traffic_limit: false,
+      show_traffic_reset_cycle: false,
     },
     // Agent配置字段
     agent_timezone: 'Asia/Shanghai',
@@ -199,7 +233,10 @@ const loadServerDetail = async () => {
 
   loadingDetail.value = true
   try {
-    const response = (await serversApi.getServerDetail(props.editingServer.id, true)) as ServerDetailResponse
+    const response = (await serversApi.getServerDetail(
+      props.editingServer.id,
+      true,
+    )) as ServerDetailResponse
 
     if (response.status && response.data) {
       serverDetail.value = response.data
@@ -368,6 +405,29 @@ const handleSave = async () => {
   const submitForm: ServerFormWithAlertRules & { clear_group?: boolean } = {
     ...form.value,
   }
+
+  if (!submitForm.billing) submitForm.billing = {}
+  if (!submitForm.network) submitForm.network = {}
+
+  if (trafficCycleValue.value === 'unlimited') {
+    submitForm.billing.traffic_limit_type = 'permanent'
+    submitForm.billing.traffic_reset_cycle = 'unlimited'
+    submitForm.billing.traffic_custom_cycle_days = undefined
+  } else if (trafficCycleValue.value) {
+    submitForm.billing.traffic_limit_type = 'periodic'
+    submitForm.billing.traffic_reset_cycle = trafficCycleValue.value as
+      | 'monthly'
+      | 'quarterly'
+      | 'yearly'
+      | 'custom'
+    if (trafficCycleValue.value !== 'custom') {
+      submitForm.billing.traffic_custom_cycle_days = undefined
+    }
+  }
+
+  submitForm.network.show_traffic_limit = showTrafficInfo.value
+  submitForm.network.show_traffic_reset_cycle = showTrafficInfo.value
+
   // 清空分组时告知后端清除 group_id
   if (form.value.group_id == null) {
     submitForm.clear_group = true
@@ -687,9 +747,7 @@ const serviceColumns = [
                 </label>
                 <n-card>
                   <div class="flex gap-2">
-                    <span class="text-sm text-muted-color flex-1"
-                      >在概览和详情中显示付费信息</span
-                    >
+                    <span class="text-sm text-muted-color flex-1">在概览和详情中显示付费信息</span>
                     <n-switch v-model:value="form.billing.show_billing_cycle" />
                   </div>
                 </n-card>
@@ -720,12 +778,12 @@ const serviceColumns = [
               <div class="space-y-3">
                 <label class="text-sm font-medium text-color flex items-center gap-2">
                   <ri-line-chart-line size="14px" />
-                  流量限制类型
+                  流量周期
                 </label>
                 <n-select
-                  v-model:value="form.billing.traffic_limit_type"
-                  :options="trafficLimitTypeOptions"
-                  placeholder="请选择流量限制类型"
+                  v-model:value="trafficCycleValue"
+                  :options="trafficCycleOptions"
+                  placeholder="请选择流量周期"
                   class="w-full"
                 />
               </div>
@@ -733,58 +791,30 @@ const serviceColumns = [
               <div v-if="showTrafficLimitBytes" class="space-y-3">
                 <label class="text-sm font-medium text-color flex items-center gap-2">
                   <ri-database-line size="14px" />
-                  流量限制大小
+                  流量额度
                 </label>
                 <n-input-number
                   v-model:value="trafficLimitGB"
                   :min="0"
                   :precision="2"
-                  placeholder="0表示无限制"
+                  placeholder="请输入流量额度"
                   class="w-full"
                 >
                   <template #suffix>GB</template>
                 </n-input-number>
               </div>
 
-              <div v-if="showTrafficResetCycle" class="space-y-3">
-                <label class="text-sm font-medium text-color flex items-center gap-2">
-                  <ri-refresh-line size="14px" />
-                  流量重置周期
-                </label>
-                <n-select
-                  v-model:value="form.billing.traffic_reset_cycle"
-                  :options="trafficResetCycleOptions"
-                  placeholder="请选择重置周期"
-                  class="w-full"
-                />
-              </div>
-
               <div class="space-y-3">
                 <label class="text-sm font-medium text-color flex items-center gap-2">
                   <ri-eye-line size="14px" />
-                  显示流量限制
+                  显示流量信息
                 </label>
                 <n-card>
                   <div class="flex gap-2">
                     <span class="text-sm text-muted-color flex-1"
-                      >在概览和详情中显示流量限制信息</span
+                      >在概览和详情中显示流量额度与周期信息</span
                     >
-                    <n-switch v-model:value="form.network.show_traffic_limit" />
-                  </div>
-                </n-card>
-              </div>
-
-              <div v-if="showTrafficResetCycle" class="space-y-3">
-                <label class="text-sm font-medium text-color flex items-center gap-2">
-                  <ri-eye-line size="14px" />
-                  显示流量重置周期
-                </label>
-                <n-card>
-                  <div class="flex gap-2">
-                    <span class="text-sm text-muted-color flex-1"
-                      >在概览和详情中显示流量重置周期信息</span
-                    >
-                    <n-switch v-model:value="form.network.show_traffic_reset_cycle" />
+                    <n-switch v-model:value="showTrafficInfo" />
                   </div>
                 </n-card>
               </div>
@@ -792,7 +822,7 @@ const serviceColumns = [
               <div v-if="showTrafficCustomCycleDays" class="space-y-3">
                 <label class="text-sm font-medium text-color flex items-center gap-2">
                   <ri-time-line size="14px" />
-                  自定义重置周期天数
+                  自定义周期天数
                 </label>
                 <n-input-number
                   v-model:value="form.billing.traffic_custom_cycle_days"

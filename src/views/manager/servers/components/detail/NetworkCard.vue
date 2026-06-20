@@ -33,7 +33,7 @@ defineProps<Props>()
       <div class="text-center p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800">
         <div class="flex items-center justify-center gap-2 mb-1">
           <ri-arrow-down-line size="14px" />
-          <span class="text-xs text-muted-color">速度</span>
+          <span class="text-xs text-muted-color">下载</span>
         </div>
         <div class="text-xl font-bold">
           {{ formatSpeed(networkIO?.download || 0) }}

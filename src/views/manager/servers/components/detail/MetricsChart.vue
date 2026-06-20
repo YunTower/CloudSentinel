@@ -315,7 +315,6 @@ onUnmounted(() => {
 })
 
 defineExpose({
-  addDataPoint,
   updateChart,
 })
 </script>

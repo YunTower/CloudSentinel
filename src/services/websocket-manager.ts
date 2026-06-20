@@ -97,9 +97,6 @@ class WebSocketManager {
         wsUrl = `${protocol}//${host}/api/ws/frontend`
       }
 
-      console.log(
-        `[WebSocketManager] 正在建立WebSocket连接 (尝试 ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`,
-      )
 
       const websocket = new WebSocket(wsUrl)
       this.ws = websocket
@@ -115,7 +112,6 @@ class WebSocketManager {
       websocket.onopen = () => {
         clearTimeout(connectTimeout)
         this.isConnecting = false
-        console.log('[WebSocketManager] WebSocket连接已建立，发送认证消息')
         this.isConnected.value = false
 
         websocket.send(
@@ -129,7 +125,6 @@ class WebSocketManager {
       websocket.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data)
-          console.log('[WebSocketManager] 收到消息:', message.type, message)
 
           if (message.type === 'auth_success') {
             this.isConnected.value = true
@@ -173,22 +168,9 @@ class WebSocketManager {
             }
           }
 
-          // 检查是否有注册的消息处理器
-          if (this.messageHandlers.length === 0) {
-            console.warn(
-              '[WebSocketManager] 收到消息但没有注册的消息处理器，消息类型:',
-              message.type,
-            )
-          } else {
-            console.log(`[WebSocketManager] 广播消息给 ${this.messageHandlers.length} 个处理器`)
-          }
-
           // 广播给所有监听器
-          this.messageHandlers.forEach((handler, index) => {
+          this.messageHandlers.forEach((handler) => {
             try {
-              console.log(
-                `[WebSocketManager] 调用处理器 ${index + 1}/${this.messageHandlers.length}`,
-              )
               handler(message)
             } catch (error) {
               console.error('[WebSocketManager] 消息处理错误:', error)

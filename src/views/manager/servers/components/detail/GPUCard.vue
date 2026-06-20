@@ -1,16 +1,7 @@
 <script setup lang="ts">
 import { getProgressTextColor, getProgressBarColor } from '@/utils/version.ts'
 import { RiCpuLine, RiTempHotLine } from '@remixicon/vue'
-
-interface GPUInfo {
-  index: number
-  name: string
-  temperature: number
-  memory_used: number
-  memory_total: number
-  memory_util: number
-  gpu_util: number
-}
+import type { GPUInfo } from '@/types/manager/servers'
 
 interface Props {
   gpuInfo?: {

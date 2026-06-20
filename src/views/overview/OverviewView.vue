@@ -12,6 +12,11 @@ import { useAuthStore } from '@/stores/auth'
 import type { ServerItem } from '@/types/server'
 import type { GetServersResponse, ServerGroup } from '@/types/manager/servers'
 import { mapServerListItemToServerItem, getStatusText, formatOS } from './utils'
+import type {
+  PublicDisplayFieldsV1,
+  PublicDisplayPublicPayloadV1,
+} from '@/types/settings/public-display'
+import { renderMarkdownSafe } from '@/utils/safeMarkdown'
 
 const message = useMessage()
 const router = useRouter()
@@ -43,6 +48,86 @@ const getStoredViewMode = (): 'card' | 'table' => {
 const viewMode = ref<'card' | 'table'>(getStoredViewMode())
 const groupBy = ref<'none' | number | 'status' | 'location' | 'os'>('none')
 
+const isGuest = computed(() => authStore.role === 'guest')
+
+const defaultPublicDisplayPayload = (): PublicDisplayPublicPayloadV1 => ({
+  version: 1,
+  enabled: true,
+  overview: {
+    defaultViewMode: 'card',
+    allowViewModeSwitch: true,
+    defaultGroupBy: 'none',
+    allowGroupBySwitch: true,
+  },
+  fields: {
+    showLocation: true,
+    showOS: true,
+    showArchitecture: true,
+    showCores: true,
+    showNetworkIO: true,
+    showBilling: true,
+    showTraffic: true,
+  },
+  announcement: {
+    enabled: false,
+    markdown: '',
+    placement: 'overview_top',
+  },
+  serverFilter: {
+    mode: 'all',
+  },
+})
+
+const publicDisplay = computed(() => {
+  const s = authStore.getPublicSettings()
+  return (s?.public_display || defaultPublicDisplayPayload()) as PublicDisplayPublicPayloadV1
+})
+
+const canSwitchViewMode = computed(() => {
+  if (!isGuest.value) return true
+  if (!publicDisplay.value.enabled) return true
+  return !!publicDisplay.value.overview.allowViewModeSwitch
+})
+
+const canSwitchGroupBy = computed(() => {
+  if (!isGuest.value) return true
+  if (!publicDisplay.value.enabled) return true
+  return !!publicDisplay.value.overview.allowGroupBySwitch
+})
+
+const displayFields = computed<PublicDisplayFieldsV1 | undefined>(() => {
+  if (!isGuest.value) return undefined
+  if (!publicDisplay.value.enabled) return undefined
+  return publicDisplay.value.fields
+})
+
+const announcementHtml = computed(() => {
+  if (!isGuest.value) return ''
+  if (!publicDisplay.value.enabled) return ''
+  if (!publicDisplay.value.announcement.enabled) return ''
+  if (publicDisplay.value.announcement.placement !== 'overview_top') return ''
+  return renderMarkdownSafe(publicDisplay.value.announcement.markdown || '')
+})
+
+const parseDefaultGroupBy = (raw: string): 'none' | number | 'status' | 'location' | 'os' => {
+  const normalized = String(raw || '').trim()
+  if (normalized.startsWith('group:')) {
+    const id = Number(normalized.slice('group:'.length))
+    if (!Number.isNaN(id) && id > 0) return id
+  }
+  if (
+    normalized === 'none' ||
+    normalized === 'status' ||
+    normalized === 'location' ||
+    normalized === 'os'
+  ) {
+    return normalized
+  }
+  return 'none'
+}
+
+const appliedPolicyDefaults = ref(false)
+
 // 分组选项
 const groupOptions = computed(() => {
   const options: Array<{ label: string; value: 'none' | number | 'status' | 'location' | 'os' }> = [
@@ -51,6 +136,18 @@ const groupOptions = computed(() => {
     { label: '按地域', value: 'location' },
     { label: '按系统', value: 'os' },
   ]
+
+  // 公开展示策略：字段未展示时，隐藏对应分组选项（仅 guest）
+  if (isGuest.value && publicDisplay.value.enabled) {
+    if (!publicDisplay.value.fields.showLocation) {
+      const idx = options.findIndex((o) => o.value === 'location')
+      if (idx >= 0) options.splice(idx, 1)
+    }
+    if (!publicDisplay.value.fields.showOS) {
+      const idx = options.findIndex((o) => o.value === 'os')
+      if (idx >= 0) options.splice(idx, 1)
+    }
+  }
 
   groups.value.forEach((group) => {
     options.push({ label: group.name, value: group.id })
@@ -101,6 +198,7 @@ const websocket = useWebSocket({
       const server = servers.value[serverIndex]
       servers.value[serverIndex] = {
         ...server,
+        uptime: data.uptime !== undefined ? data.uptime : server.uptime,
         cpuUsage: data.cpu_usage !== undefined ? data.cpu_usage : server.cpuUsage,
         memoryUsage: data.memory_usage !== undefined ? data.memory_usage : server.memoryUsage,
         diskUsage: data.disk_usage !== undefined ? data.disk_usage : server.diskUsage,
@@ -124,6 +222,19 @@ const websocket = useWebSocket({
         os: data.data.os !== undefined ? data.data.os : server.os,
         architecture:
           data.data.architecture !== undefined ? data.data.architecture : server.architecture,
+      }
+    }
+  },
+  onSwapInfoUpdate: (data) => {
+    const serverIndex = servers.value.findIndex((s) => s.id === data.server_id)
+    if (serverIndex !== -1 && data.swap) {
+      const server = servers.value[serverIndex]
+      servers.value[serverIndex] = {
+        ...server,
+        swapUsage:
+          data.swap.swap_usage_percent !== undefined
+            ? data.swap.swap_usage_percent
+            : server.swapUsage,
       }
     }
   },
@@ -155,6 +266,8 @@ watch(
   viewMode,
   (newValue) => {
     try {
+      // 游客视图不写入本地存储，避免与公开展示策略冲突
+      if (authStore.role !== 'admin') return
       localStorage.setItem(VIEW_MODE_STORAGE_KEY, newValue)
     } catch (err) {
       console.warn('保存视图模式失败:', err)
@@ -163,18 +276,33 @@ watch(
   { immediate: false },
 )
 
+watch(
+  [isGuest, publicDisplay],
+  ([guest, cfg]) => {
+    if (!guest) return
+    if (!cfg?.enabled) return
+    if (appliedPolicyDefaults.value) return
+    viewMode.value = cfg.overview.defaultViewMode
+    const gb = parseDefaultGroupBy(cfg.overview.defaultGroupBy)
+    groupBy.value =
+      gb === 'location' && cfg.fields && cfg.fields.showLocation === false ? 'none' : gb
+    appliedPolicyDefaults.value = true
+  },
+  { immediate: true, deep: true },
+)
+
 onMounted(async () => {
-  if (!authStore.isAuthenticated) {
+  if (!authStore.initialized) {
     initializing.value = true
-    await new Promise((resolve) => setTimeout(resolve, 100))
-    if (!authStore.isAuthenticated) {
-      await router.push({
-        name: 'login',
-        query: { redirect_uri: router.currentRoute.value.fullPath },
-      })
-      return
-    }
+    await authStore.bootstrap()
     initializing.value = false
+  }
+  if (!authStore.isAuthenticated) {
+    await router.push({
+      name: 'login',
+      query: { redirect_uri: router.currentRoute.value.fullPath },
+    })
+    return
   }
 
   await Promise.all([loadServers(), loadGroups()])
@@ -282,21 +410,27 @@ const getGroupColor = (groupName: string): string | undefined => {
 
     <!-- 主要内容 -->
     <div v-else-if="!initializing" class="space-y-6">
+      <!-- 公告（仅游客） -->
+      <n-card v-if="announcementHtml" content-class="prose prose-sm dark:prose-invert max-w-none">
+        <div v-html="announcementHtml"></div>
+      </n-card>
+
       <!-- 工具栏 -->
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div class="flex items-center gap-2">
           <h2 class="text-xl font-semibold text-color">总览</h2>
           <span class="text-sm text-muted-color">({{ servers.length }} 台)</span>
         </div>
-        <div class="flex items-center gap-3 group-type">
+        <n-space size="small" class="group-type">
           <n-select
+            v-if="canSwitchGroupBy"
             v-model:value="groupBy"
             :options="groupOptions"
             size="small"
             placeholder="分组方式"
             style="width: 140px"
           />
-          <n-radio-group v-model:value="viewMode" size="small">
+          <n-radio-group v-if="canSwitchViewMode" v-model:value="viewMode" size="small">
             <n-radio-button value="card">
               <ri-layout-grid-line size="14px" />
             </n-radio-button>
@@ -304,13 +438,13 @@ const getGroupColor = (groupName: string): string | undefined => {
               <ri-list-check size="14px" />
             </n-radio-button>
           </n-radio-group>
-        </div>
+        </n-space>
       </div>
 
       <!-- 表格视图 -->
       <div v-if="viewMode === 'table'">
         <template v-if="groupBy === 'none'">
-          <ServerTable :servers="servers" />
+          <ServerTable :servers="servers" :display-fields="displayFields" />
         </template>
         <template v-else>
           <div
@@ -323,7 +457,7 @@ const getGroupColor = (groupName: string): string | undefined => {
               :count="groupServers.length"
               :color="getGroupColor(groupName)"
             />
-            <ServerTable :servers="groupServers" />
+            <ServerTable :servers="groupServers" :display-fields="displayFields" />
           </div>
         </template>
       </div>
@@ -334,7 +468,12 @@ const getGroupColor = (groupName: string): string | undefined => {
           <div
             class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
           >
-            <ServerCard v-for="server in servers" :key="server.id" v-bind="server" />
+            <ServerCard
+              v-for="server in servers"
+              :key="server.id"
+              v-bind="server"
+              :display-fields="displayFields"
+            />
           </div>
         </template>
         <template v-else>
@@ -351,7 +490,12 @@ const getGroupColor = (groupName: string): string | undefined => {
             <div
               class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6"
             >
-              <ServerCard v-for="server in groupServers" :key="server.id" v-bind="server" />
+              <ServerCard
+                v-for="server in groupServers"
+                :key="server.id"
+                v-bind="server"
+                :display-fields="displayFields"
+              />
             </div>
           </div>
         </template>

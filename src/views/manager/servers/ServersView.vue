@@ -374,6 +374,8 @@ const resetForm = () => {
 // 监听筛选状态变化
 watch(statusFilter, async (newValue, oldValue) => {
   if (oldValue !== undefined && newValue !== oldValue) {
+    filterLoading.value = true
+    await loadServers()
     filterLoading.value = false
   }
 })
@@ -436,9 +438,8 @@ const handleSaveSuccess = async () => {
   }
 }
 
-const handleUpdateAgent = async (server: Server) => {
-  message.info(`服务器 "${server.name}" 的 Agent 正在更新中...`, { duration: 3000 })
-}
+// Agent 更新流程由 ServerTable 内部处理（含 API 调用和消息提示）
+const handleUpdateAgent = (_server: Server) => {}
 
 onMounted(async () => {
   loading.value = true

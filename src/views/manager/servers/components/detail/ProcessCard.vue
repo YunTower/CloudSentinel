@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { NEmpty, NTag } from 'naive-ui'
 import type { ProcessStatus } from '@/types/manager/servers'
 import { RiServerLine } from '@remixicon/vue'
@@ -11,7 +12,9 @@ const props = withDefaults(defineProps<Props>(), {
   processStatus: () => ({}),
 })
 
-const hasProcessStatus = props.processStatus && Object.keys(props.processStatus).length > 0
+const hasProcessStatus = computed(
+  () => !!props.processStatus && Object.keys(props.processStatus).length > 0,
+)
 </script>
 
 <template>

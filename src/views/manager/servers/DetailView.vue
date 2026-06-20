@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NSpin, NEmpty, NButton, useMessage } from 'naive-ui'
-import { RiArrowLeftLine, RiWrenchLine } from '@remixicon/vue'
+import { RiArrowLeftLine, RiLineChartLine, RiWrenchLine } from '@remixicon/vue'
 import serversApi from '@/apis/servers'
 import type { Server, ServerForm, MetricsData } from '@/types/manager/servers'
 import type { ExtendedServerDetailData } from '@/types/manager/servers'
@@ -18,6 +18,7 @@ import NetworkCard from './components/detail/NetworkCard.vue'
 import GPUCard from './components/detail/GPUCard.vue'
 import MetricsChart from './components/detail/MetricsChart.vue'
 import ProcessCard from '@/views/manager/servers/components/detail/ProcessCard.vue'
+import { formatTrafficLimitGb, getTrafficCycleLabel } from '@/utils/billing'
 
 /** 将 API 详情数据转换为页面使用的 Server 类型 */
 function detailToServer(detail: ExtendedServerDetailData): Server {
@@ -25,7 +26,7 @@ function detailToServer(detail: ExtendedServerDetailData): Server {
     ? detail.cpus.reduce((s, c) => s + c.cpu_usage, 0) / detail.cpus.length
     : 0
   const memory = detail.memory?.memory_usage_percent ?? 0
-  const disk = detail.disks?.length ? detail.disks[0].usage_percent : 0
+  const disk = detail.disks?.length ? Math.max(...detail.disks.map((d) => d.usage_percent)) : 0
   return {
     id: detail.id,
     name: detail.name,
@@ -84,17 +85,6 @@ const chartTimeRange = ref({
   disk: 1,
   network: 1,
 })
-
-const trafficLimitTypeOptions = [
-  { label: '无限制', value: 'unlimited' },
-  { label: '周期', value: 'periodic' },
-]
-const trafficResetCycleOptions = [
-  { label: '每月', value: 'monthly' },
-  { label: '每季度', value: 'quarterly' },
-  { label: '每年', value: 'yearly' },
-  { label: '自定义', value: 'custom' },
-]
 
 const loadMetrics = async (type: 'cpu' | 'memory' | 'disk' | 'network', hours: number = 24) => {
   const id = serverId.value
@@ -248,14 +238,17 @@ watch(serverId, (id) => {
 
 <template>
   <div class="server-detail-view">
-    <div class="flex items-center justify-between mb-6">
-      <div class="flex items-center gap-2">
+    <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div class="flex min-w-0 items-center gap-2">
         <n-button quaternary circle @click="goBack" title="返回列表">
           <template #icon>
             <ri-arrow-left-line />
           </template>
         </n-button>
-        <h1 class="text-2xl font-bold text-color">{{ server?.name || '加载中' }}</h1>
+        <div class="min-w-0">
+          <n-h1 class="!mb-0 truncate">{{ server?.name || '加载中' }}</n-h1>
+          <n-text v-if="server" depth="3">{{ server.ip || '-' }}</n-text>
+        </div>
       </div>
       <n-button type="primary" secondary :disabled="!server" @click="openServerDialog">
         <template #icon>
@@ -275,109 +268,105 @@ watch(serverId, (id) => {
       </template>
 
       <template v-else-if="server">
-        <div class="flex flex-col md:flex-row gap-2 w-full items-stretch">
-          <div class="flex flex-col gap-2 w-full md:w-1/2 min-w-0">
-            <basic-info :server="server" />
-            <cpu-card :cpu="server.cpu" />
-            <memory-card :memory="server.memory" :memory-info="server.memoryInfo" />
-            <swap-card :swap-info="server.swapInfo" />
-            <g-p-u-card v-if="server.gpuInfo" :gpu-info="server.gpuInfo" />
-          </div>
-          <div class="flex flex-col gap-2 w-full md:w-1/2 min-w-0">
-            <disk-card :disks="server.disks" />
-            <network-card :network-i-o="server.networkIO" :traffic="server.traffic" />
-            <div class="flex-1 min-h-0 flex flex-col">
-              <process-card :process-status="server.process_status" />
-            </div>
-            <div
-              v-if="
-                server.network?.show_traffic_limit &&
-                (server.billing?.traffic_limit_type || (server.billing?.traffic_limit_bytes ?? 0) > 0)
-              "
-              class="w-full min-w-0 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
-            >
-              <div class="mb-3 flex items-center gap-2">
-                <i class="ri-line-chart-line text-primary" />
-                <span class="text-sm font-semibold text-color">流量限制</span>
-              </div>
-              <div class="space-y-2 text-sm">
-                <div v-if="server.billing?.traffic_limit_type" class="flex justify-between">
-                  <span class="text-muted-color">限制类型</span>
-                  <span class="font-medium text-color">
-                    {{
-                      trafficLimitTypeOptions.find((o) => o.value === server!.billing?.traffic_limit_type)
-                        ?.label ?? server.billing?.traffic_limit_type
-                    }}
-                  </span>
-                </div>
-                <div
-                  v-if="server.billing?.traffic_limit_bytes != null && server.billing?.traffic_limit_bytes > 0"
-                  class="flex justify-between"
-                >
-                  <span class="text-muted-color">限制大小</span>
-                  <span class="font-medium text-color">
-                    {{ (server.billing?.traffic_limit_bytes / (1024 * 1024 * 1024)).toFixed(2) }}
-                    GB
-                  </span>
-                </div>
+        <n-tabs type="line" animated class="server-detail-tabs">
+          <n-tab-pane name="overview" tab="概览">
+            <div class="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+              <basic-info :server="server" />
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                <cpu-card :cpu="server.cpu" />
+                <memory-card :memory="server.memory" :memory-info="server.memoryInfo" />
               </div>
             </div>
-            <div
-              v-if="server.network?.show_traffic_reset_cycle && server.billing?.traffic_reset_cycle"
-              class="w-full min-w-0 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
-            >
-              <div class="mb-3 flex items-center gap-2">
-                <i class="ri-refresh-line text-primary" />
-                <span class="text-sm font-semibold text-color">流量重置周期</span>
-              </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-muted-color">重置周期</span>
-                <span class="font-medium text-color">
-                  {{
-                    trafficResetCycleOptions.find((o) => o.value === server?.billing?.traffic_reset_cycle)
-                      ?.label ?? server?.billing?.traffic_reset_cycle
-                  }}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+          </n-tab-pane>
 
-        <!-- 图表区域 -->
-        <div class="mt-2 grid grid-cols-1 gap-2">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <metrics-chart
-              :server-id="server.id"
-              chart-type="cpu"
-              :data="metricsData.cpu ?? []"
-              :time-range="chartTimeRange.cpu"
-              @update:time-range="(h: number) => updateChartTimeRange('cpu', h)"
-            />
-            <metrics-chart
-              :server-id="server.id"
-              chart-type="memory"
-              :data="metricsData.memory ?? []"
-              :time-range="chartTimeRange.memory"
-              @update:time-range="(h: number) => updateChartTimeRange('memory', h)"
-            />
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <metrics-chart
-              :server-id="server.id"
-              chart-type="disk"
-              :data="metricsData.disk ?? []"
-              :time-range="chartTimeRange.disk"
-              @update:time-range="(h: number) => updateChartTimeRange('disk', h)"
-            />
-            <metrics-chart
-              :server-id="server.id"
-              chart-type="network"
-              :data="metricsData.network ?? []"
-              :time-range="chartTimeRange.network"
-              @update:time-range="(h: number) => updateChartTimeRange('network', h)"
-            />
-          </div>
-        </div>
+          <n-tab-pane name="resource" tab="资源">
+            <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <disk-card :disks="server.disks" />
+              <network-card :network-i-o="server.networkIO" :traffic="server.traffic" />
+              <swap-card :swap-info="server.swapInfo" />
+              <g-p-u-card v-if="server.gpuInfo" :gpu-info="server.gpuInfo" />
+              <n-card
+                v-if="
+                  (server.network?.show_traffic_limit ||
+                    server.network?.show_traffic_reset_cycle) &&
+                  ((server.billing?.traffic_limit_bytes ?? 0) > 0 ||
+                    server.billing?.traffic_limit_type ||
+                    server.billing?.traffic_reset_cycle)
+                "
+              >
+                <n-thing>
+                  <template #avatar>
+                    <n-icon :component="RiLineChartLine" />
+                  </template>
+                  <template #header>流量信息</template>
+                  <n-descriptions :column="1" label-placement="left">
+                    <n-descriptions-item
+                      v-if="(server.billing?.traffic_limit_bytes ?? 0) > 0"
+                      label="流量额度"
+                    >
+                      {{ formatTrafficLimitGb(server.billing?.traffic_limit_bytes) }}
+                    </n-descriptions-item>
+                    <n-descriptions-item
+                      v-if="
+                        getTrafficCycleLabel(
+                          server.billing?.traffic_reset_cycle,
+                          server.billing?.traffic_custom_cycle_days,
+                          server.billing?.traffic_limit_type,
+                        ) !== '-'
+                      "
+                      label="流量周期"
+                    >
+                      {{
+                        getTrafficCycleLabel(
+                          server.billing?.traffic_reset_cycle,
+                          server.billing?.traffic_custom_cycle_days,
+                          server.billing?.traffic_limit_type,
+                        )
+                      }}
+                    </n-descriptions-item>
+                  </n-descriptions>
+                </n-thing>
+              </n-card>
+            </div>
+          </n-tab-pane>
+
+          <n-tab-pane name="metrics" tab="趋势图表" display-directive="show:lazy">
+            <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <metrics-chart
+                :server-id="server.id"
+                chart-type="cpu"
+                :data="metricsData.cpu ?? []"
+                :time-range="chartTimeRange.cpu"
+                @update:time-range="(h: number) => updateChartTimeRange('cpu', h)"
+              />
+              <metrics-chart
+                :server-id="server.id"
+                chart-type="memory"
+                :data="metricsData.memory ?? []"
+                :time-range="chartTimeRange.memory"
+                @update:time-range="(h: number) => updateChartTimeRange('memory', h)"
+              />
+              <metrics-chart
+                :server-id="server.id"
+                chart-type="disk"
+                :data="metricsData.disk ?? []"
+                :time-range="chartTimeRange.disk"
+                @update:time-range="(h: number) => updateChartTimeRange('disk', h)"
+              />
+              <metrics-chart
+                :server-id="server.id"
+                chart-type="network"
+                :data="metricsData.network ?? []"
+                :time-range="chartTimeRange.network"
+                @update:time-range="(h: number) => updateChartTimeRange('network', h)"
+              />
+            </div>
+          </n-tab-pane>
+
+          <n-tab-pane name="process" tab="进程服务">
+            <process-card :process-status="server.process_status" />
+          </n-tab-pane>
+        </n-tabs>
       </template>
     </n-spin>
 
@@ -394,5 +383,11 @@ watch(serverId, (id) => {
 <style scoped>
 .server-detail-view {
   margin: 0 auto;
+  min-width: 0;
+  width: 100%;
+}
+
+.server-detail-tabs :deep(.n-tab-pane) {
+  padding-top: 12px;
 }
 </style>

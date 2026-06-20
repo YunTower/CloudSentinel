@@ -6,7 +6,12 @@ import { useMessage, useDialog } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
 import type { Server } from '@/types/manager/servers'
 import serversApi from '@/apis/servers'
-import { getBillingCycle, getBillingType, getExpireCountdown } from '@/utils/billing'
+import {
+  getBillingCycle,
+  getBillingType,
+  getExpireCountdown,
+  getTrafficLimitSummary,
+} from '@/utils/billing'
 import {
   getStatusText,
   getStatusSeverity,
@@ -38,28 +43,10 @@ const severityToNaiveType = (
   return map[severity] ?? 'default'
 }
 
-// 格式化字节
-const formatBytes = (bytes: number, decimals = 2) => {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const dm = decimals < 0 ? 0 : decimals
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
-}
-
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.role === 'admin')
 const message = useMessage()
 const dialog = useDialog()
-
-// 流量重置周期选项
-const trafficResetCycleOptions = [
-  { label: '每月', value: 'monthly' },
-  { label: '每季度', value: 'quarterly' },
-  { label: '每年', value: 'yearly' },
-  { label: '自定义', value: 'custom' },
-]
 
 const router = useRouter()
 
@@ -258,7 +245,11 @@ const columns = computed(() => {
         ]
         if (row.billing?.expire_time) {
           billingChildren.push(
-            h(NTag, { size: 'small', type: 'info' }, `${getExpireCountdown(row.billing.expire_time)}后到期`),
+            h(
+              NTag,
+              { size: 'small', type: 'info' },
+              `${getExpireCountdown(row.billing.expire_time)}后到期`,
+            ),
           )
         }
         return h(NSpace, { size: 2 }, billingChildren)
@@ -268,40 +259,26 @@ const columns = computed(() => {
 
   // 流量信息列
   if (
-    props.servers.some(
-      (s) => s.network?.show_traffic_limit || s.network?.show_traffic_reset_cycle,
-    )
+    props.servers.some((s) => s.network?.show_traffic_limit || s.network?.show_traffic_reset_cycle)
   ) {
     cols.push({
       key: 'traffic',
       title: '流量信息',
       minWidth: 150,
       render: (row: Server) => {
-        const parts = []
-        if (row.network?.show_traffic_limit) {
-          if (row.billing?.traffic_limit_type === 'periodic') {
-            const limit = row.billing.traffic_limit_bytes
-              ? formatBytes(row.billing.traffic_limit_bytes)
-              : '无限制'
-            parts.push(h('div', {}, `限制: ${limit}`))
-          } else {
-            parts.push(h('div', {}, '无限制'))
-          }
+        if (!(row.network?.show_traffic_limit || row.network?.show_traffic_reset_cycle)) {
+          return h('span', {}, '-')
         }
-        if (row.network?.show_traffic_reset_cycle && row.billing?.traffic_reset_cycle) {
-          const option = trafficResetCycleOptions.find(
-            (o) => o.value === row.billing?.traffic_reset_cycle,
-          )
-          parts.push(
-            h(
-              'div',
-              { class: 'text-xs text-muted-color' },
-              `重置: ${option ? option.label : row.billing?.traffic_reset_cycle}`,
-            ),
-          )
-        }
-        if (parts.length === 0) return h('span', {}, '-')
-        return h('div', { class: 'flex flex-col items-start gap-1' }, parts)
+
+        const summary = getTrafficLimitSummary(
+          row.billing?.traffic_limit_bytes,
+          row.billing?.traffic_reset_cycle,
+          row.billing?.traffic_custom_cycle_days,
+          row.billing?.traffic_limit_type,
+        )
+
+        if (summary === '-') return h('span', {}, '-')
+        return h('div', { class: 'flex flex-col items-start gap-1' }, [h('div', {}, summary)])
       },
     })
   }

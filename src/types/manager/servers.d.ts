@@ -73,6 +73,22 @@ export interface ServerListItemData {
   uptime?: string
   created_at?: string
   updated_at?: string
+  cores?: number
+  total_storage?: string
+  metrics?: {
+    cpu_usage?: number
+    memory_usage?: number
+    disk_usage?: number
+    network_upload?: number
+    network_download?: number
+  }
+  swap?: {
+    swap_total?: number
+    swap_used?: number
+    swap_free?: number
+    swap_usage_percent?: number
+    timestamp?: string
+  } | null
   // 分组和付费相关字段
   group_id?: number
   group?: ServerGroup
@@ -108,7 +124,7 @@ export interface BillingInfo {
   bandwidth_mbps?: number
   traffic_limit_type?: 'unlimited' | 'permanent' | 'periodic'
   traffic_limit_bytes?: number
-  traffic_reset_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
+  traffic_reset_cycle?: 'monthly' | 'quarterly' | 'yearly' | 'custom' | 'unlimited'
   traffic_custom_cycle_days?: number
   show_billing_cycle?: boolean
 }

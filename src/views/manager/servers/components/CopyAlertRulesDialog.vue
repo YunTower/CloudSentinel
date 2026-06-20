@@ -139,10 +139,7 @@ watch(
   () => props.visible,
   (newValue) => {
     if (newValue) {
-      // 重置选择
-      selectedRuleTypes.value = []
       selectedTargetServerIds.value = []
-      // 加载源服务器规则
       loadSourceAlertRules()
     }
   },
