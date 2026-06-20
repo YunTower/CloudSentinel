@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/vue'
+import { RiDeleteBinLine, RiEditLine, RiPulseLine } from '@remixicon/vue'
 import { type ServiceMonitor, type ServiceMonitorHistoryEntry } from '@/apis/service-monitors'
 
 const props = defineProps<{ monitor: ServiceMonitor }>()
 const emit = defineEmits<{
   edit: [monitor: ServiceMonitor]
   remove: [monitor: ServiceMonitor]
+  viewResults: [monitor: ServiceMonitor]
 }>()
 
 const statusLabel = (s: string) =>
@@ -27,6 +28,18 @@ const blockTooltip = (entry: ServiceMonitorHistoryEntry | null) => {
   const time = new Date(entry.checked_at).toLocaleTimeString()
   const label = entry.status === 'up' ? '正常' : entry.status === 'slow' ? '超时' : '故障'
   return `${label} · ${entry.response_time}ms · ${time}`
+}
+
+const uptimeLabel = (key: '24h' | '7d' | '30d') => {
+  const stat = props.monitor.uptime?.[key]
+  if (!stat || stat.total_checks === 0) return '-'
+  return `${stat.uptime_rate.toFixed(stat.uptime_rate >= 99.99 ? 3 : 2)}%`
+}
+
+const uptimeTooltip = (key: '24h' | '7d' | '30d') => {
+  const stat = props.monitor.uptime?.[key]
+  if (!stat || stat.total_checks === 0) return '暂无检测数据'
+  return `正常 ${stat.up_checks} / 慢 ${stat.slow_checks} / 故障 ${stat.down_checks} · 平均 ${stat.avg_response_time}ms`
 }
 
 const paddedHistory = (count: number): (ServiceMonitorHistoryEntry | null)[] => {
@@ -66,6 +79,9 @@ onUnmounted(() => {
           <span class="font-medium truncate">{{ monitor.name }}</span>
         </div>
         <div class="flex gap-1 flex-shrink-0">
+          <n-button size="tiny" quaternary @click="emit('viewResults', monitor)">
+            <template #icon><ri-pulse-line /></template>
+          </n-button>
           <n-button size="tiny" quaternary @click="emit('edit', monitor)">
             <template #icon><ri-edit-line /></template>
           </n-button>
@@ -82,6 +98,9 @@ onUnmounted(() => {
 
       <div class="text-sm text-muted-color truncate">
         <n-tag size="tiny" class="mr-1">{{ monitor.type.toUpperCase() }}</n-tag>
+        <n-tag v-if="monitor.group_name" size="tiny" class="mr-1" :bordered="false">
+          {{ monitor.group_name }}
+        </n-tag>
         {{ monitor.target }}{{ monitor.port ? ':' + monitor.port : '' }}
       </div>
 
@@ -102,6 +121,18 @@ onUnmounted(() => {
             />
           </template>
           {{ blockTooltip(entry) }}
+        </n-tooltip>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 mt-3">
+        <n-tooltip v-for="key in (['24h', '7d', '30d'] as const)" :key="key" placement="top">
+          <template #trigger>
+            <div class="rounded border border-[var(--n-border-color)] px-2 py-1">
+              <div class="text-[11px] leading-4 text-muted-color">{{ key }}</div>
+              <div class="text-sm font-semibold text-color">{{ uptimeLabel(key) }}</div>
+            </div>
+          </template>
+          {{ uptimeTooltip(key) }}
         </n-tooltip>
       </div>
     </div>

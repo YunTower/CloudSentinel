@@ -21,11 +21,27 @@ const typeOptions = [
   { label: 'HTTPS', value: 'https' },
   { label: 'TCP', value: 'tcp' },
   { label: 'UDP', value: 'udp' },
+  { label: 'ICMP Ping', value: 'icmp' },
+  { label: 'DNS', value: 'dns' },
+  { label: 'TLS 证书', value: 'tls' },
+]
+
+const methodOptions = [
+  { label: 'GET', value: 'GET' },
+  { label: 'POST', value: 'POST' },
+  { label: 'PUT', value: 'PUT' },
+  { label: 'PATCH', value: 'PATCH' },
+  { label: 'DELETE', value: 'DELETE' },
+  { label: 'HEAD', value: 'HEAD' },
+  { label: 'OPTIONS', value: 'OPTIONS' },
 ]
 
 const serverOptions = computed(() => props.servers.map((s) => ({ label: s.name, value: s.id })))
 
-const needsPort = computed(() => props.form.type === 'tcp' || props.form.type === 'udp')
+const needsPort = computed(() =>
+  ['tcp', 'udp', 'tls'].includes(props.form.type),
+)
+const supportsHttpExpectations = computed(() => props.form.type === 'http' || props.form.type === 'https')
 
 const set = <K extends keyof ServiceMonitorForm>(key: K, value: ServiceMonitorForm[K]) => {
   emit('update:form', { ...props.form, [key]: value })
@@ -49,13 +65,20 @@ const set = <K extends keyof ServiceMonitorForm>(key: K, value: ServiceMonitorFo
         <n-form-item label="名称">
           <n-input :value="form.name" placeholder="任务名称" @update:value="set('name', $event)" />
         </n-form-item>
+        <n-form-item label="分组">
+          <n-input
+            :value="form.group_name"
+            placeholder="例如 核心服务 / 外部依赖"
+            @update:value="set('group_name', $event)"
+          />
+        </n-form-item>
         <n-form-item label="类型">
           <n-select :value="form.type" :options="typeOptions" @update:value="set('type', $event)" />
         </n-form-item>
         <n-form-item label="目标地址">
           <n-input
             :value="form.target"
-            :placeholder="needsPort ? '192.168.1.1' : 'https://example.com'"
+            :placeholder="needsPort ? 'example.com' : 'https://example.com'"
             @update:value="set('target', $event)"
           />
         </n-form-item>
@@ -102,6 +125,28 @@ const set = <K extends keyof ServiceMonitorForm>(key: K, value: ServiceMonitorFo
                   <template #suffix>秒</template>
                 </n-input-number>
               </n-form-item>
+              <n-form-item label="失败阈值">
+                <n-input-number
+                  :value="form.failure_threshold"
+                  :min="1"
+                  :max="10"
+                  style="width: 100%"
+                  @update:value="set('failure_threshold', $event ?? 1)"
+                >
+                  <template #suffix>次</template>
+                </n-input-number>
+              </n-form-item>
+              <n-form-item label="恢复阈值">
+                <n-input-number
+                  :value="form.recovery_threshold"
+                  :min="1"
+                  :max="10"
+                  style="width: 100%"
+                  @update:value="set('recovery_threshold', $event ?? 1)"
+                >
+                  <template #suffix>次</template>
+                </n-input-number>
+              </n-form-item>
               <n-form-item label="检测服务器">
                 <n-select
                   :value="form.server_ids"
@@ -111,7 +156,7 @@ const set = <K extends keyof ServiceMonitorForm>(key: K, value: ServiceMonitorFo
                   @update:value="set('server_ids', $event)"
                 />
               </n-form-item>
-              <template v-if="!needsPort">
+              <template v-if="supportsHttpExpectations">
                 <n-form-item label="期望状态码">
                   <n-input-number
                     :value="form.expect_status"
@@ -127,6 +172,31 @@ const set = <K extends keyof ServiceMonitorForm>(key: K, value: ServiceMonitorFo
                     :value="form.expect_body"
                     placeholder="响应体包含此字符串则视为正常（留空跳过）"
                     @update:value="set('expect_body', $event)"
+                  />
+                </n-form-item>
+                <n-form-item label="请求方法">
+                  <n-select
+                    :value="form.http_method || 'GET'"
+                    :options="methodOptions"
+                    @update:value="set('http_method', $event)"
+                  />
+                </n-form-item>
+                <n-form-item label="请求 Header">
+                  <n-input
+                    :value="form.http_headers"
+                    type="textarea"
+                    :autosize="{ minRows: 3, maxRows: 8 }"
+                    placeholder='JSON 对象，例如 {"Authorization":"Bearer token"}'
+                    @update:value="set('http_headers', $event)"
+                  />
+                </n-form-item>
+                <n-form-item label="请求 Body">
+                  <n-input
+                    :value="form.http_body"
+                    type="textarea"
+                    :autosize="{ minRows: 3, maxRows: 10 }"
+                    placeholder="POST/PUT/PATCH/DELETE 请求体"
+                    @update:value="set('http_body', $event)"
                   />
                 </n-form-item>
               </template>

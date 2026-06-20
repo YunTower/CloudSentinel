@@ -101,22 +101,6 @@ export interface ChartConfig {
 // 状态严重程度
 export type StatusSeverity = 'success' | 'info' | 'warn' | 'error'
 
-// 状态颜色映射
-export const STATUS_COLORS = {
-  online: 'success',
-  offline: 'secondary',
-  error: 'danger',
-  warning: 'warn',
-} as const
-
-// 资源使用率颜色类
-export const USAGE_COLOR_CLASSES = {
-  low: 'text-green-600 dark:text-green-400',
-  medium: 'text-yellow-600 dark:text-yellow-400',
-  high: 'text-orange-600 dark:text-orange-400',
-  critical: 'text-red-600 dark:text-red-400',
-} as const
-
 // 工具函数类型
 export type GetUsageColorClass = (usage: number) => string
 export type FormatBytes = (bytes: number) => string

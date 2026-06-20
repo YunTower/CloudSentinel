@@ -1,11 +1,13 @@
 ﻿<script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useMessage } from 'naive-ui'
+import { h, ref, onMounted, onUnmounted } from 'vue'
+import { NTag, useMessage, type DataTableColumns } from 'naive-ui'
 import serviceMonitorsApi, {
   type ServiceMonitor,
   type ServiceMonitorForm,
+  type ServiceMonitorResult,
 } from '@/apis/service-monitors'
 import serversApi from '@/apis/servers'
+import type { GetServersResponse } from '@/types/manager/servers'
 import websocketManager from '@/services/websocket-manager'
 import { useAuthStore } from '@/stores/auth'
 import { RiAddLine } from '@remixicon/vue'
@@ -21,9 +23,14 @@ const loading = ref(false)
 const showDialog = ref(false)
 const saving = ref(false)
 const editingId = ref<number | null>(null)
+const resultsLoading = ref(false)
+const resultsDialog = ref(false)
+const selectedMonitor = ref<ServiceMonitor | null>(null)
+const monitorResults = ref<ServiceMonitorResult[]>([])
 
 const defaultForm = (): ServiceMonitorForm => ({
   name: '',
+  group_name: '',
   type: 'http',
   target: '',
   port: 0,
@@ -33,6 +40,11 @@ const defaultForm = (): ServiceMonitorForm => ({
   server_ids: [],
   expect_status: 0,
   expect_body: '',
+  http_method: 'GET',
+  http_headers: '',
+  http_body: '',
+  failure_threshold: 1,
+  recovery_threshold: 1,
 })
 
 const form = ref<ServiceMonitorForm>(defaultForm())
@@ -40,7 +52,7 @@ const form = ref<ServiceMonitorForm>(defaultForm())
 const load = async () => {
   loading.value = true
   try {
-    const res = await serviceMonitorsApi.getAll()
+    const res = (await serviceMonitorsApi.getAll()) as { status: boolean; data?: ServiceMonitor[] }
     if (res.status) monitors.value = res.data || []
   } finally {
     loading.value = false
@@ -48,9 +60,9 @@ const load = async () => {
 }
 
 const loadServers = async () => {
-  const res = await serversApi.getServers()
+  const res = (await serversApi.getServers()) as GetServersResponse
   if (res.status && res.data) {
-    servers.value = (res.data as { id: string; name: string }[]).map((s) => ({
+    servers.value = res.data.map((s) => ({
       id: s.id,
       name: s.name,
     }))
@@ -67,6 +79,7 @@ const openEdit = (m: ServiceMonitor) => {
   editingId.value = m.id
   form.value = {
     name: m.name,
+    group_name: m.group_name || '',
     type: m.type,
     target: m.target,
     port: m.port,
@@ -76,6 +89,11 @@ const openEdit = (m: ServiceMonitor) => {
     server_ids: m.server_ids || [],
     expect_status: m.expect_status || 0,
     expect_body: m.expect_body || '',
+    http_method: m.http_method || 'GET',
+    http_headers: m.http_headers || '',
+    http_body: m.http_body || '',
+    failure_threshold: m.failure_threshold || 1,
+    recovery_threshold: m.recovery_threshold || 1,
   }
   showDialog.value = true
 }
@@ -93,6 +111,9 @@ const save = async () => {
         const idx = monitors.value.findIndex((m) => m.id === editingId.value)
         if (idx !== -1 && res.data) monitors.value[idx] = res.data
         message.success('已更新')
+      } else {
+        message.error(res.message || '更新失败')
+        return
       }
     } else {
       const res = await serviceMonitorsApi.create(form.value)
@@ -114,6 +135,90 @@ const remove = async (m: ServiceMonitor) => {
   if (res.status) {
     monitors.value = monitors.value.filter((x) => x.id !== m.id)
     message.success('已删除')
+  }
+}
+
+const statusLabel = (s: string) =>
+  s === 'up' ? '正常' : s === 'down' ? '故障' : s === 'slow' ? '慢响应' : '未知'
+
+const statusTag = (s: string) =>
+  s === 'up' ? 'success' : s === 'down' ? 'error' : s === 'slow' ? 'warning' : 'default'
+
+const resultColumns: DataTableColumns<ServiceMonitorResult> = [
+  {
+    title: '时间',
+    key: 'checked_at',
+    width: 170,
+    render(row) {
+      return new Date(row.checked_at).toLocaleString()
+    },
+  },
+  {
+    title: '来源',
+    key: 'probe_type',
+    width: 90,
+    render(row) {
+      return row.probe_type === 'agent' ? 'Agent' : 'Panel'
+    },
+  },
+  {
+    title: '探测点',
+    key: 'probe_name',
+    minWidth: 160,
+    render(row) {
+      return row.probe_name || row.probe_id || '-'
+    },
+  },
+  {
+    title: '地域',
+    key: 'probe_location',
+    width: 130,
+    render(row) {
+      return row.probe_location || '-'
+    },
+  },
+  {
+    title: '状态',
+    key: 'status',
+    width: 90,
+    render(row) {
+      return h(NTag, { size: 'small', type: statusTag(row.status) }, () => statusLabel(row.status))
+    },
+  },
+  {
+    title: '响应',
+    key: 'response_time',
+    width: 90,
+    render(row) {
+      return `${row.response_time}ms`
+    },
+  },
+  {
+    title: '错误',
+    key: 'error',
+    minWidth: 220,
+    ellipsis: { tooltip: true },
+    render(row) {
+      return row.error || '-'
+    },
+  },
+]
+
+const openResults = async (m: ServiceMonitor) => {
+  selectedMonitor.value = m
+  resultsDialog.value = true
+  resultsLoading.value = true
+  try {
+    const res = await serviceMonitorsApi.getResults(m.id, 200)
+    if (res.status) {
+      monitorResults.value = res.data || []
+    } else {
+      message.error(res.message || '加载探测结果失败')
+    }
+  } catch {
+    message.error('加载探测结果失败')
+  } finally {
+    resultsLoading.value = false
   }
 }
 
@@ -154,11 +259,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div>
-    <div class="mb-6 flex justify-between items-center">
+  <div class="service-monitor-view min-w-0 overflow-x-hidden">
+    <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-color mb-2">服务监测</h1>
-        <p class="text-muted-color">监测 HTTP/HTTPS/TCP/UDP 在线服务状态</p>
+        <n-h1 class="!mb-1">服务监测</n-h1>
+        <n-text depth="3">监测 HTTP/HTTPS/TCP/UDP 在线服务状态</n-text>
       </div>
       <n-button type="primary" @click="openCreate">
         <template #icon><ri-add-line /></template>
@@ -172,13 +277,14 @@ onUnmounted(() => {
         description="暂无监测项，点击右上角添加"
         class="py-16"
       />
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div v-else class="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <service-monitor-card
           v-for="m in monitors"
           :key="m.id"
           :monitor="m"
           @edit="openEdit"
           @remove="remove"
+          @view-results="openResults"
         />
       </div>
     </n-spin>
@@ -191,5 +297,28 @@ onUnmounted(() => {
       :saving="saving"
       @save="save"
     />
+
+    <n-modal v-model:show="resultsDialog" preset="card" class="max-w-5xl" :bordered="false">
+      <template #header>
+        <div>
+          <div class="text-base font-semibold">探测结果</div>
+          <div class="text-xs text-muted-color mt-1">{{ selectedMonitor?.name || '-' }}</div>
+        </div>
+      </template>
+      <n-data-table
+        size="small"
+        :loading="resultsLoading"
+        :columns="resultColumns"
+        :data="monitorResults"
+        :pagination="{ pageSize: 10 }"
+        :scroll-x="960"
+      />
+    </n-modal>
   </div>
 </template>
+
+<style scoped>
+.service-monitor-view {
+  width: 100%;
+}
+</style>
