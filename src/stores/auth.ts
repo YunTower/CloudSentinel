@@ -4,7 +4,6 @@ import { jwtDecode } from 'jwt-decode'
 import type {
   CheckLoginResponse,
   CustomJwtPayload,
-  GuestAccessConfig,
   LoginResponse,
   PublicSettingsResponse,
   UserRole,
@@ -29,18 +28,11 @@ export const useAuthStore = defineStore('auth', () => {
   // 常量
   const TOKEN_KEY = 'auth_token'
   const REFRESH_TOKEN_KEY = 'refresh_token'
-  const GUEST_CONFIG_KEY = 'guest_access_config'
 
   // 计算属性
   const isAuthenticated = computed(() => {
     if (!initialized.value) return false
-    const user = getCurrentUser()
-    if (user) {
-      isLoggedIn.value = true
-      return true
-    }
-    isLoggedIn.value = false
-    return false
+    return getCurrentUser() !== null
   })
 
   const role = computed<UserRole>(() => (user.value?.role || 'guest') as UserRole)
@@ -139,37 +131,14 @@ export const useAuthStore = defineStore('auth', () => {
     return user?.role === role
   }
 
-  // 游客访问配置
-  const getGuestAccessConfig = (): GuestAccessConfig => {
-    try {
-      const saved = localStorage.getItem(GUEST_CONFIG_KEY)
-      if (saved) {
-        return JSON.parse(saved)
-      }
-    } catch (error) {
-      console.error('Failed to load guest access config:', error)
-    }
-
-    // 默认配置
-    return {
-      allowGuest: false,
-      enablePassword: false,
-      hideSensitiveInfo: true,
-    }
+  const clearPublicSettingsCache = (): void => {
+    publicSettings.value = null
+    loadingPublicSettingsPromise.value = null
   }
 
-  const saveGuestAccessConfig = (config: GuestAccessConfig): void => {
-    localStorage.setItem(GUEST_CONFIG_KEY, JSON.stringify(config))
-  }
-
-  const canGuestAccess = (): boolean => {
-    const config = getGuestAccessConfig()
-    return config.allowGuest
-  }
-
-  const guestRequiresPassword = (): boolean => {
-    const config = getGuestAccessConfig()
-    return config.allowGuest && config.enablePassword
+  const refreshPublicSettings = async (): Promise<PublicSettingsResponse['data']> => {
+    clearPublicSettingsCache()
+    return await loadPublicSettings()
   }
 
   // 公开设置
@@ -188,21 +157,13 @@ export const useAuthStore = defineStore('auth', () => {
     loadingPublicSettings.value = true
     const requestPromise = (async (): Promise<PublicSettingsResponse['data']> => {
       try {
-        const response = await panelApi.getPublicSettings()
-        const data = response as PublicSettingsResponse
+        const data = (await panelApi.getPublicSettings()) as PublicSettingsResponse
 
         if (data.status && data.data) {
           publicSettings.value = data.data
           if (data.data.panel_title) {
             document.title = `${data.data.panel_title}`
           }
-
-          const config: GuestAccessConfig = {
-            allowGuest: data.data.allow_guest_login,
-            enablePassword: data.data.guest_password_enabled,
-            hideSensitiveInfo: true, // 默认隐藏敏感信息
-          }
-          saveGuestAccessConfig(config)
 
           return data.data
         }
@@ -211,11 +172,9 @@ export const useAuthStore = defineStore('auth', () => {
       } catch (error) {
         console.error('Failed to load public settings:', error)
         const defaultData: PublicSettingsResponse['data'] = {
-          allow_guest_login: true,
-          guest_password_enabled: false,
           panel_title: 'CloudSentinel 云哨',
         }
-        publicSettings.value = defaultData
+        publicSettings.value = null
         document.title = `${defaultData.panel_title}`
         return defaultData
       } finally {
@@ -228,18 +187,8 @@ export const useAuthStore = defineStore('auth', () => {
     return await requestPromise
   }
 
-  const loadPublicSettings = async (): Promise<GuestAccessConfig> => {
-    const data = await fetchPublicSettings()
-
-    const config: GuestAccessConfig = {
-      allowGuest: data.allow_guest_login,
-      enablePassword: data.guest_password_enabled,
-      hideSensitiveInfo: true, // 默认隐藏敏感信息
-    }
-
-    saveGuestAccessConfig(config)
-    return config
-  }
+  const loadPublicSettings = async (): Promise<PublicSettingsResponse['data']> =>
+    await fetchPublicSettings()
 
   const getPanelTitle = async (): Promise<string> => {
     const data = await fetchPublicSettings()
@@ -265,57 +214,27 @@ export const useAuthStore = defineStore('auth', () => {
         // 设置token
         setToken(data.data.token, rememberMe)
 
-        // 直接使用API返回的用户信息，创建用户会话
+        // 从 JWT 中读取实际过期时间
+        let tokenExp = Date.now() / 1000 + 86400
+        try {
+          const decoded = jwtDecode<CustomJwtPayload>(data.data.token)
+          if (decoded.exp) tokenExp = decoded.exp
+        } catch {}
+
         const userSession: UserSession = {
-          id: data.data.username, // 使用用户名作为ID
+          id: data.data.username,
           username: data.data.username,
           role: data.data.type as UserRole,
-          exp: Date.now() / 1000 + 24 * 60 * 60, // 24小时过期
+          exp: tokenExp,
         }
 
-        // 设置当前用户会话
         setCurrentUser(userSession)
-
         return userSession
       }
 
       throw new Error(data.message || '登录失败')
     } catch (error) {
       console.error('Login failed:', error)
-      throw error
-    }
-  }
-
-  const guestLogin = async (
-    password: string,
-    rememberMe: boolean = false,
-  ): Promise<UserSession> => {
-    try {
-      // 调用真实的游客登录API
-      const response = await authApi.login('guest', password, undefined, rememberMe)
-      const data = response as LoginResponse
-
-      if (data.status && data.data) {
-        // 设置token
-        setToken(data.data.token, rememberMe)
-
-        // 直接使用API返回的用户信息，创建用户会话
-        const userSession: UserSession = {
-          id: 'guest',
-          username: '游客', // 使用中文显示名称
-          role: 'guest',
-          exp: Date.now() / 1000 + 24 * 60 * 60, // 24小时过期
-        }
-
-        // 设置当前用户会话
-        setCurrentUser(userSession)
-
-        return userSession
-      }
-
-      throw new Error(data.message || '登录失败')
-    } catch (error) {
-      console.error('Guest login failed:', error)
       throw error
     }
   }
@@ -327,23 +246,21 @@ export const useAuthStore = defineStore('auth', () => {
       const data = response as CheckLoginResponse
 
       if (data.status && data.data?.is_valid) {
-        // 登录状态有效，恢复用户信息
         const userSession: UserSession = {
           id: data.data.user_id,
           username: data.data.user_type === 'admin' ? 'admin' : '游客',
           role: data.data.user_type as UserRole,
-          exp: Date.now() / 1000 + 24 * 60 * 60, // 24小时过期
+          exp: Date.now() / 1000 + 86400,
         }
-
         setCurrentUser(userSession)
       } else {
-        // 登录状态无效，清除认证状态
+        // 服务器明确返回 token 无效，清除认证状态
         logout()
       }
     } catch (error) {
       console.error('Failed to check login status:', error)
-      // API调用失败，清除认证状态
-      logout()
+      // 网络错误不等同于 token 失效，保留现有会话状态
+      // 仅当服务器明确拒绝时才 logout
     }
   }
 
@@ -382,6 +299,7 @@ export const useAuthStore = defineStore('auth', () => {
     currentUserSession.value = null
     user.value = null
     initialized.value = false
+    bootstrapPromise.value = null
   }
 
   // 登录结果
@@ -422,47 +340,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 处理访客登录
-  const handleGuestLogin = async (
-    password: string,
-    rememberMe: boolean = false,
-    permissions?: GuestAccessConfig,
-  ): Promise<LoginResult> => {
-    const config = permissions || getGuestAccessConfig()
-
-    // 验证访客访问是否允许
-    if (!config.allowGuest) {
-      return {
-        success: false,
-        error: '访客访问功能已被禁用',
-      }
-    }
-
-    // 验证密码（如果启用了密码访问）
-    if (config.enablePassword && !password) {
-      return {
-        success: false,
-        error: '请输入访客访问密码',
-      }
-    }
-
-    try {
-      const userSession = await guestLogin(password, rememberMe)
-      websocketManager.resetTokenInvalid()
-
-      return {
-        success: true,
-        userSession,
-      }
-    } catch (error) {
-      console.error('Guest login failed:', error)
-      return {
-        success: false,
-        error: (error as { message: string }).message || '登录过程中发生错误',
-      }
-    }
-  }
-
   // 重定向管理
   const setRedirect = (uri: string | null) => {
     redirectUri.value = uri
@@ -479,31 +356,36 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     const initPromise = (async (): Promise<void> => {
-      // 记录当前意图路径，用于刷新后跳回
       try {
-        const existingIntended = sessionStorage.getItem('intended_path')
-        if (!existingIntended) {
-          const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
-          sessionStorage.setItem('intended_path', currentPath)
-          redirectUri.value = currentPath
-        } else {
-          redirectUri.value = existingIntended
-        }
-      } catch {}
-
-      await fetchPublicSettings()
-
-      // 如果有 token，检查登录状态
-      const token = getToken()
-      if (token) {
+        // 记录当前意图路径，用于刷新后跳回
         try {
-          await checkLoginStatus()
-        } catch (error) {
-          console.error('Failed to check login status during bootstrap:', error)
-        }
-      }
+          const existingIntended = sessionStorage.getItem('intended_path')
+          if (!existingIntended) {
+            const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+            sessionStorage.setItem('intended_path', currentPath)
+            redirectUri.value = currentPath
+          } else {
+            redirectUri.value = existingIntended
+          }
+        } catch {}
 
-      initialized.value = true
+        await fetchPublicSettings()
+
+        // 如果有 token，检查登录状态
+        const token = getToken()
+        if (token) {
+          try {
+            await checkLoginStatus()
+          } catch (error) {
+            console.error('Failed to check login status during bootstrap:', error)
+          }
+        }
+
+        initialized.value = true
+      } finally {
+        // 无论成功或失败，都清除 promise，确保下次可重新初始化（如登出后重新登录）
+        bootstrapPromise.value = null
+      }
     })()
 
     bootstrapPromise.value = initPromise
@@ -538,22 +420,16 @@ export const useAuthStore = defineStore('auth', () => {
     getCurrentUser,
     setCurrentUser,
 
-    // 游客访问配置
-    getGuestAccessConfig,
-    saveGuestAccessConfig,
-    canGuestAccess,
-    guestRequiresPassword,
-
     // 公开设置
     loadPublicSettings,
+    clearPublicSettingsCache,
+    refreshPublicSettings,
     getPanelTitle,
     getPublicSettings,
 
     // 登录方法
     login,
-    guestLogin,
     checkLoginStatus,
     handleAdminLogin,
-    handleGuestLogin,
   }
 })

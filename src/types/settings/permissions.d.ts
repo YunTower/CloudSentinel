@@ -1,9 +1,5 @@
-import type { GuestAccessConfig } from '../auth'
-
 // 权限设置
-export interface PermissionSettings extends GuestAccessConfig {
-  guestPassword?: string
-  hasPassword?: boolean // 是否已设置访客密码
+export interface PermissionSettings {
   sessionTimeout: number
   maxLoginAttempts: number
   lockoutDuration: number

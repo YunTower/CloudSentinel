@@ -12,15 +12,16 @@ export function setupRouteGuards(router: Router) {
         // 已认证则跳转到上次意图路径或首页
         try {
           const intended = sessionStorage.getItem('intended_path')
-          if (intended && intended !== to.fullPath) {
+          if (intended && intended !== to.fullPath && intended !== '/login') {
             sessionStorage.removeItem('intended_path')
             next({ name: 'overview', query: { redirect_uri: intended } })
             return
           }
         } catch {}
+        const fromPath = from.fullPath && from.fullPath !== '/login' ? from.fullPath : undefined
         next({
           name: 'overview',
-          query: from.fullPath ? { redirect_uri: from.fullPath } : undefined,
+          query: fromPath ? { redirect_uri: fromPath } : undefined,
         })
         return
       }
@@ -47,38 +48,6 @@ export function setupRouteGuards(router: Router) {
       if (to.name === 'login') {
         next()
         return
-      }
-
-      // 检查是否允许访客访问，如果允许则自动签发访客token
-      try {
-        let publicSettingsData = authStore.getPublicSettings()
-        if (!publicSettingsData) {
-          await authStore.loadPublicSettings()
-          publicSettingsData = authStore.getPublicSettings()
-        }
-
-        if (publicSettingsData) {
-          const publicSettings = {
-            allowGuest: publicSettingsData.allow_guest_login,
-            enablePassword: publicSettingsData.guest_password_enabled,
-            hideSensitiveInfo: true,
-          }
-
-          if (publicSettings.allowGuest) {
-            // 允许访客访问，尝试自动登录（仅当不需要密码时）
-            if (!publicSettings.enablePassword) {
-              const result = await authStore.handleGuestLogin('', false, publicSettings)
-              if (result.success) {
-                next()
-                return
-              } else {
-                console.error('自动访客登录失败:', result.error)
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('加载公开设置失败:', error)
       }
 
       try {

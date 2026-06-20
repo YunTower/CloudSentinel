@@ -18,6 +18,7 @@ export interface GetPanelSettingsData {
 
 export type GetCheckUpdateResponse = ApiResponse<GetUpdateData>
 export interface GetUpdateData {
+  has_update?: boolean
   latest_version: string
   latest_version_type: VersionType
   current_version: string
@@ -43,11 +44,6 @@ export interface SavePanelSettingsBody {
 
 // Permissions
 export interface GetPermissionsSettingsData {
-  allowGuest: boolean
-  enablePassword: boolean
-  guestPassword: string
-  hasPassword?: boolean // 是否已设置访客密码
-  hideSensitiveInfo: boolean
   sessionTimeout: number
   maxLoginAttempts: number
   lockoutDuration: number
@@ -59,10 +55,6 @@ export interface GetPermissionsSettingsData {
 export type GetPermissionsSettingsResponse = ApiResponse<GetPermissionsSettingsData>
 
 export interface SavePermissionsSettingsBody {
-  allowGuest: boolean
-  enablePassword: boolean
-  guestPassword?: string
-  hideSensitiveInfo: boolean
   sessionTimeout: number
   maxLoginAttempts: number
   lockoutDuration: number

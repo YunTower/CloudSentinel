@@ -2,7 +2,7 @@ import { requester } from '@/utils/requester.ts'
 
 // 登录请求
 const loginMethod = (
-  type: 'admin' | 'guest',
+  type: 'admin',
   password: string,
   username?: string,
   remember?: boolean,

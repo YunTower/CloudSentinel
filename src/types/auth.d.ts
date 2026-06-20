@@ -1,3 +1,6 @@
+import type { PublicDisplayPublicPayloadV1 } from './settings/public-display'
+import type { PublicPagesConfigV1 } from './settings/public-pages'
+
 // 用户角色类型
 export type UserRole = 'guest' | 'admin'
 
@@ -19,19 +22,12 @@ export interface CustomJwtPayload {
   role?: UserRole
 }
 
-// 游客访问配置接口
-export interface GuestAccessConfig {
-  allowGuest: boolean
-  enablePassword: boolean
-  hideSensitiveInfo: boolean
-}
-
 // API响应类型
 export interface PublicSettingsResponse {
   data: {
-    allow_guest_login: boolean
-    guest_password_enabled: boolean
     panel_title: string
+    public_display?: PublicDisplayPublicPayloadV1
+    public_pages?: PublicPagesConfigV1
   }
   message: string
   status: boolean
