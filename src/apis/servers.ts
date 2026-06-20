@@ -15,6 +15,7 @@ export default {
     }
     return requester.Get(url)
   },
+  getPublicServers: () => requester.Get('/public/servers'),
   getServerDetail: (id: string, revealAgentKey = false) => {
     const params = new URLSearchParams()
     if (revealAgentKey) {
