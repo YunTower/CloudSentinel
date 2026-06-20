@@ -1,45 +1,68 @@
 # 云哨 CloudSentinel
 
-## 📖 简介
+CloudSentinel 是一套轻量的服务器监控面板，包含面板前端、面板后端和被控 Agent。适合自建服务器状态面板、资源监控、公开状态页和基础告警场景。
 
-CloudSentinel 是一款轻量的服务器运维探针前端应用。基于 Vue 3 + TypeScript + Vite 等现代化技术栈构建，提供直观的管理控制台与公开页面，支持访客访问、实时负载展示与告警相关配置视图。
+## 功能
 
-## ✨ 功能特性
+- 服务器 CPU、内存、磁盘、网络等指标展示
+- WebSocket 实时数据上报
+- 服务可用性监控与告警规则
+- 公开展示页、访客访问与基础权限控制
+- Agent 一键安装、后台运行与远程配置更新
 
-- 🔐 **访客访问**：支持密码保护的访客访问模式
-- 📊 **实时监控**：实时展示服务器 CPU、内存、磁盘、网络等关键指标
-- ⚠️ **阈值告警**：灵活的告警规则配置，支持邮件、WebHook告警方式
-- ⚙️ **监控配置**：丰富的监控配置选项
+## 快速安装
 
-## 🚀 快速开始
+在面板服务器执行：
 
-
-### 安装面板端
-1. 在服务器执行以下命令安装面板
-```shell
+```bash
 curl -L https://raw.githubusercontent.com/YunTower/CloudSentinel-Backend/refs/heads/master/install.sh -o cloudsentinel.sh && chmod +x cloudsentinel.sh && sudo ./cloudsentinel.sh
 ```
-2. 待面板安装完成后会输出面板地址、管理员账号、密码，需要在云服务器服务商防火墙/安全组放行面板端口，然后就可以登录面板了。
 
-### 安装被控探针
-1. 在需要被监控的服务器上执行以下命令。   
-这个命令会在面板端添加好服务器后自动生成，你也可以选择自己手动填入。   
-注意：需要修改命令中的`--server`和`--key`参数，不要直接复制执行    
-```shell
-curl -L https://raw.githubusercontent.com/YunTower/CloudSentinel-Agent/refs/heads/master/install.sh -o cloudsentinel_agent.sh && chmod +x cloudsentinel_agent.sh && sudo ./cloudsentinel_agent.sh --server=服务端websocket地址 --key=通信密钥 --daemon
-```
-若不需要以进程守护模式启动，则去掉末尾的`--daemon`参数即可
-```shell
-curl -L https://raw.githubusercontent.com/YunTower/CloudSentinel-Agent/refs/heads/master/install.sh -o cloudsentinel_agent.sh && chmod +x cloudsentinel_agent.sh && sudo ./cloudsentinel_agent.sh --server=服务端websocket地址 --key=通信密钥
+安装完成后脚本会输出访问地址、管理员账号和密码。请在服务器防火墙或云厂商安全组中放行脚本输出的面板端口。
+
+## 添加 Agent
+
+先在面板中添加服务器，面板会生成对应的 Agent 安装命令。也可以手动执行：
+
+```bash
+curl -L https://raw.githubusercontent.com/YunTower/CloudSentinel-Agent/refs/heads/master/install.sh -o cloudsentinel_agent.sh && chmod +x cloudsentinel_agent.sh && sudo ./cloudsentinel_agent.sh --server=服务端WebSocket地址 --key=通信密钥 --daemon
 ```
 
+`--server` 和 `--key` 必须替换为面板提供的值。无需后台守护时，可以去掉 `--daemon`。
 
-## 🔗 相关仓库
+## 本地开发
 
-- **面板前端**: [CloudSentinel](https://github.com/YunTower/CloudSentinel)
-- **面板后端**: [CloudSentinel-Backend](https://github.com/YunTower/CloudSentinel-Backend)
-- **被控探针**: [CloudSentinel-Agent](https://github.com/YunTower/CloudSentinel-Agent)
+前端开发：
 
-## 📄 许可证
+```bash
+cp .env.example .env
+pnpm install
+pnpm dev
+```
 
-CloudSentinel 以 MIT 协议开源发布。
+常用命令：
+
+```bash
+pnpm build
+pnpm type-check
+pnpm lint
+```
+
+默认接口配置在 `.env.example` 中：
+
+```env
+VITE_API_SERVER=http://127.0.0.1:3000
+VITE_API_URL_PREFIX=/api
+```
+
+## 仓库
+
+- 面板前端：[YunTower/CloudSentinel](https://github.com/YunTower/CloudSentinel)
+- 面板后端：[YunTower/CloudSentinel-Backend](https://github.com/YunTower/CloudSentinel-Backend)
+- 被控 Agent：[YunTower/CloudSentinel-Agent](https://github.com/YunTower/CloudSentinel-Agent)
+
+完整安装说明以本仓库为入口，后端和 Agent 仓库仅保留组件说明与维护命令。
+
+## 许可证
+
+MIT

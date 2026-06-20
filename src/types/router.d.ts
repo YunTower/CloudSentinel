@@ -5,6 +5,7 @@ declare module 'vue-router' {
   interface RouteMeta {
     title?: string
     icon?: Component | string
+    layout?: 'base' | 'blank'
     showToMenu?: boolean
     roles?: string[]
   }

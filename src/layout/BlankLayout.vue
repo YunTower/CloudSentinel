@@ -1,5 +1,5 @@
 <template>
-  <div class="flex min-h-dv">
-    <router-view />
+  <div class="min-h-dvh w-full">
+    <slot />
   </div>
 </template>

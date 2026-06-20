@@ -15,7 +15,7 @@ const { isDarkMode } = useLayout()
 const naiveTheme = computed(() => (isDarkMode.value ? darkTheme : null))
 
 const layout = computed(() => {
-  if (route.name === 'login') {
+  if (route.path.startsWith('/public') || route.name === 'login' || route.meta?.layout === 'blank') {
     return BlankLayout
   }
   return BaseLayout

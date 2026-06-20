@@ -1,6 +1,12 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { setupRouteGuards } from './guards'
-import { RiHome5Line, RiServerLine, RiSettings4Line, RiRadarLine } from '@remixicon/vue'
+import {
+  RiAlarmWarningLine,
+  RiHome5Line,
+  RiRadarLine,
+  RiServerLine,
+  RiSettings4Line,
+} from '@remixicon/vue'
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -12,7 +18,7 @@ const router = createRouter({
       meta: {
         title: '总览',
         icon: RiHome5Line,
-        roles: ['guest', 'admin'],
+        roles: ['admin'],
       },
     },
     {
@@ -21,6 +27,17 @@ const router = createRouter({
       component: () => import('@/views/login/LoginView.vue'),
       meta: {
         title: '登录',
+        showToMenu: false,
+        roles: ['*'],
+      },
+    },
+    {
+      path: '/public/:pathMatch(.*)*',
+      name: 'publicPage',
+      component: () => import('@/views/public/PublicPageView.vue'),
+      meta: {
+        title: '公开页面',
+        layout: 'blank',
         showToMenu: false,
         roles: ['*'],
       },
@@ -46,6 +63,16 @@ const router = createRouter({
       },
     },
     {
+      path: '/incidents',
+      name: 'incidents',
+      component: () => import('@/views/incidents/IncidentsView.vue'),
+      meta: {
+        title: '事件',
+        icon: RiAlarmWarningLine,
+        roles: ['admin'],
+      },
+    },
+    {
       path: '/servers/:id',
       name: 'serverDetail',
       component: () => import('@/views/manager/servers/DetailView.vue'),
@@ -66,20 +93,11 @@ const router = createRouter({
       },
       children: [
         {
-          path: '/settings/panel',
-          name: 'panel',
-          component: () => import('@/views/settings/panel/PanelView.vue'),
+          path: '/settings/system',
+          name: 'system',
+          component: () => import('@/views/settings/system/SystemSettingsView.vue'),
           meta: {
-            title: '面板设置',
-            roles: ['admin'],
-          },
-        },
-        {
-          path: '/settings/permissions',
-          name: 'permissions',
-          component: () => import('@/views/settings/permissions/PermissionsView.vue'),
-          meta: {
-            title: '权限配置',
+            title: '系统设置',
             roles: ['admin'],
           },
         },
@@ -89,6 +107,15 @@ const router = createRouter({
           component: () => import('@/views/settings/alerts/AlertsView.vue'),
           meta: {
             title: '告警设置',
+            roles: ['admin'],
+          },
+        },
+        {
+          path: '/settings/public',
+          name: 'public',
+          component: () => import('@/views/settings/public/PublicSettingsView.vue'),
+          meta: {
+            title: '公开配置',
             roles: ['admin'],
           },
         },
