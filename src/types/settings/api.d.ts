@@ -44,22 +44,16 @@ export interface SavePanelSettingsBody {
 
 // Permissions
 export interface GetPermissionsSettingsData {
-  sessionTimeout: number
   maxLoginAttempts: number
   lockoutDuration: number
-  jwtSecret: string
-  jwtExpiration: number
   adminUsername?: string
 }
 
 export type GetPermissionsSettingsResponse = ApiResponse<GetPermissionsSettingsData>
 
 export interface SavePermissionsSettingsBody {
-  sessionTimeout: number
   maxLoginAttempts: number
   lockoutDuration: number
-  jwtSecret: string
-  jwtExpiration: number
   newUsername?: string
   newPassword?: string
   confirmPassword?: string

@@ -271,11 +271,8 @@ const usernameFormRef = ref<FormInst | null>(null)
 const passwordFormRef = ref<FormInst | null>(null)
 
 const permissions = ref<PermissionSettings>({
-  sessionTimeout: 60,
   maxLoginAttempts: 5,
   lockoutDuration: 15,
-  jwtSecret: 'your-secret-key',
-  jwtExpiration: 24,
 })
 
 const adminAccount = ref<AdminAccount>({
@@ -291,10 +288,6 @@ const updatingUsername = ref(false)
 const updatingPassword = ref(false)
 
 const sessionRules: FormRules = {
-  sessionTimeout: [
-    { required: true, type: 'number', message: '请输入会话超时时间', trigger: 'blur' },
-    { type: 'number', min: 5, max: 1440, message: '范围 5-1440 分钟', trigger: ['blur', 'input'] },
-  ],
   maxLoginAttempts: [
     { required: true, type: 'number', message: '请输入最大登录尝试次数', trigger: 'blur' },
     { type: 'number', min: 1, max: 10, message: '范围 1-10 次', trigger: ['blur', 'input'] },
@@ -347,11 +340,8 @@ const savePermissions = async () => {
   savingPermissions.value = true
   try {
     await settingsApi.savePermissionsSettings({
-      sessionTimeout: permissions.value.sessionTimeout,
       maxLoginAttempts: permissions.value.maxLoginAttempts,
       lockoutDuration: permissions.value.lockoutDuration,
-      jwtSecret: permissions.value.jwtSecret,
-      jwtExpiration: permissions.value.jwtExpiration,
     })
     message.success('权限设置已更新', { duration: 3000 })
   } catch {
@@ -370,11 +360,8 @@ const updateUsername = async () => {
   updatingUsername.value = true
   try {
     await settingsApi.savePermissionsSettings({
-      sessionTimeout: permissions.value.sessionTimeout,
       maxLoginAttempts: permissions.value.maxLoginAttempts,
       lockoutDuration: permissions.value.lockoutDuration,
-      jwtSecret: permissions.value.jwtSecret,
-      jwtExpiration: permissions.value.jwtExpiration,
       newUsername: adminAccount.value.newUsername,
       currentPassword: adminAccount.value.currentPassword,
     })
@@ -404,11 +391,8 @@ const updatePassword = async () => {
   updatingPassword.value = true
   try {
     await settingsApi.savePermissionsSettings({
-      sessionTimeout: permissions.value.sessionTimeout,
       maxLoginAttempts: permissions.value.maxLoginAttempts,
       lockoutDuration: permissions.value.lockoutDuration,
-      jwtSecret: permissions.value.jwtSecret,
-      jwtExpiration: permissions.value.jwtExpiration,
       newPassword: adminAccount.value.newPassword,
       confirmPassword: adminAccount.value.confirmPassword,
       currentPassword: adminAccount.value.currentPassword,
@@ -435,15 +419,10 @@ const loadPermissions = async () => {
     const res = await settingsApi.getPermissionsSettings()
     const data = res?.data
     if (data) {
-      permissions.value.sessionTimeout =
-        Number(data.sessionTimeout) || permissions.value.sessionTimeout
       permissions.value.maxLoginAttempts =
         Number(data.maxLoginAttempts) || permissions.value.maxLoginAttempts
       permissions.value.lockoutDuration =
         Number(data.lockoutDuration) || permissions.value.lockoutDuration
-      permissions.value.jwtSecret = String(data.jwtSecret || '')
-      permissions.value.jwtExpiration =
-        Number(data.jwtExpiration) || permissions.value.jwtExpiration
       if (data.adminUsername) adminAccount.value.username = data.adminUsername
     }
   } catch (error) {
@@ -660,18 +639,6 @@ onMounted(() => {
                 :rules="sessionRules"
                 label-placement="top"
               >
-                <n-form-item label="会话超时时间" path="sessionTimeout" required>
-                  <n-input-number
-                    v-model:value="permissions.sessionTimeout"
-                    :min="5"
-                    :max="1440"
-                    :show-button="false"
-                    class="w-full"
-                    placeholder="请输入会话超时时间"
-                  >
-                    <template #suffix>分钟</template>
-                  </n-input-number>
-                </n-form-item>
                 <n-form-item label="最大登录尝试次数" path="maxLoginAttempts" required>
                   <n-input-number
                     v-model:value="permissions.maxLoginAttempts"
