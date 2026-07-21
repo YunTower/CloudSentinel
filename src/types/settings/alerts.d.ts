@@ -29,6 +29,7 @@ export interface WebhookNotification {
   enabled: boolean
   webhook: string
   hasWebhook?: boolean
+  clearWebhook?: boolean
   mentioned: string
   platform?: 'feishu' | 'wechat' | 'generic'
 }

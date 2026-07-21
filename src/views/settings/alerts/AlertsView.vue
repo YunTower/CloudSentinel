@@ -22,6 +22,7 @@ const notifications = ref<Notifications>({
     enabled: false,
     webhook: '',
     hasWebhook: false,
+    clearWebhook: false,
     mentioned: '@all',
     platform: 'generic',
   },
@@ -203,6 +204,13 @@ watch(
   },
 )
 
+watch(
+  () => notifications.value.webhook.enabled,
+  (enabled) => {
+    if (enabled) notifications.value.webhook.clearWebhook = false
+  },
+)
+
 // 加载告警设置
 const loadAlertSettings = async () => {
   loading.value = true
@@ -234,6 +242,7 @@ const loadAlertSettings = async () => {
         enabled: webhook.enabled || false,
         webhook: '',
         hasWebhook: webhook.hasWebhook || false,
+        clearWebhook: false,
         mentioned: String(webhook.mentioned || ''),
         platform: webhook.platform
           ? (webhook.platform as 'feishu' | 'wechat' | 'generic')
@@ -534,6 +543,12 @@ onMounted(() => {
                     </n-button>
                   </div>
                 </div>
+                <n-checkbox
+                  v-if="notifications.webhook.hasWebhook && !notifications.webhook.enabled"
+                  v-model:checked="notifications.webhook.clearWebhook"
+                >
+                  清除已保存的 Webhook URL
+                </n-checkbox>
               </div>
             </div>
           </n-form>
