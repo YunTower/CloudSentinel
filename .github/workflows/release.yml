@@ -132,6 +132,27 @@ jobs:
           ./scripts/build_ci.sh "${{ github.workspace }}/dist" "${{ steps.tag.outputs.version }}" linux arm64
 
       # ==========================
+      # 签名发布校验清单
+      # 私钥仅保存在 GitHub Secrets，客户端只内置对应公钥。
+      # ==========================
+      - name: Import release signing key
+        env:
+          RELEASE_SIGNING_PRIVATE_KEY: ${{ secrets.RELEASE_SIGNING_PRIVATE_KEY }}
+        run: |
+          test -n "$RELEASE_SIGNING_PRIVATE_KEY"
+          printf '%s' "$RELEASE_SIGNING_PRIVATE_KEY" | gpg --batch --import
+
+      - name: Sign backend checksums
+        env:
+          RELEASE_SIGNING_PASSPHRASE: ${{ secrets.RELEASE_SIGNING_PASSPHRASE }}
+          RELEASE_SIGNING_KEY_FINGERPRINT: 2AB82536577C0A9F52347022CF62CB23EB21D3D0
+        run: |
+          test -n "$RELEASE_SIGNING_PASSPHRASE"
+          for checksum in backend-repo/dashboard-linux-amd64.sha256 backend-repo/dashboard-linux-arm64.sha256; do
+            printf '%s' "$RELEASE_SIGNING_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 --local-user "$RELEASE_SIGNING_KEY_FINGERPRINT" --armor --detach-sign --output "${checksum}.asc" "$checksum"
+          done
+
+      # ==========================
       # 给 Backend 打 Tag
       # ==========================
       - name: Create tag in backend repository
@@ -182,5 +203,7 @@ jobs:
           files: |
             backend-repo/dashboard-linux-amd64.tar.gz
             backend-repo/dashboard-linux-amd64.sha256
+            backend-repo/dashboard-linux-amd64.sha256.asc
             backend-repo/dashboard-linux-arm64.tar.gz
             backend-repo/dashboard-linux-arm64.sha256
+            backend-repo/dashboard-linux-arm64.sha256.asc
