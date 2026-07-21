@@ -47,7 +47,7 @@ class WebSocketManager {
     }
   }
 
-  connect(token: string): void {
+  connect(): void {
     // 如果 token 已标记为无效，不重连
     if (this.tokenInvalid) {
       console.warn('[WebSocketManager] Token 无效，停止连接')
@@ -117,7 +117,7 @@ class WebSocketManager {
         websocket.send(
           JSON.stringify({
             type: 'auth',
-            data: { token },
+            data: {},
           }),
         )
       }
@@ -240,7 +240,7 @@ class WebSocketManager {
             this.reconnectTimer = setTimeout(() => {
               // 再次检查状态，避免重复连接
               if (this.shouldReconnect && !this.tokenInvalid) {
-                this.connect(token)
+                this.connect()
               }
             }, delay)
           } else {
@@ -271,7 +271,7 @@ class WebSocketManager {
           clearTimeout(this.reconnectTimer)
         }
         this.reconnectTimer = setTimeout(() => {
-          this.connect(token)
+          this.connect()
         }, delay)
       }
     }

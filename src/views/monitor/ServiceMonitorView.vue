@@ -38,7 +38,7 @@ const defaultForm = (): ServiceMonitorForm => ({
   timeout: 10,
   enabled: true,
   server_ids: [],
-  expect_status: 0,
+  expect_status: 200,
   expect_body: '',
   http_method: 'GET',
   http_headers: '',
@@ -225,9 +225,8 @@ const openResults = async (m: ServiceMonitor) => {
 let unregister: (() => void) | null = null
 onMounted(async () => {
   await Promise.all([load(), loadServers()])
-  const token = authStore.getToken()
-  if (token) {
-    websocketManager.connect(token)
+  if (authStore.isAuthenticated) {
+    websocketManager.connect()
     unregister = websocketManager.registerMessageHandler((msg) => {
       if (msg.type === 'service_monitor_update' && msg.data) {
         const d = msg.data as {
@@ -300,10 +299,7 @@ onUnmounted(() => {
 
     <n-modal v-model:show="resultsDialog" preset="card" class="max-w-5xl" :bordered="false">
       <template #header>
-        <div>
-          <div class="text-base font-semibold">探测结果</div>
-          <div class="text-xs text-muted-color mt-1">{{ selectedMonitor?.name || '-' }}</div>
-        </div>
+        <span>探测结果 - {{ selectedMonitor?.name || '-' }}</span>
       </template>
       <n-data-table
         size="small"

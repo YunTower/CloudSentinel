@@ -38,7 +38,7 @@ export function setupRouteGuards(router: Router) {
       return
     }
 
-    if (!authStore.initialized && authStore.getToken()) {
+    if (!authStore.initialized) {
       await authStore.bootstrap()
     }
 

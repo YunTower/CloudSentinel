@@ -89,9 +89,8 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
   let unregisterMessageHandler: (() => void) | null = null
 
   const connect = () => {
-    const token = authStore.getToken()
-    if (!token) {
-      console.warn('[useWebSocket] 无法建立WebSocket连接：缺少认证token')
+    if (!authStore.isAuthenticated) {
+      console.warn('[useWebSocket] 无法建立WebSocket连接：未认证')
       return
     }
 
@@ -106,7 +105,7 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
     )
 
     // 连接到全局WebSocket
-    websocketManager.connect(token)
+    websocketManager.connect()
   }
 
   const disconnect = () => {

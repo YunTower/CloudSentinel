@@ -1,9 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { jwtDecode } from 'jwt-decode'
 import type {
   CheckLoginResponse,
-  CustomJwtPayload,
   LoginResponse,
   PublicSettingsResponse,
   UserRole,
@@ -26,8 +24,6 @@ export const useAuthStore = defineStore('auth', () => {
   const bootstrapPromise = ref<Promise<void> | null>(null)
 
   // 常量
-  const TOKEN_KEY = 'auth_token'
-  const REFRESH_TOKEN_KEY = 'refresh_token'
 
   // 计算属性
   const isAuthenticated = computed(() => {
@@ -38,46 +34,35 @@ export const useAuthStore = defineStore('auth', () => {
   const role = computed<UserRole>(() => (user.value?.role || 'guest') as UserRole)
 
   // Token 管理
-  const getToken = (): string | null => {
-    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY)
-  }
+  const getToken = (): string | null => null
 
   const setToken = (token: string, rememberMe: boolean = false): void => {
-    const storage = rememberMe ? localStorage : sessionStorage
-    storage.setItem(TOKEN_KEY, token)
+    void token
+    void rememberMe
   }
 
   const getRefreshToken = (): string | null => {
-    return localStorage.getItem(REFRESH_TOKEN_KEY) || sessionStorage.getItem(REFRESH_TOKEN_KEY)
+    return null
   }
 
   const setRefreshToken = (token: string, rememberMe: boolean = false): void => {
-    const storage = rememberMe ? localStorage : sessionStorage
-    storage.setItem(REFRESH_TOKEN_KEY, token)
+    void token
+    void rememberMe
   }
 
   const clearTokens = (): void => {
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(REFRESH_TOKEN_KEY)
-    sessionStorage.removeItem(TOKEN_KEY)
-    sessionStorage.removeItem(REFRESH_TOKEN_KEY)
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('refresh_token')
+    sessionStorage.removeItem('auth_token')
+    sessionStorage.removeItem('refresh_token')
   }
 
   const isTokenValid = (): boolean => {
-    const token = getToken()
-    if (!token) return false
-
-    try {
-      const decoded = jwtDecode<CustomJwtPayload>(token)
-      const currentTime = Date.now() / 1000
-      return decoded.exp > currentTime
-    } catch {
-      return false
-    }
+    return currentUserSession.value !== null
   }
 
   const isTokenStoredInLocalStorage = (): boolean => {
-    return localStorage.getItem(TOKEN_KEY) !== null
+    return false
   }
 
   // 用户管理
@@ -87,34 +72,7 @@ export const useAuthStore = defineStore('auth', () => {
       return currentUserSession.value
     }
 
-    // 如果没有临时会话，尝试从token解析
-    const token = getToken()
-    if (!token) return null
-
-    try {
-      const decoded = jwtDecode<CustomJwtPayload>(token)
-      const currentTime = Date.now() / 1000
-
-      if (!decoded?.exp || decoded.exp <= currentTime) {
-        clearTokens()
-        return null
-      }
-
-      // 后端JWT载荷为 { key: "1" | string, sub: "user", exp, iat, ... }
-      // 这里根据 key 推断角色与用户名，构造 UserSession
-      const inferredRole: UserRole = decoded.key === '1' ? 'admin' : 'guest'
-      const inferredUsername = inferredRole === 'admin' ? 'admin' : '游客'
-
-      return {
-        id: decoded.key?.toString?.() || 'unknown',
-        username: decoded.username || inferredUsername,
-        role: decoded.role || inferredRole,
-        exp: decoded.exp,
-      }
-    } catch {
-      clearTokens()
-      return null
-    }
+    return null
   }
 
   const setCurrentUser = (userSession: UserSession): void => {
@@ -211,21 +169,11 @@ export const useAuthStore = defineStore('auth', () => {
       const data = response as LoginResponse
 
       if (data.status && data.data) {
-        // 设置token
-        setToken(data.data.token, rememberMe)
-
-        // 从 JWT 中读取实际过期时间
-        let tokenExp = Date.now() / 1000 + 86400
-        try {
-          const decoded = jwtDecode<CustomJwtPayload>(data.data.token)
-          if (decoded.exp) tokenExp = decoded.exp
-        } catch {}
-
         const userSession: UserSession = {
           id: data.data.username,
           username: data.data.username,
           role: data.data.type as UserRole,
-          exp: tokenExp,
+          exp: Date.now() / 1000 + 86400,
         }
 
         setCurrentUser(userSession)
@@ -267,19 +215,12 @@ export const useAuthStore = defineStore('auth', () => {
   // 刷新token
   const refreshToken = async (): Promise<string | null> => {
     try {
-      const currentToken = getToken()
-      if (!currentToken) {
-        throw new Error('No token available')
-      }
-
       // 直接使用当前token调用刷新API
       const response = await authApi.refreshToken()
       const data = response as LoginResponse
 
-      if (data.status && data.data?.token) {
-        // 更新token
-        setToken(data.data.token, isTokenStoredInLocalStorage())
-        return data.data.token
+      if (data.status) {
+        return null
       }
 
       throw new Error(data.message || 'Token refresh failed')
@@ -294,6 +235,7 @@ export const useAuthStore = defineStore('auth', () => {
   // 登出
   const logout = (): void => {
     websocketManager.disconnect()
+		void authApi.logout().send().catch(() => undefined)
     clearTokens()
     isLoggedIn.value = false
     currentUserSession.value = null
@@ -371,15 +313,7 @@ export const useAuthStore = defineStore('auth', () => {
 
         await fetchPublicSettings()
 
-        // 如果有 token，检查登录状态
-        const token = getToken()
-        if (token) {
-          try {
-            await checkLoginStatus()
-          } catch (error) {
-            console.error('Failed to check login status during bootstrap:', error)
-          }
-        }
+        await checkLoginStatus()
 
         initialized.value = true
       } finally {
