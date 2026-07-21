@@ -21,6 +21,7 @@ const notifications = ref<Notifications>({
   webhook: {
     enabled: false,
     webhook: '',
+    hasWebhook: false,
     mentioned: '@all',
     platform: 'generic',
   },
@@ -108,6 +109,7 @@ const alertRules: FormRules = {
     {
       validator: (_rule, value: string) => {
         if (!notifications.value.webhook.enabled) return true
+        if (!value?.trim() && notifications.value.webhook.hasWebhook) return true
         if (!value?.trim()) return new Error('请输入 Webhook URL')
         if (!value.startsWith('http://') && !value.startsWith('https://')) {
           return new Error('Webhook URL 必须以 http:// 或 https:// 开头')
@@ -230,7 +232,8 @@ const loadAlertSettings = async () => {
     if (webhook) {
       Object.assign(notifications.value.webhook, {
         enabled: webhook.enabled || false,
-        webhook: String(webhook.webhook || ''),
+        webhook: '',
+        hasWebhook: webhook.hasWebhook || false,
         mentioned: String(webhook.mentioned || ''),
         platform: webhook.platform
           ? (webhook.platform as 'feishu' | 'wechat' | 'generic')
@@ -489,10 +492,14 @@ onMounted(() => {
                       placeholder="选择平台"
                     />
                   </n-form-item>
-                  <n-form-item label="Webhook URL" path="webhook.webhook" required>
+                  <n-form-item
+                    label="Webhook URL"
+                    path="webhook.webhook"
+                    :required="!notifications.webhook.hasWebhook"
+                  >
                     <n-input
                       v-model:value="notifications.webhook.webhook"
-                      :placeholder="webhookPlaceholder"
+                      :placeholder="notifications.webhook.hasWebhook ? '已保存；留空将保留，输入新 URL 可替换' : webhookPlaceholder"
                     />
                   </n-form-item>
                   <div v-if="supportsMention" class="flex flex-col gap-2">

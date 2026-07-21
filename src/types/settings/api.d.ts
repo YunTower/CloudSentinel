@@ -90,7 +90,7 @@ export interface AlertsNotificationsDto {
     password?: string
     hasPassword?: boolean
   }
-  webhook: { enabled: boolean; webhook: string; mentioned: string; platform?: string }
+  webhook: { enabled: boolean; webhook: string; hasWebhook?: boolean; mentioned: string; platform?: string }
 }
 
 export interface GetAlertsSettingsData {
