@@ -477,7 +477,7 @@ onMounted(async () => {
                     <div class="space-y-1">
                       <div class="text-color font-medium">启用公开展示策略</div>
                       <div class="text-xs text-muted-color">
-                        仅对游客生效；关闭后游客仍可访问，但按默认最小策略呈现
+                        仅对游客生效；关闭后游客仍可访问公开页面，但不会返回服务器数据
                       </div>
                     </div>
                     <n-switch v-model:value="displayConfig.enabled" />
