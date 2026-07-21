@@ -23,9 +23,9 @@ const logoutMethod = () => {
   return method
 }
 
-// Token 刷新请求
+// 会话刷新请求
 const refreshTokenMethod = () => {
-  const method = requester.Get('/auth/refresh')
+  const method = requester.Post('/auth/refresh')
   method.meta = {
     authRole: 'refreshToken',
   }

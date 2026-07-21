@@ -36,7 +36,6 @@ export interface PublicSettingsResponse {
 // 登录响应类型
 export interface LoginResponse {
   data: {
-    token: string
     type: 'admin' | 'guest'
     username: string
   }
