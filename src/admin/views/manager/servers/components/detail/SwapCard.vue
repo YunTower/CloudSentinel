@@ -1,0 +1,66 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import type { SwapInfo } from '@/shared/types/manager/servers'
+import { getProgressTextColor, getProgressBarColor, formatBytes } from '@/shared/utils/version.ts'
+import { RiDatabaseLine } from '@remixicon/vue'
+
+interface Props {
+  swapInfo?: SwapInfo
+}
+
+const props = defineProps<Props>()
+
+const swapUsage = computed(() => {
+  if (!props.swapInfo || props.swapInfo.swap_total === 0) {
+    return 0
+  }
+  return props.swapInfo.swap_usage_percent
+})
+</script>
+
+<template>
+  <n-card>
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-2">
+        <ri-database-line size="14px" />
+        <span class="font-medium">Swap使用率</span>
+      </div>
+      <span
+        v-if="swapInfo && swapInfo.swap_total > 0"
+        class="text-2xl font-bold"
+        :class="getProgressTextColor(swapUsage)"
+      >
+        {{ swapUsage.toFixed(2) }}%
+      </span>
+    </div>
+    <n-progress
+      v-if="swapInfo && swapInfo.swap_total > 0"
+      type="line"
+      :percentage="swapUsage"
+      :show-indicator="false"
+      :color="getProgressBarColor(swapUsage)"
+      :height="12"
+      :border-radius="9999"
+    />
+    <div
+      v-if="swapInfo && swapInfo.swap_total > 0"
+      class="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-700 text-sm"
+    >
+      <div class="flex items-center justify-between text-muted-color">
+        <span>已使用:</span>
+        <span class="font-medium text-color">{{ formatBytes(swapInfo.swap_used) }}</span>
+      </div>
+      <div class="flex items-center justify-between text-muted-color mt-1">
+        <span>总容量:</span>
+        <span class="font-medium text-color">{{ formatBytes(swapInfo.swap_total) }}</span>
+      </div>
+      <div class="flex items-center justify-between text-muted-color mt-1">
+        <span>可用:</span>
+        <span class="font-medium text-color">{{ formatBytes(swapInfo.swap_free) }}</span>
+      </div>
+    </div>
+    <div v-else>
+      <n-empty description="系统未配置Swap分区" />
+    </div>
+  </n-card>
+</template>
