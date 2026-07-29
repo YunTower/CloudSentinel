@@ -47,6 +47,81 @@ class WebSocketManager {
     }
   }
 
+  /**
+   * 将 HTTP(S) 基址转为 WebSocket 前端通道地址。
+   * @param base API 服务基址（可为 origin 或带路径的 API 根）
+   * @param relativeApiPrefix 当 base 无路径时使用的相对前缀，默认 /api
+   */
+  private httpBaseToFrontendWsURL(base: string, relativeApiPrefix = '/api'): string | null {
+    try {
+      const url = new URL(base)
+      const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+      const pathname = url.pathname.replace(/\/$/, '')
+      const apiRoot =
+        pathname && pathname !== '/'
+          ? pathname
+          : relativeApiPrefix.replace(/\/$/, '') || '/api'
+      return `${wsProtocol}//${url.host}${apiRoot}/ws/frontend`
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * 解析管理端 WebSocket 地址。
+   * 优先级：
+   * 1. VITE_WS_URL（显式覆盖）
+   * 2. 相对 VITE_API_URL_PREFIX → 当前页同源（走 Vite/网关代理，可带上 HttpOnly Cookie）
+   * 3. 绝对 VITE_API_URL_PREFIX / VITE_API_SERVER → 直连 API 主机
+   */
+  private resolveWebSocketURL(): string {
+    const configuredWsURL = import.meta.env.VITE_WS_URL
+    if (configuredWsURL) {
+      return configuredWsURL
+    }
+
+    const apiPrefix = import.meta.env.VITE_API_URL_PREFIX || '/api'
+    const isAbsolutePrefix = /^https?:\/\//i.test(apiPrefix)
+    const relativePrefix = isAbsolutePrefix
+      ? '/api'
+      : apiPrefix.replace(/\/$/, '') || '/api'
+
+    // 本地开发 / 同源部署：相对前缀走当前页面主机，Cookie 才能随握手发送。
+    if (!isAbsolutePrefix) {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      return `${protocol}//${window.location.host}${relativePrefix}/ws/frontend`
+    }
+
+    const fromApiPrefix = this.httpBaseToFrontendWsURL(apiPrefix)
+    if (fromApiPrefix) {
+      return fromApiPrefix
+    }
+
+    const apiServer = import.meta.env.VITE_API_SERVER
+    if (apiServer) {
+      const fromApiServer = this.httpBaseToFrontendWsURL(apiServer, relativePrefix)
+      if (fromApiServer) {
+        return fromApiServer
+      }
+      console.warn('[WebSocketManager] VITE_API_SERVER 无效，继续回退:', apiServer)
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${protocol}//${window.location.host}${relativePrefix}/ws/frontend`
+  }
+
+  /**
+   * 判断后端错误是否表示会话令牌真正失效（应停止重连）。
+   */
+  private isAuthTokenInvalidError(message: string): boolean {
+    return (
+      message.includes('Token无效') ||
+      message.includes('Token过期') ||
+      message.includes('Token无效或已过期') ||
+      /token.*(无效|过期|失效)/i.test(message)
+    )
+  }
+
   connect(): void {
     // 如果 token 已标记为无效，不重连
     if (this.tokenInvalid) {
@@ -83,23 +158,8 @@ class WebSocketManager {
     try {
       this.isConnecting = true
 
-      // 管理端与 API 分域部署时优先使用显式 API WebSocket 地址。
-      const isDev = import.meta.env.DEV
-      const configuredWsURL = import.meta.env.VITE_WS_URL
-      let wsUrl: string
-
-      if (configuredWsURL) {
-        wsUrl = configuredWsURL
-      } else if (isDev) {
-        // 开发环境
-        wsUrl = 'ws://127.0.0.1:3000/api/ws/frontend'
-      } else {
-        // 生产环境
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-        const host = window.location.host
-        wsUrl = `${protocol}//${host}/api/ws/frontend`
-      }
-
+      const wsUrl = this.resolveWebSocketURL()
+      console.log('[WebSocketManager] 连接地址:', wsUrl)
 
       const websocket = new WebSocket(wsUrl)
       this.ws = websocket
@@ -152,15 +212,10 @@ class WebSocketManager {
             }, this.heartbeatIntervalTime)
           }
 
-          // 检查是否是错误消息（token 无效）
+          // 检查是否是错误消息（token 真正无效/过期）
           if (message.type === 'error' && message.status === 'error') {
             const errorMessage = message.message || ''
-            if (
-              errorMessage.includes('Token无效') ||
-              errorMessage.includes('Token过期') ||
-              errorMessage.includes('token') ||
-              errorMessage.includes('Token')
-            ) {
+            if (this.isAuthTokenInvalidError(errorMessage)) {
               console.error('[WebSocketManager] Token 无效或已过期，停止重连:', errorMessage)
               this.tokenInvalid = true
               this.shouldReconnect = false

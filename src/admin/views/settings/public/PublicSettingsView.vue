@@ -26,7 +26,7 @@ import PublicPageShell from '@/shared/public-page/PublicPageShell.vue'
 import PublicPageRenderer from '@/shared/public-page/PublicPageRenderer.vue'
 import {
   defaultPublicPagesConfig,
-  ensureIncidentsSeparated,
+  normalizeBoundPublicPages,
 } from '@/shared/public-page/ensureIncidentsSeparated'
 import {
   RiAddLine,
@@ -314,13 +314,34 @@ const createBlockData = (type: PublicPageBlockTypeV1): any => {
   return {}
 }
 
+const addPage = () => {
+  const newId = `page_${Date.now().toString(36)}`
+  const p: PublicPageV1 = {
+    id: newId,
+    path: `/public/${newId}`,
+    title: '新页面',
+    brandName: 'CloudSentinel',
+    accentColor: '#18a058',
+    blocks: [
+      { type: 'markdown', data: { markdown: '## 新页面' } },
+      {
+        type: 'serviceStatus',
+        data: { monitorIds: [], groupBy: 'group', limit: 0, showUptime: true },
+      },
+      { type: 'incidents', data: createBlockData('incidents') },
+    ],
+  }
+  pagesConfig.value.pages.push(p)
+  activePageId.value = p.id
+}
+
 const loadPagesConfig = async () => {
   loadingPages.value = true
   try {
     const res = await publicPagesApi.getPublicPagesSettings()
     const data = res as ApiResponse<PublicPagesConfigV1>
     if (data.status && data.data) {
-      pagesConfig.value = ensureIncidentsSeparated(data.data)
+      pagesConfig.value = normalizeBoundPublicPages(data.data)
       if (!pagesConfig.value.pages?.length) pagesConfig.value = defaultPagesConfig()
       activePageId.value = pagesConfig.value.pages[0].id
     } else {
@@ -336,12 +357,12 @@ const loadPagesConfig = async () => {
 const savePages = async () => {
   savingPages.value = true
   try {
-    const payload = ensureIncidentsSeparated(pagesConfig.value)
+    const payload = normalizeBoundPublicPages(pagesConfig.value)
     const res = await publicPagesApi.savePublicPagesSettings(payload)
     const data = res as ApiResponse<PublicPagesConfigV1>
     if (data.status) {
       if (data.data) {
-        pagesConfig.value = ensureIncidentsSeparated(data.data)
+        pagesConfig.value = normalizeBoundPublicPages(data.data)
         if (!pages.value.some((p) => p.id === activePageId.value)) {
           activePageId.value = pagesConfig.value.pages[0]?.id || 'home'
         }
@@ -358,20 +379,6 @@ const savePages = async () => {
   } finally {
     savingPages.value = false
   }
-}
-
-const addPage = () => {
-  const newId = `page_${Date.now().toString(36)}`
-  const p: PublicPageV1 = {
-    id: newId,
-    path: `/public/${newId}`,
-    title: '新页面',
-    brandName: 'CloudSentinel',
-    accentColor: '#18a058',
-    blocks: [{ type: 'markdown', data: { markdown: '## 新页面' } }],
-  }
-  pagesConfig.value.pages.push(p)
-  activePageId.value = p.id
 }
 
 const removePage = (id: string) => {
@@ -989,10 +996,11 @@ onMounted(async () => {
                 v-else
                 class="rounded-2xl bg-[var(--surface-0)] p-4 ring-1 ring-zinc-950/10 sm:p-5 dark:ring-white/10"
               >
-                <PublicPageShell :page="activePage" :pages="pages" compact>
+                <PublicPageShell :page="activePage" :pages="pages" view="status" compact>
                   <PublicPageRenderer
                     :page="activePage"
                     :pages="pages"
+                    view="status"
                     :servers="previewServers"
                     :incidents="incidents"
                     :service-monitors="serviceMonitors"

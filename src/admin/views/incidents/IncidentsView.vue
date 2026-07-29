@@ -2,7 +2,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { useMessage, type SelectOption } from 'naive-ui'
 import incidentsApi from '@/admin/apis/incidents'
+import publicPagesApi from '@/admin/apis/settings/public-pages'
 import type { Incident, IncidentEvent } from '@/shared/types/incidents'
+import type { PublicPagesConfigV1, PublicPageV1 } from '@/shared/types/settings/public-pages'
+import type { ApiResponse } from '@/shared/types/settings/api'
+import { normalizeBoundPublicPages } from '@/shared/public-page/ensureIncidentsSeparated'
+import { isIncidentsOnlyPage } from '@/shared/public-page/filterPublicIncidents'
 import { RiAddLine, RiCheckLine, RiEdit2Line, RiRefreshLine } from '@remixicon/vue'
 
 type ManualImpact = 'outage' | 'degraded' | 'maintenance'
@@ -14,21 +19,46 @@ const statusFilter = ref<'all' | 'active' | 'resolved'>('all')
 const sourceFilter = ref<'all' | 'service_monitor' | 'server' | 'maintenance'>('all')
 const createDialog = ref(false)
 const createSaving = ref(false)
-const createForm = ref<{ title: string; message: string; impact: ManualImpact }>({
+const createForm = ref<{
+  title: string
+  message: string
+  impact: ManualImpact
+  page_ids: string[]
+}>({
   title: '',
   message: '',
   impact: 'maintenance',
+  page_ids: [],
 })
 const updateDialog = ref(false)
 const updateSaving = ref(false)
 const selectedIncident = ref<Incident | null>(null)
 const updateMessage = ref('')
+const publicPages = ref<PublicPageV1[]>([])
 
 const impactOptions: SelectOption[] = [
   { label: '服务中断', value: 'outage' },
   { label: '性能下降', value: 'degraded' },
   { label: '维护', value: 'maintenance' },
 ]
+
+/** 绑定页列表（排除历史独立事件页） */
+const pageOptions = computed(() =>
+  publicPages.value
+    .filter((p) => !isIncidentsOnlyPage(p))
+    .map((p) => ({
+      label: `${p.title || p.id}（${p.path}）`,
+      value: p.id,
+    })),
+)
+
+const pageTitleById = computed(() => {
+  const map = new Map<string, string>()
+  for (const p of publicPages.value) {
+    map.set(p.id, p.title || p.id)
+  }
+  return map
+})
 
 const activeIncidents = computed(() => incidents.value.filter((item) => item.status === 'active'))
 const resolvedIncidents = computed(() => incidents.value.filter((item) => item.status !== 'active'))
@@ -42,6 +72,18 @@ const visibleIncidents = computed(() =>
     return true
   }),
 )
+
+const loadPages = async () => {
+  try {
+    const res = await publicPagesApi.getPublicPagesSettings()
+    const data = res as ApiResponse<PublicPagesConfigV1>
+    if (data.status && data.data?.pages) {
+      publicPages.value = normalizeBoundPublicPages(data.data).pages
+    }
+  } catch (err) {
+    console.warn('加载公开页面失败:', err)
+  }
+}
 
 const load = async () => {
   loading.value = true
@@ -109,6 +151,13 @@ const sourceLabel = (sourceType: string) => {
   return sourceType || '未知'
 }
 
+const pageScopeText = (incident: Incident) => {
+  if (incident.source_type !== 'maintenance') return '-'
+  const ids = incident.page_ids || []
+  if (ids.length === 0) return '全部公开页'
+  return ids.map((id) => pageTitleById.value.get(id) || id).join('、')
+}
+
 const eventTypeLabel = (event: IncidentEvent) => {
   if (event.event_type === 'opened') return '发生'
   if (event.event_type === 'resolved') return '恢复'
@@ -130,8 +179,9 @@ const sortedEvents = (events?: IncidentEvent[]) =>
     (a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime(),
   )
 
-const openCreateDialog = () => {
-  createForm.value = { title: '', message: '', impact: 'maintenance' }
+const openCreateDialog = async () => {
+  createForm.value = { title: '', message: '', impact: 'maintenance', page_ids: [] }
+  if (publicPages.value.length === 0) await loadPages()
   createDialog.value = true
 }
 
@@ -146,6 +196,7 @@ const createIncident = async () => {
       title: createForm.value.title.trim(),
       message: createForm.value.message.trim(),
       impact: createForm.value.impact,
+      page_ids: createForm.value.page_ids,
     })
     if (res.status) {
       message.success('事件已创建')
@@ -194,7 +245,9 @@ const resolveIncident = async (incident: Incident) => {
   }
 }
 
-onMounted(load)
+onMounted(async () => {
+  await Promise.all([load(), loadPages()])
+})
 </script>
 
 <template>
@@ -308,6 +361,10 @@ onMounted(load)
                 <div class="meta-label">来源</div>
                 <div class="meta-value">{{ sourceLabel(incident.source_type) }} #{{ incident.source_id }}</div>
               </div>
+              <div v-if="incident.source_type === 'maintenance'">
+                <div class="meta-label">展示页面</div>
+                <div class="meta-value">{{ pageScopeText(incident) }}</div>
+              </div>
               <div>
                 <div class="meta-label">开始时间</div>
                 <div class="meta-value">{{ formatTime(incident.started_at) }}</div>
@@ -333,6 +390,19 @@ onMounted(load)
         </n-form-item>
         <n-form-item label="影响类型" required>
           <n-select v-model:value="createForm.impact" :options="impactOptions" />
+        </n-form-item>
+        <n-form-item label="展示页面">
+          <n-select
+            v-model:value="createForm.page_ids"
+            multiple
+            clearable
+            filterable
+            :options="pageOptions"
+            :placeholder="
+              pageOptions.length ? '留空则在全部公开页展示' : '暂无公开页面，请先在公开配置中创建'
+            "
+            :disabled="pageOptions.length === 0"
+          />
         </n-form-item>
         <n-form-item label="内容" required>
           <n-input
