@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -26,6 +26,7 @@
   --text-color: var(--surface-700);
   --text-muted-color: var(--surface-500);
   --content-background: var(--surface-50);
+  --ease-public-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .dark {
@@ -97,6 +98,101 @@ body {
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+}
+
+html.public-app {
+  scrollbar-gutter: stable;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: var(--ease-public-out);
+}
+
+.public-interactive {
+  transition:
+    transform 140ms var(--ease-public-out),
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.public-interactive:active {
+  transform: scale(0.97);
+}
+
+.public-content-enter-active,
+.public-content-leave-active {
+  transition: opacity 160ms var(--ease-public-out);
+}
+
+.public-content-enter-from,
+.public-content-leave-to {
+  opacity: 0;
+}
+
+.public-collapse-enter-active,
+.public-collapse-leave-active {
+  display: grid;
+  overflow: hidden;
+  transition:
+    grid-template-rows 200ms var(--ease-public-out),
+    opacity 160ms var(--ease-public-out);
+}
+
+.public-collapse-enter-from,
+.public-collapse-leave-to {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+.public-collapse-enter-to,
+.public-collapse-leave-from {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.public-collapse__inner {
+  min-height: 0;
+}
+
+.public-skeleton-bar {
+  background: color-mix(in srgb, var(--surface-400) 18%, transparent);
+  animation: public-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes public-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 1ms;
+  }
+
+  .public-interactive,
+  .public-content-enter-active,
+  .public-content-leave-active,
+  .public-collapse-enter-active,
+  .public-collapse-leave-active {
+    transition-duration: 1ms;
+  }
+
+  .public-interactive:active {
+    transform: none;
+  }
+
+  .public-skeleton-bar {
+    animation: none;
+    opacity: 0.75;
+  }
 }
 
 .container {

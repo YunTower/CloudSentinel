@@ -100,18 +100,16 @@ const groupPill = (items: ServerItem[]) => {
     >
       <button
         type="button"
-        class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left sm:px-5"
+        class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-500 sm:px-5"
         :class="
-          isCollapsed(group.key)
-            ? undefined
-            : 'border-b border-zinc-950/5 dark:border-white/10'
+          isCollapsed(group.key) ? undefined : 'border-b border-zinc-950/5 dark:border-white/10'
         "
         :aria-expanded="!isCollapsed(group.key)"
         @click="toggleGroup(group.key)"
       >
         <span class="flex min-w-0 items-center gap-1.5">
           <RiArrowDownSLine
-            class="size-5 shrink-0 text-[var(--surface-400)] transition-transform"
+            class="size-5 shrink-0 text-[var(--surface-400)] transition-transform duration-200 ease-[var(--ease-public-out)]"
             :class="isCollapsed(group.key) ? '-rotate-90' : undefined"
           />
           <span class="truncate text-base font-semibold tracking-tight text-[var(--surface-900)]">
@@ -130,50 +128,56 @@ const groupPill = (items: ServerItem[]) => {
         </span>
       </button>
 
-      <div v-show="!isCollapsed(group.key)" class="px-4 sm:px-5">
-        <div
-          v-for="server in group.items"
-          :key="server.id"
-          class="flex items-center justify-between gap-3 border-b border-zinc-950/5 py-4 last:border-b-0 dark:border-white/10"
-        >
-          <div class="flex min-w-0 items-center gap-2.5">
-            <RiCheckboxCircleFill
-              v-if="server.status === 'online'"
-              class="size-5 shrink-0"
-              :style="{ color: statusColor(server.status) }"
-            />
-            <RiTimeLine
-              v-else-if="server.status === 'maintenance'"
-              class="size-5 shrink-0"
-              :style="{ color: statusColor(server.status) }"
-            />
-            <RiAlertFill
-              v-else-if="server.status === 'error'"
-              class="size-5 shrink-0"
-              :style="{ color: statusColor(server.status) }"
-            />
-            <RiErrorWarningFill
-              v-else
-              class="size-5 shrink-0"
-              :style="{ color: statusColor(server.status) }"
-            />
-            <div class="min-w-0">
-              <div class="truncate font-medium text-[var(--surface-900)]">{{ server.name }}</div>
-              <div
-                v-if="server.location || server.uptime"
-                class="mt-0.5 truncate text-sm text-[var(--surface-500)]"
-              >
-                <template v-if="server.location">{{ server.location }}</template>
-                <template v-if="server.location && server.uptime"> · </template>
-                <template v-if="server.uptime">运行 {{ server.uptime }}</template>
+      <Transition name="public-collapse">
+        <div v-show="!isCollapsed(group.key)">
+          <div class="public-collapse__inner px-4 sm:px-5">
+            <div
+              v-for="server in group.items"
+              :key="server.id"
+              class="flex items-center justify-between gap-3 border-b border-zinc-950/5 py-4 last:border-b-0 dark:border-white/10"
+            >
+              <div class="flex min-w-0 items-center gap-2.5">
+                <RiCheckboxCircleFill
+                  v-if="server.status === 'online'"
+                  class="size-5 shrink-0"
+                  :style="{ color: statusColor(server.status) }"
+                />
+                <RiTimeLine
+                  v-else-if="server.status === 'maintenance'"
+                  class="size-5 shrink-0"
+                  :style="{ color: statusColor(server.status) }"
+                />
+                <RiAlertFill
+                  v-else-if="server.status === 'error'"
+                  class="size-5 shrink-0"
+                  :style="{ color: statusColor(server.status) }"
+                />
+                <RiErrorWarningFill
+                  v-else
+                  class="size-5 shrink-0"
+                  :style="{ color: statusColor(server.status) }"
+                />
+                <div class="min-w-0">
+                  <div class="truncate font-medium text-[var(--surface-900)]">
+                    {{ server.name }}
+                  </div>
+                  <div
+                    v-if="server.location || server.uptime"
+                    class="mt-0.5 truncate text-sm text-[var(--surface-500)]"
+                  >
+                    <template v-if="server.location">{{ server.location }}</template>
+                    <template v-if="server.location && server.uptime"> · </template>
+                    <template v-if="server.uptime">运行 {{ server.uptime }}</template>
+                  </div>
+                </div>
               </div>
+              <span class="shrink-0 text-sm font-medium" :class="statusTextClass(server.status)">
+                {{ getStatusText(server.status) }}
+              </span>
             </div>
           </div>
-          <span class="shrink-0 text-sm font-medium" :class="statusTextClass(server.status)">
-            {{ getStatusText(server.status) }}
-          </span>
         </div>
-      </div>
+      </Transition>
     </div>
   </div>
 </template>

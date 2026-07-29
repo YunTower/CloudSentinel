@@ -15,10 +15,12 @@ import StatusBanner from '@/shared/public-page/StatusBanner.vue'
 import StatusMonitorRows from '@/shared/public-page/StatusMonitorRows.vue'
 import StatusServerRows from '@/shared/public-page/StatusServerRows.vue'
 import StatusIncidentList from '@/shared/public-page/StatusIncidentList.vue'
+import type { PublicPageViewMode } from '@/shared/public-page/ensureIncidentsSeparated'
 
 interface Props {
   page: PublicPageV1
   pages?: PublicPageV1[]
+  view?: PublicPageViewMode
   servers: ServerItem[]
   displayFields?: PublicDisplayFieldsV1
   incidents?: PublicIncident[]
@@ -26,7 +28,10 @@ interface Props {
   lastUpdatedAt?: string | null
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  view: 'status',
+})
+
 
 const asObject = (v: unknown): Record<string, unknown> | null =>
   v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null
@@ -87,7 +92,8 @@ const serviceBlock = computed((): PublicBlockServiceStatusV1 | null => {
   }
 })
 
-const showIncidents = computed(() => props.page.blocks.some((b) => b.type === 'incidents'))
+const isIncidentsView = computed(() => props.view === 'incidents')
+const hasIncidentsBlock = computed(() => props.page.blocks.some((b) => b.type === 'incidents'))
 
 const applyLimit = <T,>(items: T[], limit?: number) => {
   if (!limit || limit <= 0) return items
@@ -110,9 +116,12 @@ const filteredServers = computed(() => {
   return applyLimit(props.servers, cfg.limit)
 })
 
-const showServices = computed(() => !!serviceBlock.value)
-const showServers = computed(() => !!serverBlock.value)
+const showServices = computed(() => !isIncidentsView.value && !!serviceBlock.value)
+const showServers = computed(() => !isIncidentsView.value && !!serverBlock.value)
 const showBanner = computed(() => showServices.value || showServers.value)
+const showMarkdown = computed(() => !isIncidentsView.value)
+const showLinks = computed(() => !isIncidentsView.value)
+const showIncidents = computed(() => isIncidentsView.value && hasIncidentsBlock.value)
 
 /** 后端已按页面配置过滤，前端直接展示 */
 const pageIncidents = computed(() => props.incidents || [])
@@ -137,8 +146,8 @@ const pageIncidents = computed(() => props.incidents || [])
 
     <div
       v-for="(md, i) in markdownBlocks"
+      v-show="showMarkdown && md.trim()"
       :key="i"
-      v-show="md.trim()"
       class="rounded-2xl bg-zinc-950/[0.03] px-4 py-4 ring-1 ring-zinc-950/5 sm:px-5 dark:bg-white/5 dark:ring-white/10"
     >
       <div
@@ -165,8 +174,10 @@ const pageIncidents = computed(() => props.incidents || [])
       <StatusIncidentList :incidents="pageIncidents" />
     </section>
 
-    <footer v-if="linkBlocks.length" class="flex flex-wrap gap-x-4 gap-y-2 border-t border-zinc-950/5 pt-6 dark:border-white/10">
-      <a
+    <footer
+      v-if="showLinks && linkBlocks.length"
+      class="flex flex-wrap gap-x-4 gap-y-2 border-t border-zinc-950/5 pt-6 dark:border-white/10"
+    >      <a
         v-for="(l, i) in linkBlocks"
         :key="i"
         class="text-sm text-[var(--surface-500)] hover:text-[var(--surface-800)]"

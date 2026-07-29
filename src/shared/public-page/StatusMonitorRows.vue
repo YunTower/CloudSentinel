@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { PublicServiceMonitor, ServiceMonitorHistoryEntry } from '@/shared/types/service-monitor'
+import type {
+  PublicServiceMonitor,
+  ServiceMonitorHistoryEntry,
+} from '@/shared/types/service-monitor'
 import {
   RiCheckboxCircleFill,
   RiErrorWarningFill,
@@ -20,9 +23,15 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const BAR_COUNT = 90
+const MOBILE_BAR_COUNT = 30
+
+interface HistoryDisplayEntry extends ServiceMonitorHistoryEntry {
+  range_start?: string
+}
 
 /** 折叠的分组 key；默认全部展开 */
 const collapsed = ref<Set<string>>(new Set())
+const selectedHistory = ref<Record<number, string>>({})
 
 const statusLabel = (status: string) => {
   if (status === 'up') return '正常'
@@ -46,12 +55,17 @@ const historyColor = (entry: ServiceMonitorHistoryEntry | null | undefined) => {
   return 'bg-zinc-950/12 dark:bg-white/12'
 }
 
-const historyTip = (entry: ServiceMonitorHistoryEntry | null | undefined) => {
+const historyTip = (entry: HistoryDisplayEntry | null | undefined) => {
   if (!entry || !entry.checked_at) return '暂无数据'
-  const t = new Date(entry.checked_at)
-  const day = Number.isNaN(t.getTime())
-    ? entry.checked_at
-    : t.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  const formatDate = (value: string) => {
+    const date = new Date(value)
+    return Number.isNaN(date.getTime())
+      ? value
+      : date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
+  }
+  const endDay = formatDate(entry.checked_at)
+  const startDay = entry.range_start ? formatDate(entry.range_start) : ''
+  const day = startDay && startDay !== endDay ? `${startDay}–${endDay}` : endDay
   if (!entry.status) return `${day} · 暂无数据`
   const rt = entry.response_time > 0 ? ` · ${entry.response_time}ms` : ''
   return `${day} · ${statusLabel(entry.status)}${rt}`
@@ -61,10 +75,8 @@ const uptimeText = (monitor: PublicServiceMonitor) => {
   const stat = monitor.uptime?.['30d'] || monitor.uptime?.['24h']
   if (!stat || stat.total_checks === 0) return null
   const rate =
-    stat.uptime_rate >= 99.995
-      ? '100'
-      : stat.uptime_rate.toFixed(stat.uptime_rate >= 99.9 ? 3 : 2)
-  return `${rate}% uptime`
+    stat.uptime_rate >= 99.995 ? '100' : stat.uptime_rate.toFixed(stat.uptime_rate >= 99.9 ? 3 : 2)
+  return `${rate}% 可用率`
 }
 
 const uptimeColor = (monitor: PublicServiceMonitor) => {
@@ -97,13 +109,48 @@ const emptyEntry = (offsetDays: number): ServiceMonitorHistoryEntry => {
   return { status: '', response_time: 0, checked_at: d.toISOString() }
 }
 
-const visibleHistory = (monitor: PublicServiceMonitor) => {
+const visibleHistory = (monitor: PublicServiceMonitor): HistoryDisplayEntry[] => {
   const history = monitor.history || []
-  const slice = history.length > BAR_COUNT ? history.slice(history.length - BAR_COUNT) : [...history]
+  const slice =
+    history.length > BAR_COUNT ? history.slice(history.length - BAR_COUNT) : [...history]
   if (slice.length >= BAR_COUNT) return slice
   const missing = BAR_COUNT - slice.length
   const pad = Array.from({ length: missing }, (_, i) => emptyEntry(BAR_COUNT - 1 - i))
   return [...pad, ...slice]
+}
+
+const statusWeight = (status: string) => {
+  if (status === 'down') return 3
+  if (status === 'slow') return 2
+  if (status === 'up') return 1
+  return 0
+}
+
+/** 小屏将每 3 天合并为一个桶，保留该时间段内最严重的状态。 */
+const mobileHistory = (monitor: PublicServiceMonitor): HistoryDisplayEntry[] => {
+  const entries = visibleHistory(monitor)
+  const size = Math.ceil(entries.length / MOBILE_BAR_COUNT)
+  const result: HistoryDisplayEntry[] = []
+  for (let index = 0; index < entries.length; index += size) {
+    const bucket = entries.slice(index, index + size)
+    const representative = bucket.reduce((worst, entry) =>
+      statusWeight(entry.status) > statusWeight(worst.status) ? entry : worst,
+    )
+    result.push({
+      ...representative,
+      response_time: Math.max(...bucket.map((entry) => entry.response_time || 0)),
+      checked_at: bucket[bucket.length - 1]?.checked_at || representative.checked_at,
+      range_start: bucket[0]?.checked_at,
+    })
+  }
+  return result
+}
+
+const selectHistory = (monitorId: number, entry: HistoryDisplayEntry) => {
+  selectedHistory.value = {
+    ...selectedHistory.value,
+    [monitorId]: historyTip(entry),
+  }
 }
 
 const groupOperational = (items: PublicServiceMonitor[]) => {
@@ -166,18 +213,16 @@ const toggleGroup = (key: string) => {
     >
       <button
         type="button"
-        class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left sm:px-5"
+        class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-500 sm:px-5"
         :class="
-          isCollapsed(group.key)
-            ? undefined
-            : 'border-b border-zinc-950/5 dark:border-white/10'
+          isCollapsed(group.key) ? undefined : 'border-b border-zinc-950/5 dark:border-white/10'
         "
         :aria-expanded="!isCollapsed(group.key)"
         @click="toggleGroup(group.key)"
       >
         <span class="flex min-w-0 items-center gap-1.5">
           <RiArrowDownSLine
-            class="size-5 shrink-0 text-[var(--surface-400)] transition-transform"
+            class="size-5 shrink-0 text-[var(--surface-400)] transition-transform duration-200 ease-[var(--ease-public-out)]"
             :class="isCollapsed(group.key) ? '-rotate-90' : undefined"
           />
           <span class="truncate text-base font-semibold tracking-tight text-[var(--surface-900)]">
@@ -196,83 +241,122 @@ const toggleGroup = (key: string) => {
         </span>
       </button>
 
-      <div v-show="!isCollapsed(group.key)" class="px-4 sm:px-5">
-        <div
-          v-for="monitor in group.items"
-          :key="monitor.id"
-          class="border-b border-zinc-950/5 py-5 last:border-b-0 dark:border-white/10"
-        >
-          <div class="mb-2.5 flex items-center justify-between gap-3">
-            <div class="flex min-w-0 items-center gap-2">
-              <RiCheckboxCircleFill
-                v-if="monitor.status === 'up'"
-                class="size-5 shrink-0"
-                :style="{ color: statusIconColor(monitor.status) }"
-              />
-              <RiAlertFill
-                v-else-if="monitor.status === 'slow'"
-                class="size-5 shrink-0"
-                :style="{ color: statusIconColor(monitor.status) }"
-              />
-              <RiErrorWarningFill
-                v-else
-                class="size-5 shrink-0"
-                :style="{ color: statusIconColor(monitor.status) }"
-              />
-              <span class="truncate text-[0.9375rem] font-medium text-[var(--surface-900)]">
-                {{ monitor.name }}
-              </span>
-              <n-tag
-                v-if="certExpiryText(monitor)"
-                size="small"
-                :type="certExpiryTagType(monitor)"
-                :bordered="false"
-                class="shrink-0"
-                :title="
-                  monitor.cert_expires_at
-                    ? `到期时间 ${new Date(monitor.cert_expires_at).toLocaleString()}`
-                    : undefined
-                "
-              >
-                {{ certExpiryText(monitor) }}
-              </n-tag>
-            </div>
-            <span
-              v-if="showUptime && uptimeText(monitor)"
-              class="shrink-0 text-sm tabular-nums"
-              :class="uptimeColor(monitor)"
-            >
-              {{ uptimeText(monitor) }}
-            </span>
-          </div>
-
-          <div
-            class="grid h-7 w-full gap-px"
-            :style="{ gridTemplateColumns: `repeat(${BAR_COUNT}, minmax(0, 1fr))` }"
-          >
+      <Transition name="public-collapse">
+        <div v-show="!isCollapsed(group.key)">
+          <div class="public-collapse__inner px-4 sm:px-5">
             <div
-              v-for="(entry, idx) in visibleHistory(monitor)"
-              :key="idx"
-              class="min-w-0"
+              v-for="monitor in group.items"
+              :key="monitor.id"
+              class="border-b border-zinc-950/5 py-5 last:border-b-0 dark:border-white/10"
             >
-              <n-tooltip placement="top">
-                <template #trigger>
-                  <div
-                    class="h-7 w-full rounded-[1px] hover:opacity-70"
-                    :class="historyColor(entry)"
+              <div
+                class="mb-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+              >
+                <div class="flex min-w-0 flex-wrap items-center gap-2">
+                  <RiCheckboxCircleFill
+                    v-if="monitor.status === 'up'"
+                    class="size-5 shrink-0"
+                    :style="{ color: statusIconColor(monitor.status) }"
                   />
-                </template>
-                {{ historyTip(entry) }}
-              </n-tooltip>
-            </div>
-          </div>
+                  <RiAlertFill
+                    v-else-if="monitor.status === 'slow'"
+                    class="size-5 shrink-0"
+                    :style="{ color: statusIconColor(monitor.status) }"
+                  />
+                  <RiErrorWarningFill
+                    v-else
+                    class="size-5 shrink-0"
+                    :style="{ color: statusIconColor(monitor.status) }"
+                  />
+                  <span
+                    class="min-w-0 flex-1 break-words text-[0.9375rem] font-medium text-[var(--surface-900)] sm:truncate"
+                  >
+                    {{ monitor.name }}
+                  </span>
+                  <n-tag
+                    v-if="certExpiryText(monitor)"
+                    size="small"
+                    :type="certExpiryTagType(monitor)"
+                    :bordered="false"
+                    class="shrink-0"
+                    :title="
+                      monitor.cert_expires_at
+                        ? `到期时间 ${new Date(monitor.cert_expires_at).toLocaleString()}`
+                        : undefined
+                    "
+                  >
+                    {{ certExpiryText(monitor) }}
+                  </n-tag>
+                </div>
+                <span
+                  v-if="showUptime && uptimeText(monitor)"
+                  class="self-end shrink-0 text-sm tabular-nums sm:self-auto"
+                  :class="uptimeColor(monitor)"
+                >
+                  {{ uptimeText(monitor) }}
+                </span>
+              </div>
 
-          <div class="mt-1.5 flex justify-between text-sm text-[var(--surface-500)]">
-            <span>90 days ago</span>
-            <span>Today</span>
+              <div
+                class="hidden h-7 w-full gap-px sm:grid"
+                :style="{ gridTemplateColumns: `repeat(${BAR_COUNT}, minmax(0, 1fr))` }"
+              >
+                <div v-for="(entry, idx) in visibleHistory(monitor)" :key="idx" class="min-w-0">
+                  <n-tooltip placement="top">
+                    <template #trigger>
+                      <button
+                        type="button"
+                        class="h-7 w-full rounded-[1px] transition-opacity duration-150 hover:opacity-70 focus-visible:relative focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--surface-900)]"
+                        :class="historyColor(entry)"
+                        :aria-label="historyTip(entry)"
+                        :title="historyTip(entry)"
+                        @click="selectHistory(monitor.id, entry)"
+                        @focus="selectHistory(monitor.id, entry)"
+                      />
+                    </template>
+                    {{ historyTip(entry) }}
+                  </n-tooltip>
+                </div>
+              </div>
+
+              <div
+                class="grid h-7 w-full gap-0.5 sm:hidden"
+                :style="{ gridTemplateColumns: `repeat(${MOBILE_BAR_COUNT}, minmax(0, 1fr))` }"
+              >
+                <n-tooltip
+                  v-for="(entry, idx) in mobileHistory(monitor)"
+                  :key="idx"
+                  placement="top"
+                >
+                  <template #trigger>
+                    <button
+                      type="button"
+                      class="h-7 min-w-0 rounded-[2px] transition-opacity duration-150 active:opacity-70 focus-visible:relative focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--surface-900)]"
+                      :class="historyColor(entry)"
+                      :aria-label="historyTip(entry)"
+                      @click="selectHistory(monitor.id, entry)"
+                      @focus="selectHistory(monitor.id, entry)"
+                    />
+                  </template>
+                  {{ historyTip(entry) }}
+                </n-tooltip>
+              </div>
+
+              <div class="mt-1.5 flex justify-between text-sm text-[var(--surface-500)]">
+                <span>90 天前</span>
+                <span>今天</span>
+              </div>
+              <p
+                v-if="selectedHistory[monitor.id]"
+                class="mt-2 text-sm tabular-nums text-[var(--surface-600)] sm:hidden"
+                aria-live="polite"
+              >
+                {{ selectedHistory[monitor.id] }}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      </Transition>
     </div>
   </div>
 </template>

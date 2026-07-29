@@ -1,5 +1,5 @@
-import type { PublicDisplayPublicPayloadV1 } from './settings/public-display'
-import type { PublicPagesConfigV1 } from './settings/public-pages'
+import type { PublicDisplayFieldsV1 } from './settings/public-display'
+import type { PublicPageV1 } from './settings/public-pages'
 
 // 用户角色类型
 export type UserRole = 'guest' | 'admin'
@@ -22,12 +22,23 @@ export interface CustomJwtPayload {
   role?: UserRole
 }
 
+/** 公开设置中的页面元信息（不含 pages 全量列表） */
+export interface PublicPagesMetaV1 {
+  refreshIntervalSeconds?: number
+  page?: PublicPageV1
+}
+
+export interface PublicPageDisplayPayloadV1 {
+  enabled: boolean
+  fields: PublicDisplayFieldsV1
+}
+
 // API响应类型
 export interface PublicSettingsResponse {
   data: {
-    panel_title: string
-    public_display?: PublicDisplayPublicPayloadV1
-    public_pages?: PublicPagesConfigV1
+    panel_title?: string
+    public_display?: PublicPageDisplayPayloadV1
+    public_pages?: PublicPagesMetaV1
   }
   message: string
   status: boolean

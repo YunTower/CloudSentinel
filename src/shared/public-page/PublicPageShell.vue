@@ -4,14 +4,13 @@ import { useRoute, RouterLink } from 'vue-router'
 import { RiMoonLine, RiSunLine } from '@remixicon/vue'
 import type { PublicPageV1, PublicPagesConfigV1 } from '@/shared/types/settings/public-pages'
 import { useTheme } from '@/shared/composables/useTheme'
-import {
-  companionIncidentsPath,
-  isIncidentsOnlyPage,
-} from '@/shared/public-page/filterPublicIncidents'
+import { companionIncidentsPath } from '@/shared/public-page/filterPublicIncidents'
+import type { PublicPageViewMode } from '@/shared/public-page/ensureIncidentsSeparated'
 
 const props = defineProps<{
   page: PublicPageV1
   pages?: PublicPagesConfigV1['pages']
+  view?: PublicPageViewMode
   compact?: boolean
 }>()
 
@@ -19,44 +18,40 @@ const route = useRoute()
 const { isDarkMode, toggleDarkMode } = useTheme()
 
 const accent = computed(() => props.page.accentColor || '#18a058')
+const viewMode = computed<PublicPageViewMode>(() => props.view || 'status')
 
-/** 当前页所属的「状态页 + 事件页」导航对 */
+const hasIncidents = computed(() => props.page.blocks.some((b) => b.type === 'incidents'))
+
+/** 同一绑定页下的状态 / 事件视图导航 */
 const navItems = computed(() => {
-  const list = props.pages?.length ? props.pages : [props.page]
-  const current = list.find((p) => p.path === route.path) || props.page
-
-  let statusPage: PublicPageV1 | undefined
-  let incidentsPage: PublicPageV1 | undefined
-
-  if (isIncidentsOnlyPage(current)) {
-    incidentsPage = current
-    const path = current.path.replace(/\/+$/, '')
-    const statusPath =
-      path === '/public/incidents'
-        ? '/public'
-        : path.endsWith('/incidents')
-          ? path.slice(0, -'/incidents'.length) || '/public'
-          : '/public'
-    statusPage = list.find((p) => p.path === statusPath)
-  } else {
-    statusPage = current
-    const incidentsPath = companionIncidentsPath(current.path)
-    incidentsPage = list.find((p) => p.path === incidentsPath)
+  const items: Array<{ path: string; label: string; view: PublicPageViewMode }> = [
+    { path: props.page.path, label: props.page.title || '状态', view: 'status' },
+  ]
+  if (hasIncidents.value) {
+    items.push({
+      path: companionIncidentsPath(props.page.path),
+      label: '事件',
+      view: 'incidents',
+    })
   }
-
-  if (!statusPage && !incidentsPage) {
-    statusPage = list.find((p) => p.path === '/public')
-    incidentsPage = list.find((p) => p.path === '/public/incidents')
-  }
-
-  const items: Array<{ path: string; label: string }> = []
-  if (statusPage) items.push({ path: statusPage.path, label: statusPage.title || '状态' })
-  if (incidentsPage) items.push({ path: incidentsPage.path, label: incidentsPage.title || '事件' })
-  if (items.length === 0) items.push({ path: props.page.path, label: props.page.title || '状态' })
   return items
 })
 
-const homePath = computed(() => navItems.value[0]?.path || props.page.path || '/public')
+const homePath = computed(() => props.page.path || '/public')
+
+const isNavActive = (item: { path: string; view: PublicPageViewMode }) => {
+  if (viewMode.value === item.view) return true
+  return route.path === item.path
+}
+
+const togglePublicTheme = () => {
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+  if (reduceMotion || typeof document.startViewTransition !== 'function') {
+    toggleDarkMode()
+    return
+  }
+  document.startViewTransition(toggleDarkMode)
+}
 </script>
 
 <template>
@@ -72,7 +67,8 @@ const homePath = computed(() => navItems.value[0]?.path || props.page.path || '/
       <component
         :is="compact ? 'div' : RouterLink"
         v-bind="compact ? {} : { to: homePath, 'aria-label': 'Homepage' }"
-        class="flex min-w-0 items-center gap-2.5 text-[var(--surface-900)]"
+        class="public-interactive flex min-w-0 items-center gap-2.5 rounded-lg text-[var(--surface-900)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--public-accent)]"
+        :style="{ '--public-accent': accent }"
       >
         <span
           v-if="page.logoUrl"
@@ -98,9 +94,10 @@ const homePath = computed(() => navItems.value[0]?.path || props.page.path || '/
             v-for="item in navItems"
             :key="item.path"
             :to="item.path"
-            class="rounded-lg px-3 py-1.5 text-sm text-[var(--surface-500)] hover:bg-zinc-950/5 hover:text-[var(--surface-800)] dark:hover:bg-white/10"
+            class="public-interactive rounded-lg px-3 py-1.5 text-sm text-[var(--surface-500)] transition-colors duration-150 hover:bg-zinc-950/5 hover:text-[var(--surface-800)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--public-accent)] dark:hover:bg-white/10"
+            :style="{ '--public-accent': accent }"
             :class="
-              route.path === item.path
+              isNavActive(item)
                 ? 'bg-zinc-950/5 text-[var(--surface-900)] dark:bg-white/10'
                 : undefined
             "
@@ -111,10 +108,11 @@ const homePath = computed(() => navItems.value[0]?.path || props.page.path || '/
 
         <button
           type="button"
-          class="inline-flex size-9 items-center justify-center rounded-lg text-[var(--surface-500)] hover:bg-zinc-950/5 hover:text-[var(--surface-800)] dark:hover:bg-white/10"
+          class="public-interactive inline-flex size-9 items-center justify-center rounded-lg text-[var(--surface-500)] transition-colors duration-150 hover:bg-zinc-950/5 hover:text-[var(--surface-800)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--public-accent)] dark:hover:bg-white/10"
+          :style="{ '--public-accent': accent }"
           :aria-label="isDarkMode ? '切换到浅色模式' : '切换到深色模式'"
           :title="isDarkMode ? '切换到浅色模式' : '切换到深色模式'"
-          @click="toggleDarkMode"
+          @click="togglePublicTheme"
         >
           <RiSunLine v-if="isDarkMode" class="size-4" />
           <RiMoonLine v-else class="size-4" />

@@ -75,16 +75,10 @@ const columns = computed(() => {
           if (row.billing?.expire_time) {
             const tag = expireTag(row.billing.expire_time)
             billingChildren.push(
-              h(
-                NTag,
-                { round: true, size: 'small', type: tag.type },
-                { default: () => tag.text },
-              ),
+              h(NTag, { round: true, size: 'small', type: tag.type }, { default: () => tag.text }),
             )
           }
-          children.push(
-            h(NSpace, { size: 4, class: 'ml-2' }, { default: () => billingChildren }),
-          )
+          children.push(h(NSpace, { size: 4, class: 'ml-2' }, { default: () => billingChildren }))
         }
         return h('div', { class: 'flex flex-wrap items-center gap-y-1' }, children)
       },
@@ -99,7 +93,7 @@ const columns = computed(() => {
       width: 120,
       render(row: ServerItem) {
         return h('div', { class: 'flex items-center gap-1' }, [
-          h(RiMapPinLine, { size: 14, class: 'shrink-0 text-muted-color' }),
+          h(RiMapPinLine, { size: '14px', class: 'shrink-0 text-muted-color' }),
           h('span', { class: 'text-muted-color' }, row.location || '-'),
         ])
       },
@@ -157,11 +151,11 @@ const columns = computed(() => {
       render(row: ServerItem) {
         return h('div', { class: 'flex flex-row gap-2' }, [
           h('div', { class: 'flex items-center gap-1' }, [
-            h(RiArrowUpLine, { class: 'text-green-600 dark:text-green-400', size: 14 }),
+            h(RiArrowUpLine, { class: 'text-green-600 dark:text-green-400', size: '14px' }),
             h('span', {}, formatSpeed(row.networkIO.upload)),
           ]),
           h('div', { class: 'flex items-center gap-1' }, [
-            h(RiArrowDownLine, { class: 'text-blue-600 dark:text-blue-400', size: 14 }),
+            h(RiArrowDownLine, { class: 'text-blue-600 dark:text-blue-400', size: '14px' }),
             h('span', {}, formatSpeed(row.networkIO.download)),
           ]),
         ])

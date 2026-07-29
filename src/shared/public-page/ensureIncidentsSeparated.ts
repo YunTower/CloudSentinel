@@ -1,4 +1,4 @@
-import type { PublicPagesConfigV1, PublicPageV1 } from '@/shared/types/settings/public-pages'
+import type { PublicPagesConfigV1, PublicPageV1, PublicPageBlockV1 } from '@/shared/types/settings/public-pages'
 import { companionIncidentsPath, isIncidentsOnlyPage } from '@/shared/public-page/filterPublicIncidents'
 
 const defaultIncidentData = () => ({
@@ -12,7 +12,6 @@ const defaultIncidentData = () => ({
 const asObject = (v: unknown): Record<string, unknown> | null =>
   v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null
 
-/** 从同页服务状态块继承 monitorIds，便于事件页默认只看本页服务 */
 const inheritMonitorIds = (page: PublicPageV1): number[] => {
   const block = page.blocks.find((b) => b.type === 'serviceStatus')
   const raw = asObject(block?.data)?.monitorIds
@@ -20,111 +19,64 @@ const inheritMonitorIds = (page: PublicPageV1): number[] => {
   return raw.map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0)
 }
 
-/** 将各状态页上的事件块拆到对应独立事件页，避免多页共用同一事件列表配置 */
-export const ensureIncidentsSeparated = (cfg: PublicPagesConfigV1): PublicPagesConfigV1 => {
-  let brandName = 'CloudSentinel'
-  let accentColor = '#18a058'
-  let logoUrl: string | undefined
-  let homeIncidentData: Record<string, unknown> = defaultIncidentData()
+const hasStatusBlocks = (page: PublicPageV1) =>
+  page.blocks.some((b) => b.type === 'serviceStatus' || b.type === 'serverList')
 
-  const existingByPath = new Map<string, PublicPageV1>()
-  for (const page of cfg.pages || []) {
-    existingByPath.set(page.path, page)
-  }
-
+/**
+ * 将历史上拆出的独立事件页合并回对应状态页，保证「一页绑定状态+事件」。
+ * 不再生成独立事件页面条目。
+ */
+export const normalizeBoundPublicPages = (cfg: PublicPagesConfigV1): PublicPagesConfigV1 => {
+  const input = cfg.pages || []
+  const byPath = new Map(input.map((p) => [p.path, p]))
+  const mergedIds = new Set<string>()
   const pages: PublicPageV1[] = []
-  const pendingCompanions: PublicPageV1[] = []
 
-  for (const page of cfg.pages || []) {
-    if (page.brandName) brandName = page.brandName
-    if (page.accentColor) accentColor = page.accentColor
-    if (page.logoUrl) logoUrl = page.logoUrl
+  for (const page of input) {
+    if (isIncidentsOnlyPage(page)) continue
 
-    if (isIncidentsOnlyPage(page)) {
-      // 可能已由对应状态页刷新并写入，避免重复
-      if (!pages.some((p) => p.path === page.path)) {
-        pages.push(page)
-      }
-      continue
-    }
+    const incidentsPath = companionIncidentsPath(page.path)
+    const companion = byPath.get(incidentsPath)
+    let blocks = [...(page.blocks || [])]
+    let incidentBlock = blocks.find((b) => b.type === 'incidents')
 
-    const hasStatus = page.blocks.some(
-      (b) => b.type === 'serviceStatus' || b.type === 'serverList',
-    )
-    const incidentBlock = page.blocks.find((b) => b.type === 'incidents')
-
-    if (incidentBlock && hasStatus) {
+    if (!incidentBlock && companion && isIncidentsOnlyPage(companion)) {
       const data =
-        incidentBlock.data && typeof incidentBlock.data === 'object'
-          ? (incidentBlock.data as Record<string, unknown>)
-          : {}
-      const inheritedMonitors = inheritMonitorIds(page)
-      const incidentData: Record<string, unknown> = {
-        ...defaultIncidentData(),
-        ...data,
+        companion.blocks[0]?.data && typeof companion.blocks[0].data === 'object'
+          ? { ...defaultIncidentData(), ...(companion.blocks[0].data as Record<string, unknown>) }
+          : defaultIncidentData()
+      const inherited = inheritMonitorIds(page)
+      if ((!Array.isArray(data.monitorIds) || data.monitorIds.length === 0) && inherited.length > 0) {
+        data.monitorIds = inherited
       }
-      if (
-        (!Array.isArray(incidentData.monitorIds) || incidentData.monitorIds.length === 0) &&
-        inheritedMonitors.length > 0
-      ) {
-        incidentData.monitorIds = inheritedMonitors
-      }
-
-      if (page.path === '/public' || page.path === '/public/') {
-        homeIncidentData = incidentData
-      }
-
-      const incidentsPath = companionIncidentsPath(page.path)
-      pages.push({
-        ...page,
-        blocks: page.blocks.filter((b) => b.type !== 'incidents'),
-      })
-
-      const existingCompanion = existingByPath.get(incidentsPath)
-      if (existingCompanion && isIncidentsOnlyPage(existingCompanion)) {
-        // 已有独立事件页时，用本次拆出的配置刷新（保留 id/path/品牌）
-        const idx = pages.findIndex((p) => p.path === incidentsPath)
-        const refreshed: PublicPageV1 = {
-          ...existingCompanion,
-          brandName: page.brandName || existingCompanion.brandName || brandName,
-          accentColor: page.accentColor || existingCompanion.accentColor || accentColor,
-          logoUrl: page.logoUrl || existingCompanion.logoUrl || logoUrl,
-          blocks: [{ type: 'incidents', data: incidentData }],
-        }
-        if (idx >= 0) pages[idx] = refreshed
-        else pages.push(refreshed)
-      } else if (
-        !existingByPath.has(incidentsPath) &&
-        !pendingCompanions.some((p) => p.path === incidentsPath)
-      ) {
-        pendingCompanions.push({
-          id: page.path === '/public' || page.path === '/public/' ? 'incidents' : `${page.id}_incidents`,
-          path: incidentsPath,
-          title: '事件',
-          brandName: page.brandName || brandName,
-          accentColor: page.accentColor || accentColor,
-          logoUrl: page.logoUrl || logoUrl,
-          blocks: [{ type: 'incidents', data: incidentData }],
-        })
-      }
-      continue
+      blocks = [...blocks, { type: 'incidents', data }]
+      incidentBlock = blocks[blocks.length - 1]
+      mergedIds.add(companion.id)
     }
 
-    pages.push(page)
+    // 有状态块但无事件块时，补默认事件块（绑定在同一页）
+    if (hasStatusBlocks({ ...page, blocks }) && !incidentBlock) {
+      const data = defaultIncidentData()
+      const inherited = inheritMonitorIds(page)
+      if (inherited.length > 0) data.monitorIds = inherited
+      blocks = [...blocks, { type: 'incidents', data }]
+    }
+
+    pages.push({ ...page, blocks })
   }
 
-  pages.push(...pendingCompanions)
-
-  if (!pages.some((p) => p.path === '/public/incidents')) {
-    pages.push({
-      id: 'incidents',
-      path: '/public/incidents',
-      title: '事件',
-      brandName,
-      accentColor,
-      logoUrl,
-      blocks: [{ type: 'incidents', data: homeIncidentData }],
-    })
+  // 孤儿独立事件页：无对应状态页时保留为普通页（极少见）
+  for (const page of input) {
+    if (!isIncidentsOnlyPage(page)) continue
+    if (mergedIds.has(page.id)) continue
+    const parentPath =
+      page.path === '/public/incidents'
+        ? '/public'
+        : page.path.endsWith('/incidents')
+          ? page.path.slice(0, -'/incidents'.length) || '/public'
+          : ''
+    if (parentPath && pages.some((p) => p.path === parentPath)) continue
+    pages.push(page)
   }
 
   return {
@@ -135,6 +87,9 @@ export const ensureIncidentsSeparated = (cfg: PublicPagesConfigV1): PublicPagesC
   }
 }
 
+/** @deprecated 使用 normalizeBoundPublicPages；保留别名避免外部引用断裂 */
+export const ensureIncidentsSeparated = normalizeBoundPublicPages
+
 const normalizeRefreshInterval = (value: number | undefined): number => {
   const n = typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : 30
   if (n < 5) return 5
@@ -142,8 +97,41 @@ const normalizeRefreshInterval = (value: number | undefined): number => {
   return n
 }
 
+export type PublicPageViewMode = 'status' | 'incidents'
+
+export interface ResolvedPublicView {
+  page: PublicPageV1
+  view: PublicPageViewMode
+  /** 请求事件接口时使用的绑定页 path */
+  incidentsApiPath: string
+}
+
+/** 按路由解析绑定页与视图（状态 / 事件） */
+export const resolvePublicView = (
+  routePath: string,
+  pages: PublicPageV1[],
+): ResolvedPublicView | null => {
+  const path = routePath.replace(/\/+$/, '') || '/'
+  const list = pages || []
+
+  const exact = list.find((p) => p.path === path || p.path === routePath)
+  if (exact) {
+    return { page: exact, view: 'status', incidentsApiPath: exact.path }
+  }
+
+  if (path.endsWith('/incidents')) {
+    const parentPath = path === '/public/incidents' ? '/public' : path.slice(0, -'/incidents'.length) || '/public'
+    const parent = list.find((p) => p.path === parentPath)
+    if (parent && parent.blocks.some((b) => b.type === 'incidents')) {
+      return { page: parent, view: 'incidents', incidentsApiPath: parent.path }
+    }
+  }
+
+  return null
+}
+
 export const defaultPublicPagesConfig = (): PublicPagesConfigV1 =>
-  ensureIncidentsSeparated({
+  normalizeBoundPublicPages({
     version: 1,
     refreshIntervalSeconds: 30,
     pages: [
@@ -163,7 +151,11 @@ export const defaultPublicPagesConfig = (): PublicPagesConfigV1 =>
             type: 'serverList',
             data: { view: 'table', groupBy: 'none', limit: 0, showToolbar: false },
           },
-        ],
+          {
+            type: 'incidents',
+            data: defaultIncidentData(),
+          },
+        ] satisfies PublicPageBlockV1[],
       },
     ],
   })
