@@ -3,26 +3,39 @@ import { publicApi } from '@/public/apis/public'
 import type { PublicSettingsResponse } from '@/shared/types/auth'
 
 const settings = ref<PublicSettingsResponse['data'] | null>(null)
-let loading: Promise<PublicSettingsResponse['data']> | null = null
+let activePath: string | null = null
+const loadingByPath = new Map<string, Promise<PublicSettingsResponse['data']>>()
 
 export function usePublicSettings() {
-  const load = async (): Promise<PublicSettingsResponse['data']> => {
-    if (settings.value) return settings.value
-    if (loading) return loading
+  const load = async (path?: string): Promise<PublicSettingsResponse['data']> => {
+    const normalizedPath = path?.trim() || ''
+    if (settings.value && activePath === normalizedPath) return settings.value
 
-    loading = (async () => {
-      const response = await publicApi.getSettings()
-      if (!response.status || !response.data) {
-        throw new Error(response.message || '获取公开设置失败')
-      }
-      settings.value = response.data
-      return response.data
-    })()
+    activePath = normalizedPath
+    settings.value = null
+
+    let loading = loadingByPath.get(normalizedPath)
+    if (!loading) {
+      loading = (async () => {
+        const response = await publicApi.getSettings(
+          normalizedPath ? { path: normalizedPath } : undefined,
+        )
+        if (!response.status || !response.data) {
+          throw new Error(response.message || '获取公开设置失败')
+        }
+        return response.data
+      })()
+      loadingByPath.set(normalizedPath, loading)
+    }
 
     try {
-      return await loading
+      const data = await loading
+      if (activePath === normalizedPath) settings.value = data
+      return data
     } finally {
-      loading = null
+      if (loadingByPath.get(normalizedPath) === loading) {
+        loadingByPath.delete(normalizedPath)
+      }
     }
   }
 

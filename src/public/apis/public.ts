@@ -5,7 +5,10 @@ import type { PublicSettingsResponse } from '@/shared/types/auth'
 import type { PublicServiceMonitor } from '@/shared/types/service-monitor'
 
 export const publicApi = {
-  getSettings: () => publicRequester.Get<PublicSettingsResponse>('/settings/public'),
+  getSettings: (params?: { path?: string }) =>
+    publicRequester.Get<PublicSettingsResponse>('/settings/public', {
+      params,
+    }),
   getServers: () => publicRequester.Get<GetServersResponse>('/public/servers'),
   getIncidents: (params: { path: string }) =>
     publicRequester.Get<GetPublicIncidentsResponse>('/public/incidents', { params }),

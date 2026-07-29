@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { usePublicSettings } from '@/public/stores/public-settings'
 import { publicApi } from '@/public/apis/public'
@@ -9,14 +9,13 @@ import type { GetServersResponse } from '@/shared/types/manager/servers'
 import type { PublicIncident } from '@/shared/types/incidents'
 import type { PublicServiceMonitor } from '@/shared/types/service-monitor'
 import { mapServerListItemToServerItem } from '@/shared/server-display/utils'
-import type { PublicPagesConfigV1, PublicPageV1 } from '@/shared/types/settings/public-pages'
+import type { PublicPageV1 } from '@/shared/types/settings/public-pages'
 import type { PublicDisplayFieldsV1 } from '@/shared/types/settings/public-display'
 import PublicPageShell from '@/shared/public-page/PublicPageShell.vue'
 import PublicPageRenderer from '@/shared/public-page/PublicPageRenderer.vue'
-import {
-  defaultPublicPagesConfig,
-  ensureIncidentsSeparated,
-} from '@/shared/public-page/ensureIncidentsSeparated'
+import PublicPageSkeleton from '@/shared/public-page/PublicPageSkeleton.vue'
+import type { PublicPageViewMode } from '@/shared/public-page/ensureIncidentsSeparated'
+import { companionIncidentsPath } from '@/shared/public-page/filterPublicIncidents'
 
 /** 公开页刷新间隔默认 30s，允许范围 5–3600 */
 const DEFAULT_REFRESH_INTERVAL_SEC = 30
@@ -24,41 +23,58 @@ const MIN_REFRESH_INTERVAL_SEC = 5
 const MAX_REFRESH_INTERVAL_SEC = 3600
 
 const route = useRoute()
+const router = useRouter()
 const message = useMessage()
 const publicSettings = usePublicSettings()
 
 const loading = ref(false)
+const pageLoading = ref(false)
 const refreshing = ref(false)
 const error = ref<string | null>(null)
+const hashBlocked = ref(false)
+const pageNotFound = ref(false)
+
+const currentPage = ref<PublicPageV1 | null>(null)
+const refreshIntervalFromPage = ref<number | null>(null)
 
 const servers = ref<ServerItem[]>([])
 const incidents = ref<PublicIncident[]>([])
 const serviceMonitors = ref<PublicServiceMonitor[]>([])
 const lastUpdatedAt = ref<string | null>(null)
 
-const publicPages = computed<PublicPagesConfigV1>(() => {
-  const s = publicSettings.settings.value
-  const raw = (s?.public_pages as PublicPagesConfigV1 | undefined) || defaultPublicPagesConfig()
-  return ensureIncidentsSeparated(raw)
-})
-
 const refreshIntervalSec = computed(() => {
-  const raw = publicPages.value.refreshIntervalSeconds ?? DEFAULT_REFRESH_INTERVAL_SEC
-  const n = Number.isFinite(raw) ? Math.floor(raw) : DEFAULT_REFRESH_INTERVAL_SEC
-  return Math.min(MAX_REFRESH_INTERVAL_SEC, Math.max(MIN_REFRESH_INTERVAL_SEC, n || DEFAULT_REFRESH_INTERVAL_SEC))
+  const fromPage = refreshIntervalFromPage.value
+  const fromSettings = publicSettings.settings.value?.public_pages?.refreshIntervalSeconds
+  const raw = fromPage ?? fromSettings ?? DEFAULT_REFRESH_INTERVAL_SEC
+  const n = Number.isFinite(raw) ? Math.floor(Number(raw)) : DEFAULT_REFRESH_INTERVAL_SEC
+  return Math.min(
+    MAX_REFRESH_INTERVAL_SEC,
+    Math.max(MIN_REFRESH_INTERVAL_SEC, n || DEFAULT_REFRESH_INTERVAL_SEC),
+  )
 })
 
 const refreshIntervalMs = computed(() => refreshIntervalSec.value * 1000)
 
-const currentPage = computed<PublicPageV1 | null>(() => {
-  const cfg = publicPages.value
-  if (!cfg?.pages?.length) return null
-  return cfg.pages.find((p) => p.path === route.path) || null
+const viewMode = computed<PublicPageViewMode>(() => {
+  const page = currentPage.value
+  if (!page) return 'status'
+  const path = route.path.replace(/\/+$/, '') || '/'
+  if (path === page.path.replace(/\/+$/, '')) return 'status'
+  if (companionIncidentsPath(page.path) === path) return 'incidents'
+  if (path.endsWith('/incidents')) return 'incidents'
+  return 'status'
 })
 
-/** 根据当前页区块决定需要哪些接口 */
+/** 根据绑定页视图决定需要哪些接口 */
 const pageNeeds = computed(() => {
-  const blocks = currentPage.value?.blocks || []
+  const page = currentPage.value
+  if (!page) {
+    return { servers: false, monitors: false, incidents: false }
+  }
+  if (viewMode.value === 'incidents') {
+    return { servers: false, monitors: false, incidents: true }
+  }
+  const blocks = page.blocks || []
   return {
     servers: blocks.some((b) => b.type === 'serverList'),
     monitors: blocks.some((b) => b.type === 'serviceStatus'),
@@ -98,9 +114,18 @@ const upsertMeta = (selector: string, attrs: Record<string, string>) => {
 }
 
 watchEffect(() => {
+  if (hashBlocked.value || pageNotFound.value || !currentPage.value) {
+    document.title = '页面不存在 - CloudSentinel'
+    return
+  }
   const page = currentPage.value
-  const brand = page?.brandName || 'CloudSentinel'
-  const title = page?.title ? `${page.title} - ${brand}` : `${brand} 状态页`
+  const brand = page.brandName || 'CloudSentinel'
+  const title =
+    viewMode.value === 'incidents'
+      ? `事件 - ${brand}`
+      : page.title
+        ? `${page.title} - ${brand}`
+        : `${brand} 状态页`
   const description = pageDescription.value
   document.title = title
   upsertMeta('meta[name="description"]', { name: 'description', content: description })
@@ -110,7 +135,10 @@ watchEffect(() => {
     content: description,
   })
   upsertMeta('meta[property="og:type"]', { property: 'og:type', content: 'website' })
-  upsertMeta('link[rel="canonical"]', { rel: 'canonical', href: window.location.href })
+  upsertMeta('link[rel="canonical"]', {
+    rel: 'canonical',
+    href: window.location.href.split('#')[0],
+  })
 })
 
 const displayFields = computed<PublicDisplayFieldsV1 | undefined>(() => {
@@ -119,6 +147,55 @@ const displayFields = computed<PublicDisplayFieldsV1 | undefined>(() => {
   if (!pd?.enabled) return undefined
   return pd.fields
 })
+
+/** 拦截管理端式 hash 路由（公开端不支持 /#/...） */
+const stripAdminHash = () => {
+  const hash = window.location.hash || ''
+  if (!hash.startsWith('#/')) {
+    hashBlocked.value = false
+    return false
+  }
+  hashBlocked.value = true
+  const clean = `${window.location.pathname}${window.location.search}`
+  window.history.replaceState(null, '', clean || '/')
+  return true
+}
+
+let routeLoadGeneration = 0
+
+const loadBoundPage = async (path: string, generation: number): Promise<boolean> => {
+  pageLoading.value = true
+  pageNotFound.value = false
+  try {
+    const settings = await publicSettings.load(path)
+    if (generation !== routeLoadGeneration) return false
+
+    const page = settings.public_pages?.page
+    if (page) {
+      currentPage.value = page
+      refreshIntervalFromPage.value =
+        typeof settings.public_pages?.refreshIntervalSeconds === 'number'
+          ? settings.public_pages.refreshIntervalSeconds
+          : null
+      return true
+    }
+    currentPage.value = null
+    pageNotFound.value = true
+    return false
+  } catch (err) {
+    if (generation !== routeLoadGeneration) return false
+    if (!(err instanceof Error && err.message === '公开页面不存在')) {
+      console.warn('加载公开页面失败:', err)
+    }
+    currentPage.value = null
+    pageNotFound.value = true
+    return false
+  } finally {
+    if (generation === routeLoadGeneration) {
+      pageLoading.value = false
+    }
+  }
+}
 
 const loadServers = async () => {
   const response = (await publicApi.getServers()) as GetServersResponse
@@ -130,12 +207,12 @@ const loadServers = async () => {
 }
 
 const loadIncidents = async () => {
-  const path = currentPage.value?.path
-  if (!path) {
+  const page = currentPage.value
+  if (!page) {
     incidents.value = []
     return
   }
-  const response = await publicApi.getIncidents({ path })
+  const response = await publicApi.getIncidents({ path: page.path })
   if (response.status && response.data) {
     incidents.value = response.data
     return
@@ -162,12 +239,8 @@ const clearUnusedData = (needs: { servers: boolean; monitors: boolean; incidents
   if (!needs.incidents) incidents.value = []
 }
 
-/**
- * 仅请求当前页需要的接口。
- * @param silent 定时刷新时为 true，不打断页面（不全屏 loading）
- */
 const loadPageData = async (opts?: { silent?: boolean }) => {
-  if (!currentPage.value) return
+  if (hashBlocked.value || pageNotFound.value || !currentPage.value) return
 
   const needs = pageNeeds.value
   const silent = opts?.silent === true
@@ -205,6 +278,23 @@ const loadPageData = async (opts?: { silent?: boolean }) => {
   }
 }
 
+const bootstrapRoute = async () => {
+  const generation = ++routeLoadGeneration
+  stripAdminHash()
+  if (hashBlocked.value) {
+    stopAutoRefresh()
+    return
+  }
+  const loaded = await loadBoundPage(route.path, generation)
+  if (!loaded || generation !== routeLoadGeneration) {
+    stopAutoRefresh()
+    return
+  }
+  await loadPageData()
+  if (generation !== routeLoadGeneration) return
+  startAutoRefresh()
+}
+
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 let countdownTimer: ReturnType<typeof setInterval> | null = null
 
@@ -239,6 +329,7 @@ const resetCountdown = () => {
 
 const startAutoRefresh = () => {
   stopAutoRefresh()
+  if (hashBlocked.value || pageNotFound.value || !currentPage.value) return
   resetCountdown()
   countdownTimer = setInterval(() => {
     if (document.visibilityState === 'hidden') return
@@ -253,10 +344,9 @@ const startAutoRefresh = () => {
 }
 
 watch(
-  () => route.path,
+  () => route.fullPath,
   async () => {
-    await loadPageData()
-    startAutoRefresh()
+    await bootstrapRoute()
   },
 )
 
@@ -265,36 +355,51 @@ watch(refreshIntervalMs, () => {
 })
 
 onMounted(async () => {
-  try {
-    await publicSettings.load()
-  } catch {
-    /* 设置失败时仍用默认页配置 */
-  }
-  await loadPageData()
-  startAutoRefresh()
+  window.addEventListener('hashchange', onHashChange)
+  await bootstrapRoute()
 })
+
+const onHashChange = () => {
+  if (stripAdminHash()) {
+    stopAutoRefresh()
+    void router.replace(route.fullPath)
+  }
+}
 
 onBeforeUnmount(() => {
   stopAutoRefresh()
+  window.removeEventListener('hashchange', onHashChange)
 })
 </script>
 
 <template>
-  <div v-if="!currentPage" class="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-    <n-result status="404" title="页面不存在" description="未找到对应的公开页面配置" />
+  <div
+    v-if="hashBlocked || pageNotFound || (!pageLoading && !currentPage)"
+    class="mx-auto flex min-h-dvh w-full items-center justify-center px-4 py-10 sm:px-6"
+  >
+    <n-result
+      status="404"
+      title="页面不存在"
+      description="未找到对应的公开页面配置，请检查访问地址是否正确。"
+    />
   </div>
 
-  <PublicPageShell v-else :page="currentPage" :pages="publicPages.pages">
-    <n-spin :show="loading" description="加载中...">
-      <n-result v-if="error" status="error" :title="error">
+  <div v-else-if="pageLoading && !currentPage" class="min-h-dvh">
+    <PublicPageSkeleton include-header />
+  </div>
+
+  <PublicPageShell v-else-if="currentPage" :page="currentPage" :view="viewMode">
+    <Transition name="public-content" mode="out-in">
+      <PublicPageSkeleton v-if="loading || pageLoading" key="loading" />
+      <n-result v-else-if="error" key="error" status="error" :title="error">
         <template #footer>
-          <n-button @click="loadPageData()">重试</n-button>
+          <n-button class="public-interactive" @click="bootstrapRoute()">重试</n-button>
         </template>
       </n-result>
-      <div v-else class="relative">
+      <div v-else key="content" class="relative">
         <PublicPageRenderer
           :page="currentPage"
-          :pages="publicPages.pages"
+          :view="viewMode"
           :servers="servers"
           :incidents="incidents"
           :service-monitors="serviceMonitors"
@@ -309,7 +414,7 @@ onBeforeUnmount(() => {
               href="https://github.com/YunTower/CloudSentinel"
               target="_blank"
               rel="noopener noreferrer"
-              class="underline decoration-zinc-950/20 underline-offset-2 transition-colors hover:text-[var(--surface-700)] dark:decoration-white/20"
+              class="public-interactive inline-block underline decoration-zinc-950/20 underline-offset-2 transition-colors hover:text-[var(--surface-700)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:decoration-white/20"
             >
               CloudSentinel
             </a>
@@ -317,6 +422,6 @@ onBeforeUnmount(() => {
           </p>
         </footer>
       </div>
-    </n-spin>
+    </Transition>
   </PublicPageShell>
 </template>
