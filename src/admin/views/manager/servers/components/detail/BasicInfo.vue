@@ -31,12 +31,12 @@ function expireCountdownLabel(expireTime: string): string {
 </script>
 
 <template>
-  <n-card>
+  <n-card size="small" :bordered="false">
     <n-descriptions :column="2" label-placement="left">
-      <n-descriptions-item label="服务器名称">
+      <n-descriptions-item label="名称">
         <span class="font-medium">{{ server.name || '-' }}</span>
       </n-descriptions-item>
-      <n-descriptions-item label="IP地址">
+      <n-descriptions-item label="IP">
         <span class="font-mono text-sm">{{ server.ip || '-' }}</span>
       </n-descriptions-item>
       <n-descriptions-item label="状态">

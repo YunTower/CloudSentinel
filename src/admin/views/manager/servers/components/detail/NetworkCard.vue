@@ -15,18 +15,18 @@ defineProps<Props>()
 </script>
 
 <template>
-  <n-card>
-    <div class="flex items-center gap-2 mb-3">
+  <n-card size="small" :bordered="false">
+    <div class="flex items-center gap-2 mb-2">
       <ri-wifi-line size="14px" />
       <span class="font-medium">网络 I/O</span>
     </div>
-    <div class="grid grid-cols-2 gap-4 mb-4">
+    <div class="grid grid-cols-2 gap-2 mb-2">
       <div class="text-center p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800">
         <div class="flex items-center justify-center gap-2 mb-1">
           <ri-arrow-up-line size="14px" />
           <span class="text-xs text-muted-color">上传</span>
         </div>
-        <div class="text-xl font-bold">
+        <div class="text-xl">
           {{ formatSpeed(networkIO?.upload || 0) }}
         </div>
       </div>
@@ -35,19 +35,19 @@ defineProps<Props>()
           <ri-arrow-down-line size="14px" />
           <span class="text-xs text-muted-color">下载</span>
         </div>
-        <div class="text-xl font-bold">
+        <div class="text-xl">
           {{ formatSpeed(networkIO?.download || 0) }}
         </div>
       </div>
     </div>
     <div v-if="traffic">
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-2 gap-2">
         <div class="text-center p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800">
           <div class="flex items-center justify-center gap-2 mb-1">
             <ri-arrow-up-line size="14px" />
             <span class="text-xs text-muted-color">总发送</span>
           </div>
-          <div class="text-lg font-bold">
+          <div class="text-lg">
             {{ formatBytes(traffic.upload_bytes) }}
           </div>
         </div>
@@ -56,7 +56,7 @@ defineProps<Props>()
             <ri-arrow-down-line size="14px" />
             <span class="text-xs text-muted-color">总接收</span>
           </div>
-          <div class="text-lg font-bold">
+          <div class="text-lg">
             {{ formatBytes(traffic.download_bytes) }}
           </div>
         </div>

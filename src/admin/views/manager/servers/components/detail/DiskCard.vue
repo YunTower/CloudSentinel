@@ -11,7 +11,7 @@ defineProps<Props>()
 </script>
 
 <template>
-  <n-card>
+  <n-card size="small" :bordered="false">
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
         <ri-hard-drive-line size="14px" />

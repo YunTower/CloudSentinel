@@ -25,7 +25,7 @@ const message = useMessage()
 // 计算安装命令
 const installCommand = computed(() => {
   const basicCommand =
-    'curl -L https://raw.githubusercontent.com/YunTower/CloudSentinel-Agent/refs/heads/master/install.sh -o cloudsentinel_agent.sh && chmod +x cloudsentinel_agent.sh && sudo ./cloudsentinel_agent.sh'
+    'curl -L https://raw.githubusercontent.com/YunTower/CloudSentinel-Scripts/refs/heads/master/agent/install.sh -o cloudsentinel_agent.sh && chmod +x cloudsentinel_agent.sh && sudo ./cloudsentinel_agent.sh'
   if (props.server) {
     if (!props.server.agent_key) return '无法生成安装命令：缺少Agent Key'
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'

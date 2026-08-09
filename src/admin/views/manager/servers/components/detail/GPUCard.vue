@@ -19,7 +19,7 @@ const formatMemory = (mb: number): string => {
 </script>
 
 <template>
-  <n-card v-if="gpuInfo && gpuInfo.available && gpuInfo.gpus.length > 0">
+  <n-card v-if="gpuInfo && gpuInfo.available && gpuInfo.gpus.length > 0" size="small" :bordered="false">
     <div class="flex items-center gap-2 mb-4">
       <ri-cpu-line size="14px" />
       <span class="font-medium">GPU 信息</span>

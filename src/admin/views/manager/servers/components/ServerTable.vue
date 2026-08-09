@@ -155,12 +155,14 @@ const columns = computed(() => {
             text: true,
             onClick: () => goToDetail(row),
           },
-          [
-            h('p', { class: 'flex-1 min-w-0 space-x-1' }, [
-              h('span', {}, row.name || '-'),
-              h('span', { class: 'text-muted-color' }, ` (${row.ip || '-'})`),
-            ]),
-          ],
+          {
+            default: () => [
+              h('p', { class: 'flex-1 min-w-0 space-x-1' }, [
+                h('span', {}, row.name || '-'),
+                h('span', { class: 'text-muted-color' }, ` (${row.ip || '-'})`),
+              ]),
+            ],
+          },
         ),
     },
     {

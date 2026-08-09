@@ -12,13 +12,13 @@ defineProps<Props>()
 </script>
 
 <template>
-  <n-card>
-    <div class="flex items-center justify-between mb-3">
+  <n-card size="small" :bordered="false">
+    <div class="flex items-center justify-between mb-2">
       <div class="flex items-center gap-2">
         <ri-ram-line size="14px" />
         <span class="font-medium">内存使用率</span>
       </div>
-      <span class="text-2xl font-bold" :class="getProgressTextColor(memory)">
+      <span class="text-xl font-bold" :class="getProgressTextColor(memory)">
         {{ memory.toFixed(2) }}%
       </span>
     </div>

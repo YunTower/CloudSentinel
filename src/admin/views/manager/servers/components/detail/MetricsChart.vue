@@ -2,6 +2,11 @@
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import type { MetricsData } from '@/shared/types/manager/servers'
 import VChart, { type ILineChartSpec } from '@/shared/utils/vcharts'
+import {
+  formatChartAxisTime,
+  parseMetricsTimestamp,
+  toChartTimeMs,
+} from '@/shared/utils/metricsTimestamp'
 import { RiLineChartLine } from '@remixicon/vue'
 
 interface Props {
@@ -34,6 +39,30 @@ const chartTitles = {
   network: '网络IO',
 }
 
+type SpeedUnit = 'B/s' | 'KB/s' | 'MB/s' | 'GB/s'
+
+const diskUnit = ref<SpeedUnit>('KB/s')
+const networkUnit = ref<SpeedUnit>('KB/s')
+
+const speedUnitOptions: Array<{ label: string; value: SpeedUnit }> = [
+  { label: 'B/s', value: 'B/s' },
+  { label: 'KB/s', value: 'KB/s' },
+  { label: 'MB/s', value: 'MB/s' },
+  { label: 'GB/s', value: 'GB/s' },
+]
+
+const speedUnitDivisor: Record<SpeedUnit, number> = {
+  'B/s': 1,
+  'KB/s': 1024,
+  'MB/s': 1024 * 1024,
+  'GB/s': 1024 * 1024 * 1024,
+}
+
+const getSpeedInUnit = (bytesPerSec: number, unit: SpeedUnit): number => {
+  const safe = Number.isFinite(bytesPerSec) ? bytesPerSec : 0
+  return safe / speedUnitDivisor[unit]
+}
+
 const timeRangeOptions = [
   { label: '1小时', value: 1 },
   { label: '6小时', value: 6 },
@@ -41,36 +70,39 @@ const timeRangeOptions = [
   { label: '24小时', value: 24 },
 ]
 
+const toPointTime = (raw: string | number | undefined): number =>
+  toChartTimeMs(parseMetricsTimestamp(raw))
+
 const buildChartPointsFromProps = (): ChartPoint[] => {
   const source = props.data || []
   const points: ChartPoint[] = []
 
   if (props.chartType === 'network') {
     source.forEach((item) => {
-      const timestamp = typeof item.timestamp === 'number' ? item.timestamp * 1000 : Date.now()
+      const timestamp = toPointTime(item.timestamp)
       points.push({
         time: timestamp,
-        value: (item.network_upload || 0) / 1024,
-        series: '上传',
+        value: getSpeedInUnit(item.network_upload || 0, networkUnit.value),
+        series: `上传 (${networkUnit.value})`,
       })
       points.push({
         time: timestamp,
-        value: (item.network_download || 0) / 1024,
-        series: '下载',
+        value: getSpeedInUnit(item.network_download || 0, networkUnit.value),
+        series: `下载 (${networkUnit.value})`,
       })
     })
   } else if (props.chartType === 'disk') {
     source.forEach((item) => {
-      const timestamp = typeof item.timestamp === 'number' ? item.timestamp * 1000 : Date.now()
+      const timestamp = toPointTime(item.timestamp)
       points.push({
         time: timestamp,
-        value: item.disk_read || 0,
-        series: '读取速度',
+        value: getSpeedInUnit(item.disk_read || 0, diskUnit.value),
+        series: `读取速度 (${diskUnit.value})`,
       })
       points.push({
         time: timestamp,
-        value: item.disk_write || 0,
-        series: '写入速度',
+        value: getSpeedInUnit(item.disk_write || 0, diskUnit.value),
+        series: `写入速度 (${diskUnit.value})`,
       })
     })
   } else {
@@ -86,11 +118,11 @@ const buildChartPointsFromProps = (): ChartPoint[] => {
     }
 
     source.forEach((item) => {
-      const timestamp = typeof item.timestamp === 'number' ? item.timestamp * 1000 : Date.now()
+      const timestamp = toPointTime(item.timestamp)
       points.push({
         time: timestamp,
         value: item[valueKey] || 0,
-        series: '使用率',
+        series: '使用率 (%)',
       })
     })
   }
@@ -99,6 +131,15 @@ const buildChartPointsFromProps = (): ChartPoint[] => {
 }
 
 const createChartSpecFromPoints = (): ILineChartSpec => {
+  const valueUnit =
+    props.chartType === 'cpu' || props.chartType === 'memory'
+      ? '%'
+      : props.chartType === 'disk'
+        ? diskUnit.value
+        : props.chartType === 'network'
+          ? networkUnit.value
+          : ''
+
   const colors =
     props.chartType === 'network' || props.chartType === 'disk'
       ? ['#3b82f6', '#10b981']
@@ -120,51 +161,81 @@ const createChartSpecFromPoints = (): ILineChartSpec => {
     yField: 'value',
     seriesField: 'series',
     color: colors,
+    crosshair: {
+      trigger: 'hover',
+      followTooltip: true,
+      xField: {
+        visible: true,
+        line: {
+          visible: true,
+          type: 'line',
+          style: {
+            stroke: '#94a3b8',
+            strokeOpacity: 0.95,
+            lineWidth: 1,
+            lineDash: [],
+          },
+        },
+        label: {
+          visible: false,
+        },
+      },
+      yField: {
+        visible: false,
+      },
+    },
+    tooltip: {
+      trigger: 'hover',
+      activeType: 'dimension',
+      dimension: {
+        updateTitle: (prev) => {
+          if (!prev) return prev
+          const raw =
+            typeof prev.value === 'string'
+              ? prev.value
+              : typeof prev.key === 'string'
+                ? prev.key
+                : undefined
+
+          if (raw === undefined) return prev
+          const numeric = Number(raw)
+          if (!Number.isFinite(numeric)) return prev
+
+          // tooltip 中的 time 可能是 ms 或秒
+          const ms = numeric < 1e12 ? numeric * 1000 : numeric
+          const formatted = formatChartAxisTime(ms)
+          return formatted ? { ...prev, value: formatted } : prev
+        },
+      },
+    },
     axes: [
       {
         orient: 'bottom',
         type: 'time',
         label: {
-          formatMethod: (text: string | string[], datum?: unknown) => {
+          formatMethod: (text: string | string[]) => {
             const rawText = Array.isArray(text) ? text[0] : text
-            const valueFromDatum =
-              datum && typeof (datum as { value?: number }).value === 'number'
-                ? (datum as { value?: number }).value
-                : undefined
 
-            let timestamp = valueFromDatum
-
-            if (timestamp === undefined) {
-              const numeric = Number(rawText)
-              if (Number.isFinite(numeric)) {
-                timestamp = numeric
-              }
+            const numeric = Number(rawText)
+            if (Number.isFinite(numeric)) {
+              // VChart time 轴可能传入 ms 或已格式化文本
+              const ms = numeric < 1e12 ? numeric * 1000 : numeric
+              return formatChartAxisTime(ms) || String(rawText)
             }
 
-            if (timestamp !== undefined) {
-              const date = new Date(timestamp)
-              if (!Number.isNaN(date.getTime())) {
-                const hours = `${date.getHours()}`.padStart(2, '0')
-                const minutes = `${date.getMinutes()}`.padStart(2, '0')
-                const seconds = `${date.getSeconds()}`.padStart(2, '0')
-                return `${hours}:${minutes}:${seconds}`
-              }
-            }
-
-            const parsed = new Date(rawText)
-            if (!Number.isNaN(parsed.getTime())) {
-              const hours = `${parsed.getHours()}`.padStart(2, '0')
-              const minutes = `${parsed.getMinutes()}`.padStart(2, '0')
-              const seconds = `${parsed.getSeconds()}`.padStart(2, '0')
-              return `${hours}:${minutes}:${seconds}`
-            }
-
-            return rawText
+            const parsedMs = toChartTimeMs(parseMetricsTimestamp(rawText))
+            return formatChartAxisTime(parsedMs) || String(rawText)
           },
         },
       },
       {
         orient: 'left',
+        label: {
+          formatMethod: (text: string | string[]) => {
+            const rawText = Array.isArray(text) ? text[0] : text
+            return valueUnit ? `${rawText} ${valueUnit}` : String(rawText)
+          },
+        },
       },
     ],
     legends: {
@@ -215,74 +286,19 @@ const updateChart = () => {
   renderChart()
 }
 
-const addDataPoint = (dataPoint: {
-  timestamp: number
-  cpu_usage?: number
-  memory_usage?: number
-  disk_usage?: number
-  disk_read?: number
-  disk_write?: number
-  network_upload?: number
-  network_download?: number
-}) => {
-  if (!chartInstance) return
+watch(
+  () => diskUnit.value,
+  () => {
+    if (props.chartType === 'disk') updateChart()
+  },
+)
 
-  const timestamp = dataPoint.timestamp * 1000
-  const now = Date.now()
-  const timeWindowMs = props.timeRange * 60 * 60 * 1000
-  const timeWindowStart = now - timeWindowMs
-
-  const filteredPoints = chartPoints.filter((point) => point.time >= timeWindowStart)
-
-  if (props.chartType === 'network') {
-    const uploadValue = (dataPoint.network_upload || 0) / 1024
-    const downloadValue = (dataPoint.network_download || 0) / 1024
-
-    filteredPoints.push({
-      time: timestamp,
-      value: uploadValue,
-      series: '上传',
-    })
-    filteredPoints.push({
-      time: timestamp,
-      value: downloadValue,
-      series: '下载',
-    })
-  } else if (props.chartType === 'disk') {
-    const readValue = dataPoint.disk_read || 0
-    const writeValue = dataPoint.disk_write || 0
-
-    filteredPoints.push({
-      time: timestamp,
-      value: readValue,
-      series: '读取速度',
-    })
-    filteredPoints.push({
-      time: timestamp,
-      value: writeValue,
-      series: '写入速度',
-    })
-  } else {
-    let value = 0
-    switch (props.chartType) {
-      case 'cpu':
-        value = dataPoint.cpu_usage || 0
-        break
-      case 'memory':
-        value = dataPoint.memory_usage || 0
-        break
-    }
-
-    filteredPoints.push({
-      time: timestamp,
-      value,
-      series: '使用率',
-    })
-  }
-
-  chartPoints = filteredPoints
-  renderChart()
-}
+watch(
+  () => networkUnit.value,
+  () => {
+    if (props.chartType === 'network') updateChart()
+  },
+)
 
 watch(
   () => props.data,
@@ -320,13 +336,27 @@ defineExpose({
 </script>
 
 <template>
-  <n-card>
+  <n-card size="small" :bordered="false">
     <div class="flex items-center justify-between mb-3">
       <div class="flex items-center gap-2">
         <ri-line-chart-line size="14px" />
         <span class="font-medium">{{ chartTitles[chartType] }}</span>
       </div>
       <div class="flex items-center gap-1">
+        <n-select
+          v-if="chartType === 'disk'"
+          v-model:value="diskUnit"
+          :options="speedUnitOptions"
+          size="small"
+          class="w-[70px]!"
+        />
+        <n-select
+          v-else-if="chartType === 'network'"
+          v-model:value="networkUnit"
+          :options="speedUnitOptions"
+          size="small"
+          class="w-[70px]!"
+        />
         <n-button
           v-for="option in timeRangeOptions"
           :key="option.value"

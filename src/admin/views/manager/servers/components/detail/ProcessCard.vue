@@ -18,16 +18,9 @@ const hasProcessStatus = computed(
 </script>
 
 <template>
-  <n-card class="process-card-fill">
+  <n-card size="small" :bordered="false">
     <div class="flex flex-col h-full min-h-0">
-      <div class="mb-3 flex items-center gap-2 shrink-0">
-        <ri-server-line size="14px" />
-        <span class="text-sm font-semibold text-color">进程监控</span>
-      </div>
-      <div
-        v-if="hasProcessStatus"
-        class="flex flex-wrap gap-2 content-start min-h-0 overflow-auto"
-      >
+      <div v-if="hasProcessStatus" class="flex flex-wrap gap-2 content-start min-h-0 overflow-auto">
         <n-tag
           v-for="(status, name) in processStatus"
           :key="name"
@@ -39,26 +32,9 @@ const hasProcessStatus = computed(
           {{ name }}
         </n-tag>
       </div>
-      <div
-        v-else
-        class="flex-1 min-h-0 flex items-center justify-center"
-      >
+      <div v-else class="flex-1 min-h-0 flex items-center justify-center">
         <n-empty description="暂无进程监控数据" />
       </div>
     </div>
   </n-card>
 </template>
-
-<style scoped>
-.process-card-fill {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-.process-card-fill :deep(.n-card__content) {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-</style>
