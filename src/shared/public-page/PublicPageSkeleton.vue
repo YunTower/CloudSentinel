@@ -33,7 +33,7 @@ withDefaults(
 
     <div class="space-y-8" aria-hidden="true">
       <div
-        class="rounded-2xl bg-zinc-950/[0.03] p-4 ring-1 ring-zinc-950/5 sm:p-5 dark:bg-white/5 dark:ring-white/10"
+        class="rounded-[1.25rem] bg-zinc-950/[0.035] p-4 sm:p-5 dark:bg-white/[0.055]"
       >
         <div class="flex items-start gap-3 sm:gap-4">
           <span class="public-skeleton-bar size-8 shrink-0 rounded-full sm:size-9" />
@@ -45,16 +45,20 @@ withDefaults(
       </div>
 
       <div
-        class="overflow-hidden rounded-2xl bg-[var(--surface-0)] ring-1 ring-zinc-950/10 dark:ring-white/10"
+        class="overflow-hidden rounded-[1.25rem] bg-zinc-950/[0.035] p-2 dark:bg-white/[0.055]"
       >
         <div
-          class="flex items-center justify-between border-b border-zinc-950/5 px-4 py-3 sm:px-5 dark:border-white/10"
+          class="flex items-center justify-between px-3 py-3 sm:px-4"
         >
           <div class="public-skeleton-bar h-5 w-28 rounded-md" />
           <div class="public-skeleton-bar h-7 w-16 rounded-full" />
         </div>
-        <div class="space-y-6 px-4 py-5 sm:px-5">
-          <div v-for="index in 3" :key="index" class="space-y-3">
+        <div class="space-y-1">
+          <div
+            v-for="index in 3"
+            :key="index"
+            class="space-y-3 rounded-[0.875rem] bg-white px-3 py-5 dark:bg-zinc-950/45 sm:px-4"
+          >
             <div class="flex items-center justify-between gap-4">
               <div class="public-skeleton-bar h-5 w-40 max-w-[60%] rounded-md" />
               <div class="public-skeleton-bar h-4 w-20 rounded-md" />

@@ -72,7 +72,7 @@ const togglePublicTheme = () => {
       >
         <span
           v-if="page.logoUrl"
-          class="size-8 shrink-0 overflow-hidden rounded-full ring-1 ring-zinc-950/10 dark:ring-white/10"
+          class="size-8 shrink-0 overflow-hidden rounded-full bg-zinc-950/[0.04] dark:bg-white/[0.06]"
         >
           <img :src="page.logoUrl" alt="" class="size-full object-cover" />
         </span>

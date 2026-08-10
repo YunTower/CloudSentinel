@@ -10,6 +10,7 @@ import {
   RiAlertFill,
   RiArrowDownSLine,
 } from '@remixicon/vue'
+import { publicStatusTone } from '@/shared/public-page/statusTone'
 
 interface Props {
   monitors: PublicServiceMonitor[]
@@ -23,11 +24,6 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const BAR_COUNT = 90
-const MOBILE_BAR_COUNT = 30
-
-interface HistoryDisplayEntry extends ServiceMonitorHistoryEntry {
-  range_start?: string
-}
 
 /** 折叠的分组 key；默认全部展开 */
 const collapsed = ref<Set<string>>(new Set())
@@ -43,7 +39,7 @@ const statusLabel = (status: string) => {
 const statusIconColor = (status: string) => {
   if (status === 'up') return '#18a058'
   if (status === 'slow') return '#f0a020'
-  if (status === 'down') return '#d03050'
+  if (status === 'down') return '#f0a020'
   return '#a1a1aa'
 }
 
@@ -51,11 +47,11 @@ const historyColor = (entry: ServiceMonitorHistoryEntry | null | undefined) => {
   if (!entry || !entry.status) return 'bg-zinc-950/12 dark:bg-white/12'
   if (entry.status === 'up') return 'bg-emerald-500'
   if (entry.status === 'slow') return 'bg-amber-400'
-  if (entry.status === 'down') return 'bg-red-500'
+  if (entry.status === 'down') return 'bg-amber-500'
   return 'bg-zinc-950/12 dark:bg-white/12'
 }
 
-const historyTip = (entry: HistoryDisplayEntry | null | undefined) => {
+const historyTip = (entry: ServiceMonitorHistoryEntry | null | undefined) => {
   if (!entry || !entry.checked_at) return '暂无数据'
   const formatDate = (value: string) => {
     const date = new Date(value)
@@ -63,9 +59,7 @@ const historyTip = (entry: HistoryDisplayEntry | null | undefined) => {
       ? value
       : date.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
   }
-  const endDay = formatDate(entry.checked_at)
-  const startDay = entry.range_start ? formatDate(entry.range_start) : ''
-  const day = startDay && startDay !== endDay ? `${startDay}–${endDay}` : endDay
+  const day = formatDate(entry.checked_at)
   if (!entry.status) return `${day} · 暂无数据`
   const rt = entry.response_time > 0 ? ` · ${entry.response_time}ms` : ''
   return `${day} · ${statusLabel(entry.status)}${rt}`
@@ -80,7 +74,7 @@ const uptimeText = (monitor: PublicServiceMonitor) => {
 }
 
 const uptimeColor = (monitor: PublicServiceMonitor) => {
-  if (monitor.status === 'down') return 'text-red-600 dark:text-red-400'
+  if (monitor.status === 'down') return 'text-amber-700 dark:text-amber-300'
   if (monitor.status === 'slow') return 'text-amber-600 dark:text-amber-400'
   return 'text-emerald-600 dark:text-emerald-400'
 }
@@ -102,6 +96,40 @@ const certExpiryTagType = (monitor: PublicServiceMonitor) => {
   return 'success'
 }
 
+const aiFormatLabel = (format?: string) => {
+  if (format === 'anthropic_messages') return 'Anthropic Messages'
+  if (format === 'responses') return 'Responses'
+  if (format === 'chat_completions') return 'Chat Completions'
+  return format || ''
+}
+
+const monitorDetail = (monitor: PublicServiceMonitor) => {
+  if (monitor.type === 'ai_model') {
+    return [monitor.ai_model, aiFormatLabel(monitor.ai_api_format)].filter(Boolean).join(' · ')
+  }
+  const metadata = monitor.last_metadata
+  if (!['up', 'slow'].includes(monitor.status) || metadata?.kind !== 'minecraft') return ''
+  const edition = metadata.edition === 'bedrock' ? 'Bedrock' : 'Java'
+  const players =
+    metadata.players_online != null && metadata.players_max != null
+      ? `${metadata.players_online}/${metadata.players_max} 玩家`
+      : ''
+  return [edition, metadata.version_name, players, metadata.game_mode].filter(Boolean).join(' · ')
+}
+
+const monitorSubtitle = (monitor: PublicServiceMonitor) => {
+  if (!['up', 'slow'].includes(monitor.status)) return ''
+  if (monitor.last_metadata?.kind !== 'minecraft') return ''
+  return monitor.last_metadata.motd || ''
+}
+
+const minecraftPlayers = (monitor: PublicServiceMonitor) => {
+  const metadata = monitor.last_metadata
+  if (metadata?.kind !== 'minecraft') return ''
+  if (metadata.players_online == null || metadata.players_max == null) return ''
+  return `${metadata.players_online}/${metadata.players_max} 玩家`
+}
+
 const emptyEntry = (offsetDays: number): ServiceMonitorHistoryEntry => {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
@@ -109,7 +137,7 @@ const emptyEntry = (offsetDays: number): ServiceMonitorHistoryEntry => {
   return { status: '', response_time: 0, checked_at: d.toISOString() }
 }
 
-const visibleHistory = (monitor: PublicServiceMonitor): HistoryDisplayEntry[] => {
+const visibleHistory = (monitor: PublicServiceMonitor): ServiceMonitorHistoryEntry[] => {
   const history = monitor.history || []
   const slice =
     history.length > BAR_COUNT ? history.slice(history.length - BAR_COUNT) : [...history]
@@ -119,34 +147,7 @@ const visibleHistory = (monitor: PublicServiceMonitor): HistoryDisplayEntry[] =>
   return [...pad, ...slice]
 }
 
-const statusWeight = (status: string) => {
-  if (status === 'down') return 3
-  if (status === 'slow') return 2
-  if (status === 'up') return 1
-  return 0
-}
-
-/** 小屏将每 3 天合并为一个桶，保留该时间段内最严重的状态。 */
-const mobileHistory = (monitor: PublicServiceMonitor): HistoryDisplayEntry[] => {
-  const entries = visibleHistory(monitor)
-  const size = Math.ceil(entries.length / MOBILE_BAR_COUNT)
-  const result: HistoryDisplayEntry[] = []
-  for (let index = 0; index < entries.length; index += size) {
-    const bucket = entries.slice(index, index + size)
-    const representative = bucket.reduce((worst, entry) =>
-      statusWeight(entry.status) > statusWeight(worst.status) ? entry : worst,
-    )
-    result.push({
-      ...representative,
-      response_time: Math.max(...bucket.map((entry) => entry.response_time || 0)),
-      checked_at: bucket[bucket.length - 1]?.checked_at || representative.checked_at,
-      range_start: bucket[0]?.checked_at,
-    })
-  }
-  return result
-}
-
-const selectHistory = (monitorId: number, entry: HistoryDisplayEntry) => {
+const selectHistory = (monitorId: number, entry: ServiceMonitorHistoryEntry) => {
   selectedHistory.value = {
     ...selectedHistory.value,
     [monitorId]: historyTip(entry),
@@ -155,15 +156,18 @@ const selectHistory = (monitorId: number, entry: HistoryDisplayEntry) => {
 
 const groupOperational = (items: PublicServiceMonitor[]) => {
   if (items.some((m) => m.status === 'down')) {
-    return { label: '异常', dot: 'bg-red-500', pill: 'text-red-700 bg-red-500/10' }
+    return {
+      label: '异常',
+      ...publicStatusTone.warning,
+    }
   }
   if (items.some((m) => m.status === 'slow')) {
-    return { label: '降级', dot: 'bg-amber-400', pill: 'text-amber-800 bg-amber-500/10' }
+    return { label: '降级', ...publicStatusTone.warning }
   }
   if (items.every((m) => m.status === 'up')) {
-    return { label: '正常', dot: 'bg-emerald-500', pill: 'text-emerald-700 bg-emerald-500/10' }
+    return { label: '正常', ...publicStatusTone.success }
   }
-  return { label: '未知', dot: 'bg-zinc-400', pill: 'text-zinc-600 bg-zinc-950/5' }
+  return { label: '未知', ...publicStatusTone.neutral }
 }
 
 const groups = computed(() => {
@@ -209,14 +213,11 @@ const toggleGroup = (key: string) => {
     <div
       v-for="group in groups"
       :key="group.key"
-      class="overflow-hidden rounded-2xl bg-[var(--surface-0)] ring-1 ring-zinc-950/10 dark:ring-white/10"
+      class="overflow-hidden rounded-[1.25rem] bg-zinc-950/[0.035] p-2 dark:bg-white/[0.055]"
     >
       <button
         type="button"
-        class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-500 sm:px-5"
-        :class="
-          isCollapsed(group.key) ? undefined : 'border-b border-zinc-950/5 dark:border-white/10'
-        "
+        class="flex w-full items-center justify-between gap-3 rounded-[0.875rem] px-3 py-3 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-emerald-500 sm:px-4"
         :aria-expanded="!isCollapsed(group.key)"
         @click="toggleGroup(group.key)"
       >
@@ -243,11 +244,11 @@ const toggleGroup = (key: string) => {
 
       <Transition name="public-collapse">
         <div v-show="!isCollapsed(group.key)">
-          <div class="public-collapse__inner px-4 sm:px-5">
+          <div class="public-collapse__inner space-y-1">
             <div
               v-for="monitor in group.items"
               :key="monitor.id"
-              class="border-b border-zinc-950/5 py-5 last:border-b-0 dark:border-white/10"
+              class="rounded-[0.875rem] bg-white px-3 py-5 dark:bg-zinc-950/45 sm:px-4"
             >
               <div
                 class="mb-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
@@ -272,6 +273,12 @@ const toggleGroup = (key: string) => {
                     class="min-w-0 flex-1 break-words text-[0.9375rem] font-medium text-[var(--surface-900)] sm:truncate"
                   >
                     {{ monitor.name }}
+                  </span>
+                  <span
+                    v-if="minecraftPlayers(monitor)"
+                    class="shrink-0 text-sm tabular-nums text-[var(--surface-500)]"
+                  >
+                    {{ minecraftPlayers(monitor) }}
                   </span>
                   <n-tag
                     v-if="certExpiryText(monitor)"
@@ -298,53 +305,54 @@ const toggleGroup = (key: string) => {
               </div>
 
               <div
-                class="hidden h-7 w-full gap-px sm:grid"
-                :style="{ gridTemplateColumns: `repeat(${BAR_COUNT}, minmax(0, 1fr))` }"
+                v-if="monitorDetail(monitor) || monitorSubtitle(monitor)"
+                class="mb-3 ml-7 min-w-0"
               >
-                <div v-for="(entry, idx) in visibleHistory(monitor)" :key="idx" class="min-w-0">
-                  <n-tooltip placement="top">
-                    <template #trigger>
-                      <button
-                        type="button"
-                        class="h-7 w-full rounded-[1px] transition-opacity duration-150 hover:opacity-70 focus-visible:relative focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--surface-900)]"
-                        :class="historyColor(entry)"
-                        :aria-label="historyTip(entry)"
-                        :title="historyTip(entry)"
-                        @click="selectHistory(monitor.id, entry)"
-                        @focus="selectHistory(monitor.id, entry)"
-                      />
-                    </template>
-                    {{ historyTip(entry) }}
-                  </n-tooltip>
-                </div>
-              </div>
-
-              <div
-                class="grid h-7 w-full gap-0.5 sm:hidden"
-                :style="{ gridTemplateColumns: `repeat(${MOBILE_BAR_COUNT}, minmax(0, 1fr))` }"
-              >
-                <n-tooltip
-                  v-for="(entry, idx) in mobileHistory(monitor)"
-                  :key="idx"
-                  placement="top"
+                <p
+                  v-if="monitorDetail(monitor)"
+                  class="text-sm leading-5 text-[var(--surface-500)]"
                 >
-                  <template #trigger>
-                    <button
-                      type="button"
-                      class="h-7 min-w-0 rounded-[2px] transition-opacity duration-150 active:opacity-70 focus-visible:relative focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--surface-900)]"
-                      :class="historyColor(entry)"
-                      :aria-label="historyTip(entry)"
-                      @click="selectHistory(monitor.id, entry)"
-                      @focus="selectHistory(monitor.id, entry)"
-                    />
-                  </template>
-                  {{ historyTip(entry) }}
-                </n-tooltip>
+                  {{ monitorDetail(monitor) }}
+                </p>
+                <p
+                  v-if="monitorSubtitle(monitor)"
+                  class="mt-0.5 line-clamp-2 text-sm leading-5 text-[var(--surface-600)]"
+                >
+                  {{ monitorSubtitle(monitor) }}
+                </p>
               </div>
 
-              <div class="mt-1.5 flex justify-between text-sm text-[var(--surface-500)]">
-                <span>90 天前</span>
-                <span>今天</span>
+              <div class="history-range">
+                <div class="history-grid h-7 w-full gap-px">
+                  <div
+                    v-for="(entry, idx) in visibleHistory(monitor)"
+                    :key="idx"
+                    class="history-cell min-w-0"
+                  >
+                    <n-tooltip placement="top">
+                      <template #trigger>
+                        <button
+                          type="button"
+                          class="h-7 w-full rounded-[2px] transition-opacity duration-150 hover:opacity-70 active:opacity-70 focus-visible:relative focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--surface-900)]"
+                          :class="historyColor(entry)"
+                          :aria-label="historyTip(entry)"
+                          :title="historyTip(entry)"
+                          @click="selectHistory(monitor.id, entry)"
+                          @focus="selectHistory(monitor.id, entry)"
+                        />
+                      </template>
+                      {{ historyTip(entry) }}
+                    </n-tooltip>
+                  </div>
+                </div>
+
+                <div class="mt-1.5 flex justify-between text-sm text-[var(--surface-500)]">
+                  <span class="history-range-label history-range-label--15">15 天前</span>
+                  <span class="history-range-label history-range-label--30">30 天前</span>
+                  <span class="history-range-label history-range-label--60">60 天前</span>
+                  <span class="history-range-label history-range-label--90">90 天前</span>
+                  <span>今天</span>
+                </div>
               </div>
               <p
                 v-if="selectedHistory[monitor.id]"
@@ -360,3 +368,72 @@ const toggleGroup = (key: string) => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.history-range {
+  container-type: inline-size;
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(15, minmax(0, 1fr));
+}
+
+.history-cell {
+  display: none;
+}
+
+.history-range-label {
+  display: none;
+}
+
+.history-cell:nth-last-child(-n + 15),
+.history-range-label--15 {
+  display: block;
+}
+
+@container (min-width: 20rem) {
+  .history-grid {
+    grid-template-columns: repeat(30, minmax(0, 1fr));
+  }
+
+  .history-cell:nth-last-child(-n + 30),
+  .history-range-label--30 {
+    display: block;
+  }
+
+  .history-range-label--15 {
+    display: none;
+  }
+}
+
+@container (min-width: 30rem) {
+  .history-grid {
+    grid-template-columns: repeat(60, minmax(0, 1fr));
+  }
+
+  .history-cell:nth-last-child(-n + 60),
+  .history-range-label--60 {
+    display: block;
+  }
+
+  .history-range-label--30 {
+    display: none;
+  }
+}
+
+@container (min-width: 40rem) {
+  .history-grid {
+    grid-template-columns: repeat(90, minmax(0, 1fr));
+  }
+
+  .history-cell,
+  .history-range-label--90 {
+    display: block;
+  }
+
+  .history-range-label--60 {
+    display: none;
+  }
+}
+</style>

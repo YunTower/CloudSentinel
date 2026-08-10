@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import type { ServerItem } from '@/shared/types/server'
 import type { PublicServiceMonitor } from '@/shared/types/service-monitor'
 import type { PublicIncident } from '@/shared/types/incidents'
-import { RiCheckboxCircleFill, RiErrorWarningFill, RiAlertFill } from '@remixicon/vue'
+import { RiCheckboxCircleFill, RiSubtractLine, RiAlertFill } from '@remixicon/vue'
 
 interface Props {
   servers: ServerItem[]
@@ -45,10 +45,7 @@ const level = computed<OverallLevel>(() => {
 })
 
 const title = computed(() => {
-  if (level.value === 'outage') return '部分服务异常'
-  if (level.value === 'degraded') return '部分服务降级'
-  if (level.value === 'maintenance') return '计划维护进行中'
-  if (level.value === 'infrastructure') return '基础设施异常'
+  if (level.value !== 'operational') return '我们目前遇到了一些问题'
   return '全部服务正常'
 })
 
@@ -96,34 +93,43 @@ const summary = computed(() => {
   return '所有公开服务与基础设施均运行正常'
 })
 
-const tone = computed(() => {
-  if (level.value === 'outage') {
-    return {
-      icon: '#d03050',
-      well: 'bg-red-500/5 ring-red-500/10',
-      title: 'text-red-700 dark:text-red-300',
-    }
-  }
-  if (level.value === 'degraded' || level.value === 'maintenance') {
-    return {
-      icon: '#f0a020',
-      well: 'bg-amber-500/5 ring-amber-500/10',
-      title: 'text-amber-800 dark:text-amber-200',
-    }
-  }
-  if (level.value === 'infrastructure') {
-    return {
-      icon: '#f0a020',
-      well: 'bg-amber-500/5 ring-amber-500/10',
-      title: 'text-amber-800 dark:text-amber-200',
-    }
-  }
-  return {
-    icon: '#18a058',
-    well: 'bg-emerald-500/5 ring-emerald-500/10',
-    title: 'text-emerald-800 dark:text-emerald-200',
-  }
-})
+const affectedServices = computed(() =>
+  props.serviceMonitors.filter((monitor) => monitor.status === 'down' || monitor.status === 'slow'),
+)
+
+const affectedServers = computed(() =>
+  props.servers.filter(
+    (server) =>
+      server.status === 'offline' || server.status === 'error' || server.status === 'maintenance',
+  ),
+)
+
+const affectedItems = computed(() => [
+  ...affectedServices.value.map((service) => ({
+    key: `service-${service.id}`,
+    name: service.name,
+  })),
+  ...affectedServers.value.map((server) => ({ key: `server-${server.id}`, name: server.name })),
+])
+
+const activeIncidents = computed(() =>
+  props.incidents.filter((incident) => incident.status === 'active'),
+)
+
+const latestIncidentMessage = (incident: PublicIncident) => {
+  const events = incident.events || []
+  return events.length > 0 ? events[events.length - 1].message : ''
+}
+
+const incidentMeta = (incident: PublicIncident) => {
+  const startedAt = new Date(incident.started_at)
+  if (Number.isNaN(startedAt.getTime())) return '处理中'
+  const elapsedMinutes = Math.max(1, Math.floor((Date.now() - startedAt.getTime()) / 60000))
+  if (elapsedMinutes < 60) return `处理中 · 已持续 ${elapsedMinutes} 分钟`
+  const hours = Math.floor(elapsedMinutes / 60)
+  const minutes = elapsedMinutes % 60
+  return `处理中 · 已持续 ${hours} 小时${minutes > 0 ? ` ${minutes} 分钟` : ''}`
+}
 
 const updatedText = computed(() => {
   if (!props.lastUpdatedAt) return ''
@@ -134,26 +140,14 @@ const updatedText = computed(() => {
 </script>
 
 <template>
-  <section class="flex items-start gap-3 rounded-2xl p-4 ring-1 sm:gap-4 sm:p-5" :class="tone.well">
-    <RiCheckboxCircleFill
-      v-if="level === 'operational'"
-      class="mt-0.5 size-8 shrink-0 sm:size-9"
-      :style="{ color: tone.icon }"
-    />
-    <RiAlertFill
-      v-else-if="level === 'degraded' || level === 'maintenance' || level === 'infrastructure'"
-      class="mt-0.5 size-8 shrink-0 sm:size-9"
-      :style="{ color: tone.icon }"
-    />
-    <RiErrorWarningFill
-      v-else
-      class="mt-0.5 size-8 shrink-0 sm:size-9"
-      :style="{ color: tone.icon }"
-    />
+  <section
+    v-if="level === 'operational'"
+    class="flex items-start gap-3 rounded-[1.25rem] bg-emerald-500/[0.075] p-4 sm:gap-4 sm:p-5 dark:bg-emerald-400/[0.12]"
+  >
+    <RiCheckboxCircleFill class="mt-0.5 size-8 shrink-0 sm:size-9" style="color: #18a058" />
     <div class="min-w-0">
       <h1
-        class="max-w-[40ch] text-balance text-2xl font-semibold tracking-tight sm:text-3xl"
-        :class="tone.title"
+        class="max-w-[40ch] text-balance text-2xl font-semibold tracking-tight text-emerald-800 sm:text-3xl dark:text-emerald-200"
       >
         {{ title }}
       </h1>
@@ -163,6 +157,96 @@ const updatedText = computed(() => {
       <p v-if="updatedText" class="mt-1 text-sm text-[var(--surface-500)] tabular-nums">
         {{ updatedText }}
       </p>
+    </div>
+  </section>
+
+  <section
+    v-else
+    class="overflow-hidden rounded-[1.25rem] bg-amber-100/85 dark:bg-amber-400/[0.12]"
+  >
+    <header class="flex items-start gap-3 px-4 py-4 sm:px-5 sm:py-5">
+      <span
+        class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white"
+        aria-hidden="true"
+      >
+        <RiSubtractLine class="size-4" />
+      </span>
+      <div class="min-w-0 flex-1">
+        <h1
+          class="text-lg font-semibold leading-7 tracking-tight text-amber-950 dark:text-amber-50 sm:text-xl"
+        >
+          {{ title }}
+        </h1>
+        <p class="mt-0.5 text-sm leading-5 text-amber-900/65 dark:text-amber-100/65">
+          {{ summary }}
+        </p>
+      </div>
+      <p
+        v-if="updatedText"
+        class="hidden shrink-0 pt-1 text-xs tabular-nums text-amber-900/50 sm:block dark:text-amber-100/50"
+      >
+        {{ updatedText }}
+      </p>
+    </header>
+
+    <div class="px-2 pb-2 sm:px-2.5 sm:pb-2.5">
+      <div
+        class="overflow-hidden rounded-2xl bg-white/90 p-1 dark:bg-zinc-950/65"
+      >
+        <div v-if="affectedItems.length" class="px-3.5 py-3.5 sm:px-4">
+          <p class="text-xs font-medium tracking-wide text-[var(--surface-500)]">受影响服务</p>
+          <div class="mt-2 flex flex-wrap gap-1.5">
+            <span
+              v-for="item in affectedItems"
+              :key="item.key"
+              class="rounded-md bg-amber-100 px-2 py-1 text-sm font-medium leading-5 text-amber-950 dark:bg-amber-400/15 dark:text-amber-100"
+            >
+              {{ item.name }}
+            </span>
+          </div>
+        </div>
+
+        <div
+          v-if="activeIncidents.length"
+          class="space-y-1"
+        >
+          <article
+            v-for="incident in activeIncidents"
+            :key="incident.id"
+            class="flex items-start gap-3 rounded-[0.875rem] bg-zinc-950/[0.025] px-3.5 py-4 dark:bg-white/[0.045] sm:px-4 sm:py-5"
+          >
+            <span
+              class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white"
+              aria-hidden="true"
+            >
+              <RiAlertFill class="size-3.5" />
+            </span>
+            <div class="min-w-0 flex-1">
+              <h2
+                class="text-base font-semibold leading-6 tracking-tight text-[var(--surface-900)]"
+              >
+                {{ incident.title }}
+              </h2>
+              <p
+                v-if="latestIncidentMessage(incident)"
+                class="mt-1 text-sm leading-6 text-[var(--surface-600)]"
+              >
+                {{ latestIncidentMessage(incident) }}
+              </p>
+              <p class="mt-2 text-xs tabular-nums text-[var(--surface-400)]">
+                {{ incidentMeta(incident) }}
+              </p>
+            </div>
+          </article>
+        </div>
+
+        <div
+          v-else
+          class="rounded-[0.875rem] bg-zinc-950/[0.025] px-3.5 py-3 text-sm text-[var(--surface-500)] dark:bg-white/[0.045] sm:px-4"
+        >
+          系统已检测到受影响服务，正在等待事件详情。
+        </div>
+      </div>
     </div>
   </section>
 </template>

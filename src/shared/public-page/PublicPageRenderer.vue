@@ -148,7 +148,7 @@ const pageIncidents = computed(() => props.incidents || [])
       v-for="(md, i) in markdownBlocks"
       v-show="showMarkdown && md.trim()"
       :key="i"
-      class="rounded-2xl bg-zinc-950/[0.03] px-4 py-4 ring-1 ring-zinc-950/5 sm:px-5 dark:bg-white/5 dark:ring-white/10"
+      class="rounded-[1.25rem] bg-zinc-950/[0.035] px-4 py-4 sm:px-5 dark:bg-white/[0.055]"
     >
       <div
         class="prose prose-sm dark:prose-invert max-w-none prose-p:text-pretty prose-headings:font-semibold prose-headings:tracking-tight"
@@ -167,6 +167,7 @@ const pageIncidents = computed(() => props.incidents || [])
       <StatusServerRows
         :servers="filteredServers"
         :group-by="serverBlock?.groupBy || 'none'"
+        :display-fields="displayFields"
       />
     </section>
 
@@ -176,7 +177,7 @@ const pageIncidents = computed(() => props.incidents || [])
 
     <footer
       v-if="showLinks && linkBlocks.length"
-      class="flex flex-wrap gap-x-4 gap-y-2 border-t border-zinc-950/5 pt-6 dark:border-white/10"
+      class="flex flex-wrap gap-x-4 gap-y-2 pt-2"
     >      <a
         v-for="(l, i) in linkBlocks"
         :key="i"

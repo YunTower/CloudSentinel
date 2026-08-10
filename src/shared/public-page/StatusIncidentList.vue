@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PublicIncident, PublicIncidentEvent } from '@/shared/types/incidents'
+import { publicStatusTone } from '@/shared/public-page/statusTone'
 
 interface Props {
   incidents: PublicIncident[]
@@ -28,11 +29,12 @@ const impactLabel = (impact: string) => {
 }
 
 const pillClass = (incident: PublicIncident) => {
-  if (incident.status === 'resolved') return 'bg-emerald-500/10 text-emerald-700'
-  if (incident.impact === 'maintenance') return 'bg-zinc-950/5 text-zinc-600'
-  if (incident.impact === 'degraded') return 'bg-amber-500/10 text-amber-800'
-  return 'bg-red-500/10 text-red-700'
+  if (incident.status === 'resolved') return publicStatusTone.success.pill
+  if (incident.impact === 'maintenance') return publicStatusTone.neutral.pill
+  return publicStatusTone.warning.pill
 }
+
+const neutralPillClass = publicStatusTone.neutral.pill
 
 const eventTypeLabel = (event: PublicIncidentEvent) => {
   if (event.event_type === 'opened') return '发生'
@@ -46,7 +48,7 @@ const eventType = (event: PublicIncidentEvent) => {
     return 'success' as const
   if (event.status === 'maintenance') return 'info' as const
   if (event.status === 'slow' || event.status === 'degraded') return 'warning' as const
-  if (event.status === 'down' || event.status === 'outage') return 'error' as const
+  if (event.status === 'down' || event.status === 'outage') return 'warning' as const
   return 'default' as const
 }
 
@@ -65,20 +67,17 @@ const sortedEvents = (events?: PublicIncidentEvent[]) =>
     <article
       v-for="incident in incidents"
       :key="incident.id"
-      class="rounded-2xl bg-[var(--surface-0)] p-4 ring-1 ring-zinc-950/10 sm:p-5 dark:ring-white/10"
+      class="rounded-[1.25rem] bg-zinc-950/[0.035] p-4 sm:p-5 dark:bg-white/[0.055]"
     >
       <div class="flex flex-wrap items-start justify-between gap-3">
         <h3 class="text-base font-semibold tracking-tight text-[var(--surface-900)]">
           {{ incident.title }}
         </h3>
         <div class="flex flex-wrap gap-2">
-          <span
-            class="inline-flex rounded-full px-2.5 py-1 text-sm"
-            :class="pillClass(incident)"
-          >
+          <span class="inline-flex rounded-full px-2.5 py-1 text-sm" :class="pillClass(incident)">
             {{ statusLabel(incident.status) }}
           </span>
-          <span class="inline-flex rounded-full bg-zinc-950/5 px-2.5 py-1 text-sm text-[var(--surface-600)]">
+          <span class="inline-flex rounded-full px-2.5 py-1 text-sm" :class="neutralPillClass">
             {{ impactLabel(incident.impact) }}
           </span>
         </div>

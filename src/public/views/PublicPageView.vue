@@ -78,7 +78,10 @@ const pageNeeds = computed(() => {
   return {
     servers: blocks.some((b) => b.type === 'serverList'),
     monitors: blocks.some((b) => b.type === 'serviceStatus'),
-    incidents: blocks.some((b) => b.type === 'incidents'),
+    // 状态 Banner 也需要进行中的事件；不依赖用户是否打开独立事件视图。
+    incidents: blocks.some(
+      (b) => b.type === 'incidents' || b.type === 'serviceStatus' || b.type === 'serverList',
+    ),
   }
 })
 
