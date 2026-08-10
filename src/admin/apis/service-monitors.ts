@@ -16,10 +16,28 @@ export interface ServiceMonitorResult {
   status: string
   response_time: number
   error?: string
+  error_code?: string
+  metadata?: ServiceMonitorMetadata
   checked_at: string
   created_at: string
   updated_at: string
 }
+
+export interface ServiceMonitorMetadata {
+  kind?: 'minecraft' | 'ai' | string
+  edition?: 'java' | 'bedrock' | string
+  version_name?: string
+  protocol_version?: number
+  motd?: string
+  players_online?: number
+  players_max?: number
+  game_mode?: string
+  api_format?: AIAPIFormat | string
+  configured_model?: string
+  response_model?: string
+}
+
+export type AIAPIFormat = 'anthropic_messages' | 'chat_completions' | 'responses'
 
 export interface ServiceMonitorUptimeStat {
   total_checks: number
@@ -56,6 +74,11 @@ export interface ServiceMonitor {
   check_cert_expiry: boolean
   cert_expires_at: string | null
   cert_days_left: number | null
+  ai_api_format?: AIAPIFormat
+  ai_model?: string
+  has_ai_api_key?: boolean
+  last_metadata?: ServiceMonitorMetadata
+  metadata_checked_at?: string | null
   history: ServiceMonitorHistoryEntry[]
   uptime?: Record<'24h' | '7d' | '30d', ServiceMonitorUptimeStat>
   created_at: string
@@ -95,6 +118,11 @@ export interface ServiceMonitorForm {
   failure_threshold: number
   recovery_threshold: number
   check_cert_expiry: boolean
+  ai_api_format: AIAPIFormat
+  ai_model: string
+  ai_models: string[]
+  ai_api_key: string
+  clear_ai_api_key?: boolean
 }
 
 export default {
@@ -111,6 +139,25 @@ export default {
       '/service-monitors',
       form,
     ),
+  createAIModels: (form: ServiceMonitorForm) =>
+    requester.Post<{
+      status: boolean
+      message?: string
+      data: ServiceMonitor[]
+      created_count: number
+    }>('/service-monitors/ai-models', {
+      name_prefix: form.name,
+      group_name: form.group_name,
+      target: form.target,
+      ai_api_format: form.ai_api_format,
+      ai_models: form.ai_models,
+      ai_api_key: form.ai_api_key,
+      interval: form.interval,
+      timeout: form.timeout,
+      enabled: form.enabled,
+      failure_threshold: form.failure_threshold,
+      recovery_threshold: form.recovery_threshold,
+    }),
   update: (id: number, form: Partial<ServiceMonitorForm>) =>
     requester.Patch<{ status: boolean; message?: string; data: ServiceMonitor }>(
       `/service-monitors/${id}`,

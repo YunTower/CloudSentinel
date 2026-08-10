@@ -46,6 +46,10 @@ const defaultForm = (): ServiceMonitorForm => ({
   failure_threshold: 1,
   recovery_threshold: 1,
   check_cert_expiry: false,
+  ai_api_format: 'chat_completions',
+  ai_model: '',
+  ai_models: [],
+  ai_api_key: '',
 })
 
 const form = ref<ServiceMonitorForm>(defaultForm())
@@ -96,14 +100,32 @@ const openEdit = (m: ServiceMonitor) => {
     failure_threshold: m.failure_threshold || 1,
     recovery_threshold: m.recovery_threshold || 1,
     check_cert_expiry: m.type === 'https' && !!m.check_cert_expiry,
+    ai_api_format: m.ai_api_format || 'chat_completions',
+    ai_model: m.ai_model || '',
+    ai_models: m.ai_model ? [m.ai_model] : [],
+    ai_api_key: '',
   }
   showDialog.value = true
 }
 
 const save = async () => {
-  if (!form.value.name || !form.value.target) {
-    message.error('名称和目标地址不能为空')
+  const isAICreate = form.value.type === 'ai_model' && !editingId.value
+  if ((!isAICreate && !form.value.name) || !form.value.target) {
+    message.error(isAICreate ? '接口地址不能为空' : '名称和目标地址不能为空')
     return
+  }
+  if (form.value.type === 'ai_model') {
+    const hasModel = editingId.value
+      ? !!form.value.ai_model.trim()
+      : form.value.ai_models.length > 0
+    if (!hasModel) {
+      message.error('请至少填写一个模型')
+      return
+    }
+    if (!editingId.value && !form.value.ai_api_key.trim()) {
+      message.error('API Key 不能为空')
+      return
+    }
   }
   saving.value = true
   try {
@@ -123,6 +145,19 @@ const save = async () => {
         message.success('已更新')
       } else {
         message.error(res.message || '更新失败')
+        return
+      }
+    } else if (isAICreate) {
+      const res = await serviceMonitorsApi.createAIModels(form.value)
+      if (res.status && res.data) {
+        const created = res.data.map((monitor) => ({
+          ...monitor,
+          history: monitor.history ?? [],
+        }))
+        monitors.value.unshift(...created)
+        message.success(`已创建 ${res.created_count} 个模型监测任务`)
+      } else {
+        message.error(res.message || '创建失败')
         return
       }
     } else {
@@ -248,6 +283,8 @@ onMounted(async () => {
           status: string
           response_time: number
           last_check_at: string
+          last_metadata?: ServiceMonitor['last_metadata']
+          metadata_checked_at?: string
           history_entry?: { status: string; response_time: number; checked_at: string }
         }
         const m = monitors.value.find((x) => x.id === d.id)
@@ -255,6 +292,8 @@ onMounted(async () => {
           m.status = d.status
           m.response_time = d.response_time
           m.last_check_at = d.last_check_at
+          m.last_metadata = d.last_metadata
+          m.metadata_checked_at = d.metadata_checked_at
           if (d.history_entry) {
             if (!m.history) m.history = []
             m.history.push(d.history_entry)
@@ -276,7 +315,7 @@ onUnmounted(() => {
     <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div>
         <n-h1 class="!mb-1">服务监测</n-h1>
-        <n-text depth="3">监测 HTTP/HTTPS/TCP/UDP 在线服务状态</n-text>
+        <n-text depth="3">监测网络服务、Minecraft 服务器与 AI 模型接口状态</n-text>
       </div>
       <n-button type="primary" @click="openCreate">
         <template #icon><ri-add-line /></template>
