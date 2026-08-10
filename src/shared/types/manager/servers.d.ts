@@ -68,6 +68,8 @@ export interface ServerListItemData {
   location: string
   os?: string
   architecture?: string
+  system_name?: string
+  cpu_name?: string
   agent_key?: string
   agent_version?: string // Agent版本（仅管理员可见）
   uptime?: string

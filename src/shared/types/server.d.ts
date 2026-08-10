@@ -11,6 +11,7 @@ export interface ServerItem {
   diskUsage: number // 综合磁盘使用率
   totalStorage?: string // 总存储容量，如"10TB"
   cpuName?: string
+  systemName?: string
   cores: number
   location: string
   os: string

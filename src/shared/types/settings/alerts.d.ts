@@ -39,3 +39,16 @@ export interface Notifications {
   email: EmailNotification
   webhook: WebhookNotification
 }
+
+export interface AlertTemplates {
+  version: 1
+  emailSubject: string
+  emailHtml: string
+  webhookText: string
+}
+
+export interface RenderedAlertTemplates {
+  emailSubject: string
+  emailHtml: string
+  webhookText: string
+}

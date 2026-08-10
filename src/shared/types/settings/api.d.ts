@@ -47,6 +47,11 @@ export interface GetPermissionsSettingsData {
   maxLoginAttempts: number
   lockoutDuration: number
   adminUsername?: string
+  // 认证配置动态化：会话/JWT 有效期（秒），0 = 未显式配置
+  sessionTimeout?: number
+  jwtExpiration?: number
+  // JWT 密钥：'***' 表示已显式配置，空串表示未配置；密钥本身不回显
+  jwtSecret?: string
 }
 
 export type GetPermissionsSettingsResponse = ApiResponse<GetPermissionsSettingsData>
@@ -54,6 +59,9 @@ export type GetPermissionsSettingsResponse = ApiResponse<GetPermissionsSettingsD
 export interface SavePermissionsSettingsBody {
   maxLoginAttempts: number
   lockoutDuration: number
+  sessionTimeout?: number
+  jwtExpiration?: number
+  jwtSecret?: string
   newUsername?: string
   newPassword?: string
   confirmPassword?: string
@@ -89,6 +97,8 @@ export interface AlertsNotificationsDto {
 
 export interface GetAlertsSettingsData {
   notifications: AlertsNotificationsDto
+  templates: import('./alerts').AlertTemplates
+  defaultTemplates: import('./alerts').AlertTemplates
   /** 是否已配置至少一个通知渠道 */
   hasNotificationChannel?: boolean
   /** 开启服务器离线告警 */
@@ -101,6 +111,7 @@ export type GetAlertsSettingsResponse = ApiResponse<GetAlertsSettingsData>
 
 export interface SaveAlertsSettingsBody {
   notifications: AlertsNotificationsDto
+  templates: import('./alerts').AlertTemplates
   alertServerOfflineEnabled?: boolean
   alertServerOnlineEnabled?: boolean
 }
@@ -108,4 +119,11 @@ export interface SaveAlertsSettingsBody {
 export interface TestAlertSettingsBody {
   type: 'email' | 'webhook'
   config: AlertsNotificationsDto['email'] | AlertsNotificationsDto['webhook']
+  templates: import('./alerts').AlertTemplates
 }
+
+export interface PreviewAlertTemplatesBody {
+  templates: import('./alerts').AlertTemplates
+}
+
+export type PreviewAlertTemplatesResponse = ApiResponse<import('./alerts').RenderedAlertTemplates>

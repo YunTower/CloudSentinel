@@ -6,7 +6,7 @@ export type BillingTagType = 'default' | 'success' | 'warning' | 'error' | 'info
 export type TrafficCycle = 'monthly' | 'quarterly' | 'yearly' | 'custom' | 'unlimited'
 
 const BILLING_CYCLE_LABELS: Record<string, string> = {
-  monthly: '付',
+  monthly: '月',
   quarterly: '季',
   yearly: '年',
   one_time: '一次性',
