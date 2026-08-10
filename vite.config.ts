@@ -140,6 +140,7 @@ export default defineConfig(({ mode }) => {
       sourcemap: false,
     },
     server: {
+      host: '0.0.0.0',
       port: isPublicBuild ? 5178 : 5177,
       strictPort: true,
       proxy: {

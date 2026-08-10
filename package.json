@@ -23,6 +23,10 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@iconify-json/devicon": "^1.2.62",
+    "@iconify-json/devicon-plain": "^1.2.57",
+    "@iconify-json/logos": "^1.2.11",
+    "@iconify/vue": "^5.0.1",
     "@remixicon/vue": "^4.9.0",
     "@visactor/vchart": "^2.0.16",
     "alova": "^3.3.4",
@@ -36,8 +40,8 @@
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.11",
     "@tailwindcss/typography": "^0.5.19",
+    "@tailwindcss/vite": "^4.1.11",
     "@tsconfig/node22": "^22.0.2",
     "@types/node": "^22.16.5",
     "@vitejs/plugin-vue": "^6.0.1",
