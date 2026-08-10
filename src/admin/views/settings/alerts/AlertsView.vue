@@ -2,9 +2,40 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import type { FormInst, FormRules } from 'naive-ui'
 import { useMessage } from 'naive-ui'
-import type { Notifications } from '@/shared/types/settings/alerts'
+import type {
+  AlertTemplates,
+  Notifications,
+  RenderedAlertTemplates,
+} from '@/shared/types/settings/alerts'
 import alertsApi from '@/admin/apis/settings/alerts'
-import { RiSaveLine, RiSendPlaneLine } from '@remixicon/vue'
+import { RiEyeLine, RiRefreshLine, RiSaveLine, RiSendPlaneLine } from '@remixicon/vue'
+
+const emptyTemplates = (): AlertTemplates => ({
+  version: 1,
+  emailSubject: '',
+  emailHtml: '',
+  webhookText: '',
+})
+
+const templates = ref<AlertTemplates>(emptyTemplates())
+const defaultTemplates = ref<AlertTemplates>(emptyTemplates())
+const preview = ref<RenderedAlertTemplates | null>(null)
+const previewing = ref(false)
+
+const templateVariables = [
+  { name: '.Event', description: '稳定的告警事件标识' },
+  { name: '.Title', description: '告警标题' },
+  { name: '.Summary', description: '告警摘要' },
+  { name: '.Status', description: '状态：alert 或 recovery' },
+  { name: '.Severity', description: '严重程度' },
+  { name: '.ResourceName', description: '资源名称' },
+  { name: '.ResourceType', description: '资源类型' },
+  { name: '.ResourceAddress', description: '资源地址' },
+  { name: '.OccurredAt', description: '发生时间' },
+  { name: '.Color', description: '状态颜色' },
+  { name: '.Fields', description: '扩展字段列表，可遍历 .Label 和 .Value' },
+]
+const fieldsTemplateExample = '{{ range .Fields }}{{ .Label }}: {{ .Value }}{{ end }}'
 
 const alertsFormRef = ref<FormInst | null>(null)
 const notifications = ref<Notifications>({
@@ -111,6 +142,7 @@ const alertRules: FormRules = {
       validator: (_rule, value: string) => {
         if (!notifications.value.webhook.enabled) return true
         if (!value?.trim() && notifications.value.webhook.hasWebhook) return true
+        if (value === '***') return true
         if (!value?.trim()) return new Error('请输入 Webhook URL')
         if (!value.startsWith('http://') && !value.startsWith('https://')) {
           return new Error('Webhook URL 必须以 http:// 或 https:// 开头')
@@ -221,6 +253,8 @@ const loadAlertSettings = async () => {
     }
 
     const { email, webhook } = res.data.notifications
+    if (res.data.templates) templates.value = { ...res.data.templates }
+    if (res.data.defaultTemplates) defaultTemplates.value = { ...res.data.defaultTemplates }
 
     // 加载邮件配置
     if (email) {
@@ -240,7 +274,7 @@ const loadAlertSettings = async () => {
     if (webhook) {
       Object.assign(notifications.value.webhook, {
         enabled: webhook.enabled || false,
-        webhook: '',
+        webhook: webhook.hasWebhook ? '***' : '',
         hasWebhook: webhook.hasWebhook || false,
         clearWebhook: false,
         mentioned: String(webhook.mentioned || ''),
@@ -292,6 +326,7 @@ const testAlert = async (type: 'email' | 'webhook') => {
     const res = await alertsApi.testAlertSettings({
       type,
       config,
+      templates: templates.value,
     })
 
     if (res && typeof res === 'object' && 'status' in res && res.status) {
@@ -319,8 +354,12 @@ const saveAlertSettings = async () => {
 
   saving.value = true
   try {
+    // “***” 为已配置掩码占位：提交时转空，后端保持原值
+    const webhookPayload = { ...notifications.value.webhook }
+    if (webhookPayload.webhook === '***') webhookPayload.webhook = ''
     const res = await alertsApi.saveAlertsSettings({
-      notifications: notifications.value,
+      notifications: { ...notifications.value, webhook: webhookPayload },
+      templates: templates.value,
       alertServerOfflineEnabled: alertServerOfflineEnabled.value,
       alertServerOnlineEnabled: alertServerOnlineEnabled.value,
     })
@@ -340,6 +379,26 @@ const saveAlertSettings = async () => {
   } finally {
     saving.value = false
   }
+}
+
+const previewTemplates = async () => {
+  previewing.value = true
+  try {
+    const res = await alertsApi.previewAlertTemplates({ templates: templates.value })
+    if (!res?.status || !res.data) throw new Error(res?.message || '模板预览失败')
+    preview.value = res.data
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '模板预览失败，请检查模板语法'
+    message.error(errorMessage, { duration: 5000 })
+  } finally {
+    previewing.value = false
+  }
+}
+
+const resetTemplates = () => {
+  templates.value = { ...defaultTemplates.value }
+  preview.value = null
+  message.info('已恢复为内置模板，保存设置后生效', { duration: 3000 })
 }
 
 onMounted(() => {
@@ -552,6 +611,90 @@ onMounted(() => {
               </div>
             </div>
           </n-form>
+        </n-card>
+
+        <n-card title="通知模板">
+          <template #header-extra>
+            <n-space>
+              <n-button secondary :disabled="loading" @click="resetTemplates">
+                <template #icon><ri-refresh-line /></template>
+                恢复默认
+              </n-button>
+              <n-button secondary :loading="previewing" @click="previewTemplates">
+                <template #icon><ri-eye-line /></template>
+                预览模板
+              </n-button>
+            </n-space>
+          </template>
+
+          <n-alert type="info" class="mb-4">
+            三个模板供所有告警类型共用。保存和测试发送前会校验 Go Template 语法；模板变量会自动进行 HTML 转义。
+          </n-alert>
+
+          <n-collapse class="mb-4">
+            <n-collapse-item title="可用模板变量" name="variables">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div v-for="item in templateVariables" :key="item.name" class="text-sm">
+                  <n-code :code="`{{ ${item.name} }}`" language="go" inline />
+                  <span class="ml-2 text-muted-color">{{ item.description }}</span>
+                </div>
+              </div>
+              <p class="mt-3 text-sm text-muted-color">
+                扩展字段示例：<code>{{ fieldsTemplateExample }}</code>
+              </p>
+            </n-collapse-item>
+          </n-collapse>
+
+          <n-tabs type="line" animated>
+            <n-tab-pane name="email" tab="邮件内容">
+              <div class="space-y-4">
+                <div>
+                  <label class="mb-2 block text-sm font-medium text-color">邮件主题</label>
+                  <n-input
+                    v-model:value="templates.emailSubject"
+                    maxlength="500"
+                    show-count
+                    placeholder="例如：{{ .Title }}"
+                  />
+                </div>
+                <div>
+                  <label class="mb-2 block text-sm font-medium text-color">HTML 正文</label>
+                  <n-input
+                    v-model:value="templates.emailHtml"
+                    type="textarea"
+                    :autosize="{ minRows: 14, maxRows: 28 }"
+                    placeholder="输入 HTML 与 Go Template 变量"
+                    class="font-mono"
+                  />
+                </div>
+              </div>
+            </n-tab-pane>
+            <n-tab-pane name="webhook-text" tab="Webhook 文本">
+              <n-input
+                v-model:value="templates.webhookText"
+                type="textarea"
+                :autosize="{ minRows: 8, maxRows: 18 }"
+                placeholder="输入 Webhook 文本与 Go Template 变量"
+                class="font-mono"
+              />
+            </n-tab-pane>
+          </n-tabs>
+
+          <n-divider v-if="preview" title-placement="left">示例数据预览</n-divider>
+          <n-tabs v-if="preview" type="segment" animated>
+            <n-tab-pane name="preview-email" tab="邮件">
+              <p class="mb-2 text-sm"><span class="text-muted-color">主题：</span>{{ preview.emailSubject }}</p>
+              <iframe
+                title="邮件模板预览"
+                :srcdoc="preview.emailHtml"
+                sandbox=""
+                class="w-full min-h-96 rounded border border-color"
+              />
+            </n-tab-pane>
+            <n-tab-pane name="preview-webhook" tab="Webhook">
+              <pre class="whitespace-pre-wrap rounded bg-gray-100 dark:bg-gray-800 p-4 text-sm">{{ preview.webhookText }}</pre>
+            </n-tab-pane>
+          </n-tabs>
         </n-card>
       </div>
     </n-spin>

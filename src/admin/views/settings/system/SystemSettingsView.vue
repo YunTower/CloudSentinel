@@ -273,6 +273,9 @@ const passwordFormRef = ref<FormInst | null>(null)
 const permissions = ref<PermissionSettings>({
   maxLoginAttempts: 5,
   lockoutDuration: 15,
+  sessionTimeout: 0,
+  jwtExpiration: 0,
+  jwtSecret: '',
 })
 
 const adminAccount = ref<AdminAccount>({
@@ -342,7 +345,15 @@ const savePermissions = async () => {
     await settingsApi.savePermissionsSettings({
       maxLoginAttempts: permissions.value.maxLoginAttempts,
       lockoutDuration: permissions.value.lockoutDuration,
+      // 分钟转秒；0 或空表示不更改（后端 >0 才写入）
+      sessionTimeout: permissions.value.sessionTimeout > 0 ? permissions.value.sessionTimeout * 60 : 0,
+      jwtExpiration: permissions.value.jwtExpiration > 0 ? permissions.value.jwtExpiration * 60 : 0,
+      jwtSecret: permissions.value.jwtSecret,
     })
+    // 密钥已显式输入并保存成功 → 重置为掩码占位
+    if (permissions.value.jwtSecret && permissions.value.jwtSecret !== '***') {
+      permissions.value.jwtSecret = '***'
+    }
     message.success('权限设置已更新', { duration: 3000 })
   } catch {
     message.error('请稍后重试', { duration: 5000 })
@@ -423,6 +434,14 @@ const loadPermissions = async () => {
         Number(data.maxLoginAttempts) || permissions.value.maxLoginAttempts
       permissions.value.lockoutDuration =
         Number(data.lockoutDuration) || permissions.value.lockoutDuration
+      // 秒转分钟显示；0 = 未显式配置
+      permissions.value.sessionTimeout = Number(data.sessionTimeout)
+        ? Math.round(Number(data.sessionTimeout) / 60)
+        : 0
+      permissions.value.jwtExpiration = Number(data.jwtExpiration)
+        ? Math.round(Number(data.jwtExpiration) / 60)
+        : 0
+      permissions.value.jwtSecret = String(data.jwtSecret || '')
       if (data.adminUsername) adminAccount.value.username = data.adminUsername
     }
   } catch (error) {
@@ -669,6 +688,44 @@ onMounted(() => {
                       <b>{{ permissions.lockoutDuration || 0 }}</b> 分钟
                     </n-alert>
                   </div>
+                </n-form-item>
+                <n-divider />
+                <n-alert type="info" :show-icon="false" class="mb-2">
+                  以下认证配置存于数据库并即时生效（优先于环境变量）；留空表示不更改。轮换 JWT 密钥会使所有已登录会话立即失效。
+                </n-alert>
+                <n-form-item label="会话有效期" path="sessionTimeout">
+                  <n-input-number
+                    v-model:value="permissions.sessionTimeout"
+                    :min="0"
+                    :max="43200"
+                    :show-button="false"
+                    class="w-full"
+                    placeholder="留空或 0 表示不更改"
+                  >
+                    <template #suffix>分钟</template>
+                  </n-input-number>
+                </n-form-item>
+                <n-form-item label="JWT 有效期" path="jwtExpiration">
+                  <n-input-number
+                    v-model:value="permissions.jwtExpiration"
+                    :min="0"
+                    :max="43200"
+                    :show-button="false"
+                    class="w-full"
+                    placeholder="留空或 0 表示不更改"
+                  >
+                    <template #suffix>分钟</template>
+                  </n-input-number>
+                </n-form-item>
+                <n-form-item label="JWT 密钥" path="jwtSecret">
+                  <n-input
+                    v-model:value="permissions.jwtSecret"
+                    type="password"
+                    show-password-on="click"
+                    class="w-full"
+                    :placeholder="permissions.jwtSecret === '***' ? '已配置（留空不更改）' : '至少 16 位（留空不更改）'"
+                    clearable
+                  />
                 </n-form-item>
               </n-form>
             </n-card>

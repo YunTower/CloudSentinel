@@ -3,6 +3,8 @@ import type {
   GetAlertsSettingsResponse,
   SaveAlertsSettingsBody,
   TestAlertSettingsBody,
+  PreviewAlertTemplatesBody,
+  PreviewAlertTemplatesResponse,
 } from '@/shared/types/settings/api'
 
 export default {
@@ -11,4 +13,6 @@ export default {
     requester.Patch('/settings/alerts', payload),
   testAlertSettings: (payload: TestAlertSettingsBody) =>
     requester.Post('/settings/alerts/test', payload),
+  previewAlertTemplates: (payload: PreviewAlertTemplatesBody) =>
+    requester.Post<PreviewAlertTemplatesResponse>('/settings/alerts/templates/preview', payload),
 }
