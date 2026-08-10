@@ -18,12 +18,53 @@ export function formatSpeed(speedKBps: number): string {
  * 格式化操作系统显示
  */
 export function formatOS(os: string): string {
+  if (!os) return ''
   if (os.includes('Ubuntu')) return 'Ubuntu'
   if (os.includes('CentOS')) return 'CentOS'
   if (os.includes('Windows')) return 'Windows'
   if (os.includes('Debian')) return 'Debian'
   if (os.includes('RHEL')) return 'RHEL'
   return os.split(' ')[0] // 取第一个单词
+}
+
+/** 公开页/列表用的系统图标类别（兼容多种发行版命名） */
+export type OsIconKind =
+  | 'windows'
+  | 'apple'
+  | 'ubuntu'
+  | 'debian'
+  | 'centos'
+  | 'almalinux'
+  | 'rockylinux'
+  | 'redhat'
+  | 'fedora'
+  | 'arch'
+  | 'suse'
+  | 'android'
+  | 'linuxmint'
+  | 'linux'
+
+/**
+ * 根据 system_name / os 推断图标类型，覆盖常见发行版别名
+ */
+export function resolveOsIconKind(systemName?: string, os?: string): OsIconKind {
+  const hay = `${systemName ?? ''} ${os ?? ''}`.toLowerCase()
+  if (!hay.trim()) return 'linux'
+  if (/windows|win32|win64|microsoft/.test(hay)) return 'windows'
+  if (/darwin|macos|mac\s*os|osx|\bos\s*x\b|apple/.test(hay)) return 'apple'
+  if (/android/.test(hay)) return 'android'
+  if (/linux\s*mint|linuxmint/.test(hay)) return 'linuxmint'
+  if (/ubuntu|pop!_?os|elementary|kubuntu|xubuntu|lubuntu/.test(hay)) return 'ubuntu'
+  if (/debian|kali|raspbian|raspberry/.test(hay)) return 'debian'
+  if (/alma/.test(hay)) return 'almalinux'
+  if (/rocky/.test(hay)) return 'rockylinux'
+  if (/rhel|red\s*hat/.test(hay)) return 'redhat'
+  if (/centos|oracle\s*linux|scientific\s*linux/.test(hay)) return 'centos'
+  if (/fedora/.test(hay)) return 'fedora'
+  if (/arch|manjaro|endeavour|artix/.test(hay)) return 'arch'
+  if (/suse|opensuse/.test(hay)) return 'suse'
+  if (/alpine|gentoo|nixos|void|freebsd|openbsd|netbsd|bsd|linux/.test(hay)) return 'linux'
+  return 'linux'
 }
 
 /**
@@ -99,6 +140,8 @@ export function mapServerListItemToServerItem(server: ServerListItemData): Serve
     swapUsage,
     diskUsage,
     totalStorage,
+    cpuName: typeof server.cpu_name === 'string' ? server.cpu_name : '',
+    systemName: typeof server.system_name === 'string' ? server.system_name : '',
     cores,
     location: server.location || '',
     os: server.os || '',
