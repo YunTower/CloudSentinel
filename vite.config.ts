@@ -50,7 +50,7 @@ const publicSpaFallback = (): Connect.NextHandleFunction => {
 }
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const { VITE_API_URL_PREFIX, VITE_API_SERVER } = loadEnv(mode, process.cwd(), '')
   const isAnalyze = mode === 'analyze'
   const isPublicBuild = mode === 'public'
@@ -64,6 +64,8 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       Components({
         resolvers: [NaiveUiResolver()],
+        // 构建和测试必须只读；仅开发服务器按实际使用组件刷新类型声明。
+        dts: command === 'serve' ? 'components.d.ts' : false,
       }),
       isPublicBuild && {
         name: 'public-only-spa',
@@ -108,14 +110,26 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: (id) => {
             if (id.includes('node_modules')) {
+              if (id.includes('@visactor')) {
+                const packageName = id
+                  .replaceAll('\\', '/')
+                  .match(/node_modules\/@visactor\/([^/]+)/)?.[1]
+                return packageName ? `visactor-${packageName}` : 'visactor'
+              }
+              if (id.includes('@iconify') || id.includes('@remixicon')) {
+                return 'icons'
+              }
               if (id.includes('naive-ui') || id.includes('vicons')) {
                 return 'naive-ui'
               }
-              if (id.includes('echarts')) {
-                return 'echarts'
+              if (id.includes('highlight.js')) {
+                return 'highlight'
               }
-              if (id.includes('vue') || id.includes('vue-router') || id.includes('pinia')) {
-                return 'vue-vendor'
+              if (id.includes('alova')) {
+                return 'alova'
+              }
+              if (id.includes('marked')) {
+                return 'markdown'
               }
               return 'vendor'
             }
