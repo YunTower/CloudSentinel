@@ -200,8 +200,12 @@ const loadBoundPage = async (path: string, generation: number): Promise<boolean>
   }
 }
 
-const loadServers = async () => {
+// 三个数据加载器各自在写入前校验代际：路由切换后慢响应不得覆盖新页面数据
+const isRouteStale = (generation: number) => generation !== routeLoadGeneration
+
+const loadServers = async (generation: number) => {
   const response = (await publicApi.getServers()) as GetServersResponse
+  if (isRouteStale(generation)) return
   if (response.status && response.data) {
     servers.value = response.data.map((server) => mapServerListItemToServerItem(server))
     return
@@ -209,13 +213,14 @@ const loadServers = async () => {
   throw new Error(response.message || '获取服务器列表失败')
 }
 
-const loadIncidents = async () => {
+const loadIncidents = async (generation: number) => {
   const page = currentPage.value
   if (!page) {
     incidents.value = []
     return
   }
   const response = await publicApi.getIncidents({ path: page.path })
+  if (isRouteStale(generation)) return
   if (response.status && response.data) {
     incidents.value = response.data
     return
@@ -223,8 +228,9 @@ const loadIncidents = async () => {
   throw new Error(response.message || '获取事件列表失败')
 }
 
-const loadServiceMonitors = async () => {
+const loadServiceMonitors = async (generation: number) => {
   const response = await publicApi.getServiceMonitors()
+  if (isRouteStale(generation)) return
   if (response.status && response.data) {
     serviceMonitors.value = response.data
     lastUpdatedAt.value = response.meta?.last_updated_at ?? null
@@ -245,6 +251,9 @@ const clearUnusedData = (needs: { servers: boolean; monitors: boolean; incidents
 const loadPageData = async (opts?: { silent?: boolean }) => {
   if (hashBlocked.value || pageNotFound.value || !currentPage.value) return
 
+  // 代际保护：路由切换后旧请求的结果不得写入新页面的共享状态
+  const generation = routeLoadGeneration
+
   const needs = pageNeeds.value
   const silent = opts?.silent === true
   clearUnusedData(needs)
@@ -262,12 +271,14 @@ const loadPageData = async (opts?: { silent?: boolean }) => {
 
   try {
     const tasks: Array<Promise<void>> = []
-    if (needs.monitors) tasks.push(loadServiceMonitors())
-    if (needs.servers) tasks.push(loadServers())
-    if (needs.incidents) tasks.push(loadIncidents())
+    if (needs.monitors) tasks.push(loadServiceMonitors(generation))
+    if (needs.servers) tasks.push(loadServers(generation))
+    if (needs.incidents) tasks.push(loadIncidents(generation))
     await Promise.all(tasks)
+    if (generation !== routeLoadGeneration) return
     error.value = null
   } catch (err: unknown) {
+    if (generation !== routeLoadGeneration) return
     const msg = err instanceof Error ? err.message : '加载失败'
     if (!silent) {
       error.value = msg
@@ -276,8 +287,10 @@ const loadPageData = async (opts?: { silent?: boolean }) => {
       console.warn('公开页定时刷新失败:', err)
     }
   } finally {
-    loading.value = false
-    refreshing.value = false
+    if (generation === routeLoadGeneration) {
+      loading.value = false
+      refreshing.value = false
+    }
   }
 }
 
@@ -334,11 +347,17 @@ const startAutoRefresh = () => {
   stopAutoRefresh()
   if (hashBlocked.value || pageNotFound.value || !currentPage.value) return
   resetCountdown()
+  // 记录当前代际：路由切换后旧定时器的静默刷新不得写入新页面状态
+  const generation = routeLoadGeneration
   countdownTimer = setInterval(() => {
     if (document.visibilityState === 'hidden') return
     if (secondsUntilRefresh.value > 0) secondsUntilRefresh.value -= 1
   }, 1000)
   refreshTimer = setInterval(() => {
+    if (generation !== routeLoadGeneration) {
+      stopAutoRefresh()
+      return
+    }
     if (document.visibilityState === 'hidden') return
     void loadPageData({ silent: true }).finally(() => {
       resetCountdown()
