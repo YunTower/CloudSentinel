@@ -2,7 +2,6 @@
 import { computed } from 'vue'
 import { NEmpty, NTag } from 'naive-ui'
 import type { ProcessStatus } from '@/shared/types/manager/servers'
-import { RiServerLine } from '@remixicon/vue'
 
 interface Props {
   processStatus?: Record<string, ProcessStatus>

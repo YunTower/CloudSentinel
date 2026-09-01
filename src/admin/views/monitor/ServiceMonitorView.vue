@@ -59,18 +59,25 @@ const load = async () => {
   try {
     const res = (await serviceMonitorsApi.getAll()) as { status: boolean; data?: ServiceMonitor[] }
     if (res.status) monitors.value = res.data || []
+  } catch (e) {
+    console.error('加载服务监测列表失败:', e)
+    message.error((e as { message?: string }).message || '加载监测列表失败')
   } finally {
     loading.value = false
   }
 }
 
 const loadServers = async () => {
-  const res = (await serversApi.getServers()) as GetServersResponse
-  if (res.status && res.data) {
-    servers.value = res.data.map((s) => ({
-      id: s.id,
-      name: s.name,
-    }))
+  try {
+    const res = (await serversApi.getServers()) as GetServersResponse
+    if (res.status && res.data) {
+      servers.value = res.data.map((s) => ({
+        id: s.id,
+        name: s.name,
+      }))
+    }
+  } catch (e) {
+    console.error('加载服务器列表失败:', e)
   }
 }
 
@@ -113,6 +120,18 @@ const save = async () => {
   if ((!isAICreate && !form.value.name) || !form.value.target) {
     message.error(isAICreate ? '接口地址不能为空' : '名称和目标地址不能为空')
     return
+  }
+  // http_headers 必须是 JSON 对象（后端会解析），前置校验给出即时反馈
+  if ((form.value.type === 'http' || form.value.type === 'https') && form.value.http_headers) {
+    try {
+      const parsed = JSON.parse(form.value.http_headers)
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('not an object')
+      }
+    } catch {
+      message.error('请求头必须是 JSON 对象，例如 {"X-Token":"abc"}')
+      return
+    }
   }
   if (form.value.type === 'ai_model') {
     const hasModel = editingId.value
@@ -180,10 +199,16 @@ const save = async () => {
 }
 
 const remove = async (m: ServiceMonitor) => {
-  const res = await serviceMonitorsApi.delete(m.id)
-  if (res.status) {
-    monitors.value = monitors.value.filter((x) => x.id !== m.id)
-    message.success('已删除')
+  try {
+    const res = (await serviceMonitorsApi.delete(m.id)) as { status: boolean; message?: string }
+    if (res.status) {
+      monitors.value = monitors.value.filter((x) => x.id !== m.id)
+      message.success('已删除')
+    } else {
+      message.error(res.message || '删除失败')
+    }
+  } catch (e) {
+    message.error((e as { message?: string }).message || '删除失败')
   }
 }
 

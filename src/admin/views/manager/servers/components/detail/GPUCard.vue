@@ -10,7 +10,7 @@ interface Props {
   }
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 
 // 格式化显存大小（MB转换为GB）
 const formatMemory = (mb: number): string => {

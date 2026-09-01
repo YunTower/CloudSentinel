@@ -190,6 +190,14 @@ const createIncident = async () => {
     message.error('标题和内容不能为空')
     return
   }
+  if (createForm.value.title.trim().length > 200) {
+    message.error('标题不能超过 200 字符')
+    return
+  }
+  if (createForm.value.message.trim().length > 5000) {
+    message.error('内容不能超过 5000 字符')
+    return
+  }
   createSaving.value = true
   try {
     const res = await incidentsApi.createMaintenance({

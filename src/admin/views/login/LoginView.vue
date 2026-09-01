@@ -4,7 +4,8 @@ import { useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import type { FormInst, FormRules } from 'naive-ui'
 import { useAuthStore } from '@/admin/stores/auth'
-import { RiLoginBoxLine, RiLoginCircleLine } from '@remixicon/vue'
+import { isSafeInternalRedirect } from '@/admin/router/guards'
+import { RiLoginCircleLine } from '@remixicon/vue'
 
 const message = useMessage()
 const router = useRouter()
@@ -63,9 +64,9 @@ const handleLogin = async () => {
     // 确保状态更新完成后再进行路由跳转
     await new Promise((resolve) => setTimeout(resolve, 100))
 
-    if (redirectUri) {
+    if (isSafeInternalRedirect(redirectUri)) {
       await router.replace(redirectUri)
-    } else if (intendedPath) {
+    } else if (intendedPath && isSafeInternalRedirect(intendedPath)) {
       await router.replace(intendedPath)
       sessionStorage.removeItem('intended_path')
     } else {
@@ -94,7 +95,11 @@ const loadPanelTitle = async () => {
 const checkLoginStatus = () => {
   if (authStore.isAuthenticated) {
     const redirectUri = router.currentRoute.value.query.redirect_uri as string | undefined
-    router.replace(redirectUri && redirectUri !== '/login' ? redirectUri : '/')
+    router.replace(
+      redirectUri && isSafeInternalRedirect(redirectUri) && redirectUri !== '/login'
+        ? redirectUri
+        : '/',
+    )
   }
 }
 

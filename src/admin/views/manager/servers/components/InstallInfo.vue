@@ -10,14 +10,16 @@ interface Props {
   server?: Server | null
   agentKey?: string
   serverIP?: string
-  websocketURL?: string
+	websocketURL?: string
+	panelFingerprint?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   server: null,
   agentKey: '',
   serverIP: '',
-  websocketURL: '',
+	websocketURL: '',
+	panelFingerprint: '',
 })
 
 const message = useMessage()
@@ -41,6 +43,8 @@ const installCommand = computed(() => {
 const currentAgentKey = computed(() => {
   return props.server?.agent_key || props.agentKey || '未设置'
 })
+
+const panelFingerprint = computed(() => props.panelFingerprint || '未获取')
 
 /**
  * 通用复制到剪贴板函数
@@ -135,6 +139,27 @@ onMounted(() => {
       <div class="space-y-3">
         <n-code :hljs="hljs" :code="currentAgentKey" language="bash" inline> </n-code>
       </div>
+    </div>
+    <div>
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center">
+          <h4 class="text-lg font-semibold text-color">面板公钥指纹</h4>
+        </div>
+        <n-tooltip trigger="hover" placement="top">
+          <template #trigger>
+            <n-button text size="small" @click="copyToClipboard(panelFingerprint)">
+              <template #icon>
+                <ri-file-copy-line />
+              </template>
+            </n-button>
+          </template>
+          复制指纹
+        </n-tooltip>
+      </div>
+      <n-code :hljs="hljs" :code="panelFingerprint" language="text" word-wrap />
+      <p class="mt-2 text-sm text-gray-500">
+        安装完成后，在 Agent 的连接初始化配置中填写此值（panel_fingerprint）；未填写时 Agent 会拒绝首次 WSS 连接。
+      </p>
     </div>
     <div>
       <div class="flex items-center justify-between mb-3">

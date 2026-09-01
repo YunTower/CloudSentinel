@@ -17,6 +17,7 @@ import type { PublicDisplayConfigV1, PublicDisplayFieldsV1 } from '@/shared/type
 import type {
   PublicPagesConfigV1,
   PublicPageV1,
+  PublicPageBlockV1,
   PublicPageBlockTypeV1,
   PublicStatItemV1,
 } from '@/shared/types/settings/public-pages'
@@ -301,7 +302,7 @@ const statOptions: Array<{ label: string; value: PublicStatItemV1 }> = [
   { label: '平均 磁盘', value: 'avgDisk' },
 ]
 
-const createBlockData = (type: PublicPageBlockTypeV1): any => {
+const createBlockData = (type: PublicPageBlockTypeV1): PublicPageBlockV1['data'] => {
   if (type === 'hero') return { title: 'CloudSentinel', subtitle: '', badge: '' }
   if (type === 'markdown') return { markdown: '' }
   if (type === 'stats') return { items: ['onlineCount', 'offlineCount'] }

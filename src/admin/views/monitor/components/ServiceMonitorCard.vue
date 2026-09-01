@@ -59,7 +59,6 @@ const minecraftPlayers = computed(() => {
 })
 
 const protocolDetail = computed(() => {
-  const metadata = props.monitor.last_metadata
   if (props.monitor.type === 'ai_model') {
     return [props.monitor.ai_model, aiFormatLabel(props.monitor.ai_api_format)]
       .filter(Boolean)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useMessage, useDialog } from 'naive-ui'
 import type { FormInst, FormRules } from 'naive-ui'
 import panelApi from '@/admin/apis/settings/panel'
@@ -58,6 +58,9 @@ const activeTab = ref('panel')
 const savingPanel = ref(false)
 const checkingUpdate = ref(false)
 const updating = ref(false)
+// 更新状态轮询定时器：组件卸载时必须清理，否则离开页面后仍会继续
+// 轮询甚至触发 location.reload()
+let updatePollInterval: ReturnType<typeof setInterval> | null = null
 const hasCheckedUpdate = ref(false)
 const updateProgress = ref(0)
 const updateStep = ref('')
@@ -144,7 +147,10 @@ const executeUpdate = async () => {
 
   try {
     await panelApi.updatePanel()
-    const pollInterval = setInterval(async () => {
+    // 轮询定时器挂在组件作用域上，卸载时清理，避免离开页面后仍执行
+    updatePollInterval = setInterval(async () => {
+      const pollInterval = updatePollInterval
+      if (!pollInterval) return
       try {
         const res = await panelApi.getUpdateStatus()
         consecutiveFailures = 0
@@ -187,7 +193,7 @@ const executeUpdate = async () => {
             window.location.reload()
           }, 1500)
         }
-      } catch (error) {
+      } catch {
         if (isRestarting) {
           restartingWaitTime++
           updateStep.value = `服务正在重启中，请稍候... (已等待 ${restartingWaitTime} 秒)`
@@ -298,6 +304,17 @@ const sessionRules: FormRules = {
   lockoutDuration: [
     { required: true, type: 'number', message: '请输入锁定时间', trigger: 'blur' },
     { type: 'number', min: 0, max: 60, message: '范围 0-60 分钟', trigger: ['blur', 'input'] },
+  ],
+  jwtSecret: [
+    {
+      validator: (_rule, value: string) => {
+        // 占位符 "***" 表示沿用现有密钥；仅校验实际输入的新密钥
+        if (!value || value === '***') return true
+        if (value.length < 16) return new Error('JWT 密钥至少 16 位')
+        return true
+      },
+      trigger: ['blur', 'input'],
+    },
   ],
 }
 
@@ -453,6 +470,13 @@ onMounted(() => {
   loadPanelSettings()
   checkForUpdate()
   loadPermissions()
+})
+
+onUnmounted(() => {
+  if (updatePollInterval) {
+    clearInterval(updatePollInterval)
+    updatePollInterval = null
+  }
 })
 </script>
 

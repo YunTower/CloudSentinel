@@ -173,7 +173,8 @@ const loadDetail = async () => {
   loading.value = true
   error.value = null
   try {
-    const response = (await serversApi.getServerDetail(id, true)) as ServerDetailResponse
+    // 详情页不索取明文 agent_key（安装命令在对话框“操作”页按需拉取）
+    const response = (await serversApi.getServerDetail(id, false)) as ServerDetailResponse
     if (!response.status || !response.data) {
       throw new Error(response.message || '获取服务器详情失败')
     }

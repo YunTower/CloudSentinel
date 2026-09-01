@@ -71,10 +71,22 @@ const agentKeyDialog = ref(false)
 const generatedAgentKey = ref('')
 const serverIP = ref('')
 const websocketURL = ref('')
+const panelFingerprint = ref('')
 
 // 查看安装信息对话框
 const showInstallInfoDialog = ref(false)
 const selectedServerForInstall = ref<Server | null>(null)
+// 安装命令需要明文 agent_key：列表接口不返回，打开对话框时按需拉取
+const installInfoLoading = ref(false)
+const installInfoServer = ref<Server | null>(null)
+
+const loadPanelFingerprint = async () => {
+  const response = await serversApi.getPanelFingerprint()
+  if (!response.status || !response.data?.panel_fingerprint) {
+    throw new Error(response.message || '获取面板公钥指纹失败')
+  }
+  panelFingerprint.value = response.data.panel_fingerprint
+}
 
 // Agent 最新版本信息
 const latestAgentVersion = ref<string>('')
@@ -248,6 +260,8 @@ const handleSaveServer = async (form: ServerForm) => {
         const host = window.location.host
         websocketURL.value = `${protocol}//${host}/api/ws/agent`
 
+        await loadPanelFingerprint()
+
         await loadServers()
 
         message.success('新服务器已添加', { duration: 3000 })
@@ -345,9 +359,33 @@ const loadServers = async () => {
 }
 
 // 处理查看安装信息
-const handleViewInstallInfo = (server: Server) => {
+const handleViewInstallInfo = async (server: Server) => {
   selectedServerForInstall.value = server
+  installInfoServer.value = null
   showInstallInfoDialog.value = true
+  installInfoLoading.value = true
+  try {
+    await loadPanelFingerprint()
+    const response = (await serversApi.getServerDetail(server.id, true)) as {
+      status: boolean
+      message?: string
+      data?: { agent_key?: string; ip?: string }
+    }
+    if (response.status && response.data) {
+      installInfoServer.value = {
+        ...server,
+        agent_key: response.data.agent_key,
+        ip: response.data.ip || server.ip,
+      }
+    } else {
+      throw new Error(response.message || '获取安装信息失败')
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : '获取安装信息失败'
+    message.error(errorMessage, { duration: 3000 })
+  } finally {
+    installInfoLoading.value = false
+  }
 }
 
 const handleCancelDialog = () => {
@@ -437,9 +475,6 @@ const handleSaveSuccess = async () => {
     editingServer.value = { ...updatedServer }
   }
 }
-
-// Agent 更新流程由 ServerTable 内部处理（含 API 调用和消息提示）
-const handleUpdateAgent = (_server: Server) => {}
 
 onMounted(async () => {
   loading.value = true
@@ -556,7 +591,6 @@ onMounted(async () => {
         @edit-server="handleEditServer"
         @delete-server="handleDeleteServer"
         @view-install-info="handleViewInstallInfo"
-        @update-agent="handleUpdateAgent"
         @selection-change="handleSelectionChange"
       />
     </div>
@@ -615,6 +649,7 @@ onMounted(async () => {
             :agent-key="generatedAgentKey"
             :server-i-p="serverIP"
             :websocket-u-r-l="websocketURL"
+            :panel-fingerprint="panelFingerprint"
           />
           <n-alert type="info">
             <ul class="space-y-1">
@@ -632,6 +667,45 @@ onMounted(async () => {
                 <ri-check-line />
               </template>
               我已保存
+            </n-button>
+          </div>
+        </template>
+      </n-card>
+    </n-modal>
+
+    <!-- 查看安装信息（按需拉取明文 agent_key） -->
+    <n-modal v-model:show="showInstallInfoDialog" :mask-closable="true">
+      <n-card
+        style="width: 700px; max-width: 95vw"
+        :bordered="false"
+        size="huge"
+        role="dialog"
+        aria-modal="true"
+      >
+        <template #header>
+          <div class="flex items-center gap-3">
+            <ri-folder-line class-name="text-blue-600 dark:text-blue-400 text-2xl mt-0.5" />
+            <h4 class="font-medium">
+              安装信息{{ selectedServerForInstall ? ` - ${selectedServerForInstall.name}` : '' }}
+            </h4>
+          </div>
+        </template>
+        <div class="space-y-4">
+          <n-spin :show="installInfoLoading">
+            <InstallInfo v-if="installInfoServer" :server="installInfoServer" :panel-fingerprint="panelFingerprint" />
+            <n-empty v-else-if="!installInfoLoading" description="无法加载安装信息" class="py-8" />
+          </n-spin>
+          <n-alert type="warning">
+            <ul class="space-y-1">
+              <li>• Agent Key 用于服务器之间身份验证，请妥善保管避免泄露</li>
+              <li>• 如需重新展示密钥，请重新打开本对话框</li>
+            </ul>
+          </n-alert>
+        </div>
+        <template #footer>
+          <div class="flex justify-end">
+            <n-button type="primary" @click="showInstallInfoDialog = false" class="px-6 py-2">
+              关闭
             </n-button>
           </div>
         </template>

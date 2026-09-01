@@ -225,6 +225,32 @@ const form = defineModel<ServerForm>('form', {
 })
 
 // 加载服务器详情
+// agentKeyRevealed 标记本次会话是否已按需拉取过明文 agent_key
+const agentKeyRevealed = ref(false)
+
+// 用户切到“操作”页（安装命令需要密钥）时才明文拉取 agent_key
+const ensureAgentKeyRevealed = async () => {
+  if (agentKeyRevealed.value || !props.editingServer || !serverDetail.value) return
+  try {
+    const response = (await serversApi.getServerDetail(
+      props.editingServer.id,
+      true,
+    )) as ServerDetailResponse
+    if (response.status && response.data) {
+      serverDetail.value = { ...serverDetail.value, agent_key: response.data.agent_key }
+      agentKeyRevealed.value = true
+    }
+  } catch (error) {
+    console.error('Failed to reveal agent key:', error)
+  }
+}
+
+watch(activeTab, (tab) => {
+  if (tab === '6') {
+    void ensureAgentKeyRevealed()
+  }
+})
+
 const loadServerDetail = async () => {
   if (!props.editingServer) {
     serverDetail.value = null
@@ -233,9 +259,11 @@ const loadServerDetail = async () => {
 
   loadingDetail.value = true
   try {
+    // 表单加载不需要明文 agent_key；密钥仅在用户切到“操作”页查看
+    // 安装命令时按需拉取（见 ensureAgentKeyRevealed）
     const response = (await serversApi.getServerDetail(
       props.editingServer.id,
-      true,
+      false,
     )) as ServerDetailResponse
 
     if (response.status && response.data) {
@@ -342,6 +370,7 @@ watch(
   (visible) => {
     if (visible && props.editingServer) {
       loadingDetail.value = true
+      agentKeyRevealed.value = false
       loadServerDetail()
       loadGlobalNotificationChannels()
     } else {
@@ -360,6 +389,7 @@ watch(
   (server, oldServer) => {
     // 如果对话框打开且服务器ID变化，重新加载详情
     if (server && props.visible && oldServer && server.id !== oldServer.id) {
+      agentKeyRevealed.value = false
       loadServerDetail()
       loadGlobalNotificationChannels()
     } else if (server && !props.visible) {
@@ -517,8 +547,14 @@ const handleResetAgentKey = () => {
           message.success(`服务器 "${props.editingServer!.name}" 的通信密钥和指纹已重置。`, {
             duration: 5000,
           })
-          if (props.editingServer) {
+          // 重置接口的响应自带明文新密钥：直接更新 serverDetail。
+          // 不能走 loadServerDetail()（不索取明文 key），否则 serverDetail.agent_key
+          // 会被置空且 agentKeyRevealed 已为 true，“操作”页将拿不到新密钥
+          if (serverDetail.value) {
+            serverDetail.value = { ...serverDetail.value, agent_key: response.data.agent_key }
+          } else {
             await loadServerDetail()
+            void ensureAgentKeyRevealed()
           }
         } else {
           throw new Error(response.message || '重置失败')
