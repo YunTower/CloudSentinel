@@ -251,6 +251,11 @@ const runtimeText = computed(() => formatRuntime(props.uptime))
         </div>
       </div>
 
+      <div class="flex justify-between items-center gap-3" v-if="showLocation && props.location">
+        <span class="text-color shrink-0">位置</span>
+        <span class="truncate text-right" :title="props.location">{{ props.location }}</span>
+      </div>
+
       <div class="flex justify-between items-center gap-3">
         <span class="text-color shrink-0">运行时间</span>
         <span class="tabular-nums text-right">{{ runtimeText }}</span>

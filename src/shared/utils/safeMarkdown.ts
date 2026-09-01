@@ -1,4 +1,12 @@
+import DOMPurify from 'dompurify'
 import { marked } from 'marked'
+
+import { isSafeLinkHref } from './safeLink'
+
+// 双层净化：
+// 1) 自研白名单 sanitizer 始终执行（在任何 DOM 实现下都可用，含 happy-dom 测试环境）；
+// 2) DOMPurify 在受支持的环境（真实浏览器）中叠加执行，覆盖 mXSS、
+//    SVG/MathML、注释节点等自研实现难以穷举的边角情况。
 
 const ALLOWED_TAGS = new Set([
   'a',
@@ -33,18 +41,9 @@ const ALLOWED_ATTRS: Record<string, Set<string>> = {
   td: new Set(['colspan', 'rowspan']),
 }
 
-const isSafeHref = (href: string) => {
-  return (
-    href.startsWith('http://') ||
-    href.startsWith('https://') ||
-    href.startsWith('mailto:') ||
-    href.startsWith('tel:') ||
-    href.startsWith('/') ||
-    href.startsWith('#')
-  )
-}
+const isSafeHref = (href: string) => href === href.trim() && isSafeLinkHref(href)
 
-const sanitizeHtml = (dirtyHtml: string) => {
+const fallbackSanitizeHtml = (dirtyHtml: string) => {
   const doc = new DOMParser().parseFromString(dirtyHtml, 'text/html')
 
   const walk = (element: Element) => {
@@ -83,7 +82,31 @@ const sanitizeHtml = (dirtyHtml: string) => {
   return doc.body.innerHTML
 }
 
+const dompurifySanitizeHtml = (dirtyHtml: string): string | null => {
+  try {
+    if (!DOMPurify.isSupported) return null
+    return DOMPurify.sanitize(dirtyHtml, {
+      ALLOWED_TAGS: Array.from(ALLOWED_TAGS),
+      ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'colspan', 'rowspan'],
+      FORBID_ATTR: ['style'],
+      ALLOW_DATA_ATTR: false,
+      ALLOW_ARIA_ATTR: false,
+    })
+  } catch {
+    return null
+  }
+}
+
 export const renderMarkdownSafe = (markdown: string): string => {
   const parsed = marked.parse(markdown || '') as string
-  return sanitizeHtml(parsed)
+  const fallback = fallbackSanitizeHtml(parsed)
+  const purified = dompurifySanitizeHtml(fallback)
+  const html = purified ?? fallback
+  // 统一外链行为：新窗口打开并去除 opener
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  for (const a of Array.from(doc.body.querySelectorAll('a'))) {
+    a.setAttribute('target', '_blank')
+    a.setAttribute('rel', 'noopener noreferrer nofollow')
+  }
+  return doc.body.innerHTML
 }

@@ -4,9 +4,9 @@
  * https://icon-sets.iconify.design/devicon/
  */
 import { computed } from 'vue'
-import { Icon, addCollection } from '@iconify/vue'
+import { Icon, addCollection } from '@iconify/vue/offline'
 import type { IconifyJSON } from '@iconify/types'
-import colored from '@iconify-json/devicon/icons.json'
+import colored from '@/shared/data/devicon-os.json'
 import { resolveOsIconKind, type OsIconKind } from '@/shared/server-display/utils'
 
 addCollection(colored as IconifyJSON)

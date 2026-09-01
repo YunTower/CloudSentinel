@@ -1,23 +1,9 @@
-import { type ITheme, type ILineChartSpec, VChart } from '@visactor/vchart'
-import {
-  registerLineChart,
-  registerBarChart,
-  registerPieChart,
-  registerTooltip,
-  registerCartesianCrossHair,
-  registerDomTooltipHandler,
-} from '@visactor/vchart'
+// vchart 2.x 移除了 esm/vchart-line 拆分入口，simple 包含折线图等基础图表
+import VChart from '@visactor/vchart/esm/vchart-simple'
+import type { ITheme, ILineChartSpec } from '@visactor/vchart'
 import vChartLight from '@/shared/data/vchart-light.json'
 import vChartDark from '@/shared/data/vchart-dark.json'
 
-VChart.useRegisters([
-  registerLineChart,
-  registerBarChart,
-  registerPieChart,
-  registerTooltip,
-  registerDomTooltipHandler,
-  registerCartesianCrossHair,
-])
 VChart.ThemeManager.registerTheme('vChartLight', vChartLight as Partial<ITheme>)
 VChart.ThemeManager.registerTheme('vChartDark', vChartDark as Partial<ITheme>)
 
