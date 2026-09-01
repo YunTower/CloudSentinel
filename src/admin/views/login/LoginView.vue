@@ -124,7 +124,7 @@ onMounted(async () => {
           :model="loginForm"
           :rules="adminRules"
           label-placement="top"
-          require-mark-placement="right-hanging"
+          :show-require-mark="false"
         >
           <n-form-item label="用户名" path="username" required>
             <n-input

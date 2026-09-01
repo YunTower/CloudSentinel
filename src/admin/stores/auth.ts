@@ -153,34 +153,33 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // 登录方法
+  interface LoginOutcome {
+    session?: UserSession
+    error?: string
+  }
+
   const login = async (
     username: string,
     password: string,
     rememberMe: boolean = false,
-  ): Promise<UserSession> => {
-    try {
-      // 调用真实的登录API
-      const response = await authApi.login('admin', password, username, rememberMe)
-      const data = response as LoginResponse
+  ): Promise<LoginOutcome> => {
+    const response = await authApi.login('admin', password, username, rememberMe)
+    const data = response as LoginResponse
 
-      if (data.status && data.data) {
-        const userSession: UserSession = {
-          id: data.data.username,
-          username: data.data.username,
-          role: data.data.type as UserRole,
-          exp: Date.now() / 1000 + 86400,
-        }
-
-        setCurrentUser(userSession)
-        await syncCSRFToken()
-        return userSession
+    if (data.status && data.data) {
+      const userSession: UserSession = {
+        id: data.data.username,
+        username: data.data.username,
+        role: data.data.type as UserRole,
+        exp: Date.now() / 1000 + 86400,
       }
 
-      throw new Error(data.message || '登录失败')
-    } catch (error) {
-      console.error('Login failed:', error)
-      throw error
+      setCurrentUser(userSession)
+      await syncCSRFToken()
+      return { session: userSession }
     }
+
+    return { error: data.message || '登录失败' }
   }
 
   // 检查登录状态
@@ -284,12 +283,18 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     try {
-      const userSession = await login(username, password, rememberMe)
-      websocketManager.resetTokenInvalid()
+      const { session, error } = await login(username, password, rememberMe)
+      if (session) {
+        websocketManager.resetTokenInvalid()
 
+        return {
+          success: true,
+          userSession: session,
+        }
+      }
       return {
-        success: true,
-        userSession,
+        success: false,
+        error: error || '登录过程中发生错误',
       }
     } catch (error) {
       console.error('Admin login failed:', error)

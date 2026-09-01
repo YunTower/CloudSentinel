@@ -25,6 +25,18 @@ const handleUnauthorized = () => {
   })
 }
 
+const toErrorResponse = (body: unknown, fallbackMessage: string): unknown => {
+  if (body && typeof body === 'object' && !Array.isArray(body)) {
+    const normalized = body as { status?: unknown; message?: unknown }
+    if (typeof normalized.status !== 'boolean') normalized.status = false
+    if (typeof normalized.message !== 'string' || !normalized.message.trim()) {
+      normalized.message = fallbackMessage
+    }
+    return normalized
+  }
+  return { status: false, message: fallbackMessage }
+}
+
 export const requester = createAlova({
   requestAdapter: adapterFetch(),
   baseURL: import.meta.env.VITE_API_URL_PREFIX || '/api',
@@ -36,14 +48,22 @@ export const requester = createAlova({
   },
   responded: {
     onSuccess: async (response, method) => {
-      if (response.status === 401 && !(method?.url || '').includes('/auth/check')) {
-        handleUnauthorized()
-        throw new Error('登录已过期，请重新登录')
+      let body: unknown = null
+      try {
+        body = await response.json()
+      } catch {
       }
-      if (!response.ok && response.status !== 401) {
-        throw new Error(`请求失败 (HTTP ${response.status})`)
+
+      if (response.status === 401) {
+        if (!(method?.url || '').includes('/auth/check')) {
+          handleUnauthorized()
+          return toErrorResponse(body, '登录已过期，请重新登录')
+        }
+      } else if (!response.ok) {
+        return toErrorResponse(body, `请求失败 (HTTP ${response.status})`)
       }
-      return await response.json()
+
+      return body ?? {}
     },
   },
 })
