@@ -336,8 +336,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="service-monitor-view min-w-0 overflow-x-hidden">
-    <div class="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+  <div class="w-full">
+    <div class="mb-6 flex flex-col md:flex-row md:justify-between">
       <div>
         <n-h1 class="!mb-1">服务监测</n-h1>
         <n-text depth="3">监测网络服务、Minecraft 服务器与 AI 模型接口状态</n-text>
@@ -348,9 +348,29 @@ onUnmounted(() => {
       </n-button>
     </div>
 
-    <n-spin :show="loading">
+    <div>
+      <div
+        v-if="loading"
+        class="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+        aria-busy="true"
+        aria-live="polite"
+      >
+        <n-card v-for="index in 6" :key="index" size="small">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between gap-3">
+              <n-skeleton text width="40%" />
+              <n-skeleton width="10%" size="small" />
+            </div>
+            <n-skeleton text :repeat="2" />
+            <n-skeleton height="20px" />
+            <div class="grid grid-cols-3 gap-2">
+              <n-skeleton v-for="item in 3" :key="item" height="44px" />
+            </div>
+          </div>
+        </n-card>
+      </div>
       <n-empty
-        v-if="!loading && monitors.length === 0"
+        v-else-if="monitors.length === 0"
         description="暂无监测项，点击右上角添加"
         class="py-16"
       />
@@ -364,7 +384,7 @@ onUnmounted(() => {
           @view-results="openResults"
         />
       </div>
-    </n-spin>
+    </div>
 
     <service-monitor-form-modal
       v-model:show="showDialog"
@@ -390,9 +410,3 @@ onUnmounted(() => {
     </n-modal>
   </div>
 </template>
-
-<style scoped>
-.service-monitor-view {
-  width: 100%;
-}
-</style>

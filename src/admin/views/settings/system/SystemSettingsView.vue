@@ -363,7 +363,8 @@ const savePermissions = async () => {
       maxLoginAttempts: permissions.value.maxLoginAttempts,
       lockoutDuration: permissions.value.lockoutDuration,
       // 分钟转秒；0 或空表示不更改（后端 >0 才写入）
-      sessionTimeout: permissions.value.sessionTimeout > 0 ? permissions.value.sessionTimeout * 60 : 0,
+      sessionTimeout:
+        permissions.value.sessionTimeout > 0 ? permissions.value.sessionTimeout * 60 : 0,
       jwtExpiration: permissions.value.jwtExpiration > 0 ? permissions.value.jwtExpiration * 60 : 0,
       jwtSecret: permissions.value.jwtSecret,
     })
@@ -481,30 +482,32 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div class="flex items-start justify-between gap-2">
+  <div class="w-full">
+    <div class="mb-6 flex items-start justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-color mb-1">系统设置</h1>
-        <p class="text-muted-color">配置面板基本信息、版本更新及登录安全</p>
+        <n-h1 class="!mb-1">系统设置</n-h1>
+        <n-text depth="3">配置面板基本信息、版本更新及登录安全</n-text>
       </div>
-      <n-button
-        v-if="activeTab === 'panel'"
-        type="primary"
-        :loading="savingPanel"
-        @click="savePanelSettings"
-      >
-        <template #icon><ri-save-line /></template>
-        保存设置
-      </n-button>
-      <n-button
-        v-else-if="activeTab === 'permissions'"
-        type="primary"
-        :loading="savingPermissions"
-        @click="savePermissions"
-      >
-        <template #icon><ri-save-line /></template>
-        保存设置
-      </n-button>
+      <n-space size="small">
+        <n-button
+          v-if="activeTab === 'panel'"
+          type="primary"
+          :loading="savingPanel"
+          @click="savePanelSettings"
+        >
+          <template #icon><ri-save-line /></template>
+          保存设置
+        </n-button>
+        <n-button
+          v-else-if="activeTab === 'permissions'"
+          type="primary"
+          :loading="savingPermissions"
+          @click="savePermissions"
+        >
+          <template #icon><ri-save-line /></template>
+          保存设置
+        </n-button>
+      </n-space>
     </div>
 
     <n-tabs v-model:value="activeTab" type="line" animated>
@@ -715,7 +718,8 @@ onUnmounted(() => {
                 </n-form-item>
                 <n-divider />
                 <n-alert type="info" :show-icon="false" class="mb-2">
-                  以下认证配置存于数据库并即时生效（优先于环境变量）；留空表示不更改。轮换 JWT 密钥会使所有已登录会话立即失效。
+                  以下认证配置存于数据库并即时生效（优先于环境变量）；留空表示不更改。轮换 JWT
+                  密钥会使所有已登录会话立即失效。
                 </n-alert>
                 <n-form-item label="会话有效期" path="sessionTimeout">
                   <n-input-number
@@ -747,7 +751,11 @@ onUnmounted(() => {
                     type="password"
                     show-password-on="click"
                     class="w-full"
-                    :placeholder="permissions.jwtSecret === '***' ? '已配置（留空不更改）' : '至少 16 位（留空不更改）'"
+                    :placeholder="
+                      permissions.jwtSecret === '***'
+                        ? '已配置（留空不更改）'
+                        : '至少 16 位（留空不更改）'
+                    "
                     clearable
                   />
                 </n-form-item>

@@ -493,13 +493,13 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="servers-view">
-    <div class="mb-6 flex justify-between items-start">
+  <div class="w-full">
+    <div class="mb-6 flex items-start justify-between ">
       <div>
-        <h1 class="text-3xl font-bold text-color mb-2">服务器管理</h1>
-        <p class="text-muted-color">管理和监控所有服务器节点</p>
+        <n-h1 class="!mb-1">服务器管理</n-h1>
+        <n-text depth="3">管理和监控所有服务器节点</n-text>
       </div>
-      <div class="flex gap-2">
+      <n-space size="small">
         <n-button secondary @click="showGroupManager = true">
           <template #icon>
             <ri-folder-line />
@@ -518,7 +518,7 @@ onMounted(async () => {
           </template>
           添加服务器
         </n-button>
-      </div>
+      </n-space>
     </div>
 
     <!-- 筛选栏 -->
@@ -713,9 +713,3 @@ onMounted(async () => {
     </n-modal>
   </div>
 </template>
-
-<style scoped>
-.servers-view {
-  margin: 0 auto;
-}
-</style>

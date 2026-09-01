@@ -157,9 +157,9 @@ onMounted(() => {
         </n-tooltip>
       </div>
       <n-code :hljs="hljs" :code="panelFingerprint" language="text" word-wrap />
-      <p class="mt-2 text-sm text-gray-500">
+      <n-text class="mt-2 text-sm" depth="3">
         安装完成后，在 Agent 的连接初始化配置中填写此值（panel_fingerprint）；未填写时 Agent 会拒绝首次 WSS 连接。
-      </p>
+      </n-text>
     </div>
     <div>
       <div class="flex items-center justify-between mb-3">

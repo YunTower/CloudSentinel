@@ -406,18 +406,22 @@ onMounted(() => {
 })
 </script>
 <template>
-  <div class="space-y-4">
-    <div class="flex items-start justify-between gap-2">
+  <div class="w-full">
+    <div class="mb-6 flex items-start justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-color mb-1">告警设置</h1>
-        <p class="text-muted-color">配置告警通知方式</p>
+        <n-h1 class="!mb-1">告警设置</n-h1>
+        <n-text depth="3">配置告警通知方式</n-text>
       </div>
-      <n-button type="primary" :loading="saving" :disabled="loading" @click="saveAlertSettings">
-        <template #icon>
-          <ri-save-line />
-        </template>
-        保存设置
-      </n-button>
+      <n-space>
+        <n-button type="primary" :loading="saving" :disabled="loading" @click="saveAlertSettings">
+          <template #icon>
+            <n-icon>
+              <ri-save-line />
+            </n-icon>
+          </template>
+          保存设置
+        </n-button>
+      </n-space>
     </div>
 
     <n-spin :show="loading" description="加载中...">
@@ -567,7 +571,11 @@ onMounted(() => {
                   >
                     <n-input
                       v-model:value="notifications.webhook.webhook"
-                      :placeholder="notifications.webhook.hasWebhook ? '已保存；留空将保留，输入新 URL 可替换' : webhookPlaceholder"
+                      :placeholder="
+                        notifications.webhook.hasWebhook
+                          ? '已保存；留空将保留，输入新 URL 可替换'
+                          : webhookPlaceholder
+                      "
                     />
                   </n-form-item>
                   <div v-if="supportsMention" class="flex flex-col gap-2">
@@ -628,7 +636,8 @@ onMounted(() => {
           </template>
 
           <n-alert type="info" class="mb-4">
-            三个模板供所有告警类型共用。保存和测试发送前会校验 Go Template 语法；模板变量会自动进行 HTML 转义。
+            三个模板供所有告警类型共用。保存和测试发送前会校验 Go Template 语法；模板变量会自动进行
+            HTML 转义。
           </n-alert>
 
           <n-collapse class="mb-4">
@@ -683,7 +692,9 @@ onMounted(() => {
           <n-divider v-if="preview" title-placement="left">示例数据预览</n-divider>
           <n-tabs v-if="preview" type="segment" animated>
             <n-tab-pane name="preview-email" tab="邮件">
-              <p class="mb-2 text-sm"><span class="text-muted-color">主题：</span>{{ preview.emailSubject }}</p>
+              <p class="mb-2 text-sm">
+                <span class="text-muted-color">主题：</span>{{ preview.emailSubject }}
+              </p>
               <iframe
                 title="邮件模板预览"
                 :srcdoc="preview.emailHtml"
@@ -692,7 +703,9 @@ onMounted(() => {
               />
             </n-tab-pane>
             <n-tab-pane name="preview-webhook" tab="Webhook">
-              <pre class="whitespace-pre-wrap rounded bg-gray-100 dark:bg-gray-800 p-4 text-sm">{{ preview.webhookText }}</pre>
+              <pre class="whitespace-pre-wrap rounded bg-gray-100 dark:bg-gray-800 p-4 text-sm">{{
+                preview.webhookText
+              }}</pre>
             </n-tab-pane>
           </n-tabs>
         </n-card>

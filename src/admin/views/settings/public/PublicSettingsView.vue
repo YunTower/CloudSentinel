@@ -13,7 +13,10 @@ import type { ServerGroup, GetServersResponse } from '@/shared/types/manager/ser
 import type { ServerItem } from '@/shared/types/server'
 import type { PublicIncident } from '@/shared/types/incidents'
 import type { PublicServiceMonitor } from '@/shared/types/service-monitor'
-import type { PublicDisplayConfigV1, PublicDisplayFieldsV1 } from '@/shared/types/settings/public-display'
+import type {
+  PublicDisplayConfigV1,
+  PublicDisplayFieldsV1,
+} from '@/shared/types/settings/public-display'
 import type {
   PublicPagesConfigV1,
   PublicPageV1,
@@ -456,19 +459,23 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div class="flex items-start justify-between gap-2">
+  <div class="w-full">
+    <div class="mb-6 flex items-start justify-between">
       <div>
         <n-h1 class="!mb-1">公开配置</n-h1>
         <n-text depth="3">配置游客可见的展示策略与公开页面</n-text>
       </div>
-      <div v-if="activeTab === 'display'" class="flex gap-2">
+      <n-space v-if="activeTab === 'display'" size="small">
         <n-button
           secondary
           :disabled="loadingDisplay || savingDisplay"
           @click="resetDisplayToDefault"
         >
-          <template #icon><ri-refresh-line /></template>
+          <template #icon>
+            <n-icon>
+              <ri-refresh-line />
+            </n-icon>
+          </template>
           重置默认
         </n-button>
         <n-button
@@ -477,10 +484,14 @@ onMounted(async () => {
           :disabled="loadingDisplay"
           @click="saveDisplay"
         >
-          <template #icon><ri-save-line /></template>
+          <template #icon>
+            <n-icon>
+              <ri-save-line />
+            </n-icon>
+          </template>
           保存设置
         </n-button>
-      </div>
+      </n-space>
     </div>
 
     <n-tabs v-model:value="activeTab" type="line" animated>
@@ -673,306 +684,313 @@ onMounted(async () => {
                 </n-text>
               </n-card>
 
-            <n-card class="builder-panel">
-              <template #header>
-                <n-thing>
-                  <template #header>
-                    <n-h2 class="!mb-0">页面搭建</n-h2>
-                  </template>
-                  <template #description>
-                    <n-text depth="3">配置页面与区块</n-text>
-                  </template>
-                </n-thing>
-              </template>
-              <template #header-extra>
-                <n-space :size="8">
-                  <n-button secondary :disabled="loadingPages || savingPages" @click="addPage">
-                    <template #icon><ri-add-line /></template>
-                    新增页面
-                  </n-button>
-                  <n-button
-                    type="primary"
-                    :loading="savingPages"
-                    :disabled="loadingPages"
-                    @click="savePages"
-                  >
-                    <template #icon><ri-save-line /></template>
-                    保存页面
-                  </n-button>
-                </n-space>
-              </template>
+              <n-card class="builder-panel">
+                <template #header>
+                  <n-thing>
+                    <template #header>
+                      <n-h2 class="!mb-0">页面搭建</n-h2>
+                    </template>
+                    <template #description>
+                      <n-text depth="3">配置页面与区块</n-text>
+                    </template>
+                  </n-thing>
+                </template>
+                <template #header-extra>
+                  <n-space :size="8">
+                    <n-button secondary :disabled="loadingPages || savingPages" @click="addPage">
+                      <template #icon><ri-add-line /></template>
+                      新增页面
+                    </n-button>
+                    <n-button
+                      type="primary"
+                      :loading="savingPages"
+                      :disabled="loadingPages"
+                      @click="savePages"
+                    >
+                      <template #icon><ri-save-line /></template>
+                      保存页面
+                    </n-button>
+                  </n-space>
+                </template>
 
-              <n-tabs v-model:value="activePageId" type="line" animated>
-                <n-tab-pane v-for="p in pages" :key="p.id" :name="p.id" :tab="p.title || p.id">
-                  <div class="space-y-3">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                      <n-form-item label="ID">
-                        <n-input v-model:value="p.id" placeholder="home" />
-                      </n-form-item>
-                      <n-form-item label="路径">
-                        <n-input v-model:value="p.path" placeholder="/public" />
-                      </n-form-item>
-                      <n-form-item label="标题">
-                        <n-input v-model:value="p.title" placeholder="公开页面" />
-                      </n-form-item>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                      <n-form-item label="品牌名">
-                        <n-input v-model:value="p.brandName" placeholder="CloudSentinel" />
-                      </n-form-item>
-                      <n-form-item label="Logo URL">
-                        <n-input v-model:value="p.logoUrl" placeholder="https://..." />
-                      </n-form-item>
-                      <n-form-item label="主题色">
-                        <n-color-picker
-                          v-model:value="p.accentColor"
-                          :show-alpha="false"
-                          :modes="['hex']"
-                        />
-                      </n-form-item>
-                    </div>
-
-                    <n-divider class="!my-1" />
-
-                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <n-thing>
-                        <template #header>
-                          <n-h2 class="!mb-0">区块</n-h2>
-                        </template>
-                        <template #description>
-                          <n-text depth="3">自上而下渲染</n-text>
-                        </template>
-                      </n-thing>
-                      <n-space :size="8">
-                        <n-dropdown
-                          trigger="click"
-                          :options="blockTypeOptions.map((o) => ({ label: o.label, key: o.value }))"
-                          @select="handleAddBlockSelect"
-                        >
-                          <n-button secondary size="small">
-                            <template #icon><ri-add-line /></template>
-                            添加区块
-                          </n-button>
-                        </n-dropdown>
-                        <n-button secondary size="small" type="error" @click="removePage(p.id)">
-                          <template #icon><ri-delete-bin-line /></template>
-                          删除页面
-                        </n-button>
-                      </n-space>
-                    </div>
-
+                <n-tabs v-model:value="activePageId" type="line" animated>
+                  <n-tab-pane v-for="p in pages" :key="p.id" :name="p.id" :tab="p.title || p.id">
                     <div class="space-y-3">
-                      <n-card
-                        v-for="(b, i) in p.blocks"
-                        :key="i"
-                        size="small"
-                        class="page-block-card"
+                      <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <n-form-item label="ID">
+                          <n-input v-model:value="p.id" placeholder="home" />
+                        </n-form-item>
+                        <n-form-item label="路径">
+                          <n-input v-model:value="p.path" placeholder="/public" />
+                        </n-form-item>
+                        <n-form-item label="标题">
+                          <n-input v-model:value="p.title" placeholder="公开页面" />
+                        </n-form-item>
+                      </div>
+                      <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <n-form-item label="品牌名">
+                          <n-input v-model:value="p.brandName" placeholder="CloudSentinel" />
+                        </n-form-item>
+                        <n-form-item label="Logo URL">
+                          <n-input v-model:value="p.logoUrl" placeholder="https://..." />
+                        </n-form-item>
+                        <n-form-item label="主题色">
+                          <n-color-picker
+                            v-model:value="p.accentColor"
+                            :show-alpha="false"
+                            :modes="['hex']"
+                          />
+                        </n-form-item>
+                      </div>
+
+                      <n-divider class="!my-1" />
+
+                      <div
+                        class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
                       >
-                        <template #header>
-                          <div class="flex min-w-0 items-center gap-3">
-                            <n-tag size="small" round :bordered="false">#{{ i + 1 }}</n-tag>
-                            <n-text strong>{{ blockTypeLabel(b.type) }}</n-text>
-                          </div>
-                        </template>
-                        <template #header-extra>
-                          <div class="flex flex-wrap items-center justify-end gap-2">
-                            <div class="w-[140px]">
-                              <n-select
-                                v-model:value="b.type"
-                                :options="blockTypeOptions"
-                                size="small"
-                                @update:value="handleBlockTypeChange.bind(null, b as any)"
-                              />
+                        <n-thing>
+                          <template #header>
+                            <n-h2 class="!mb-0">区块</n-h2>
+                          </template>
+                          <template #description>
+                            <n-text depth="3">自上而下渲染</n-text>
+                          </template>
+                        </n-thing>
+                        <n-space :size="8">
+                          <n-dropdown
+                            trigger="click"
+                            :options="
+                              blockTypeOptions.map((o) => ({ label: o.label, key: o.value }))
+                            "
+                            @select="handleAddBlockSelect"
+                          >
+                            <n-button secondary size="small">
+                              <template #icon><ri-add-line /></template>
+                              添加区块
+                            </n-button>
+                          </n-dropdown>
+                          <n-button secondary size="small" type="error" @click="removePage(p.id)">
+                            <template #icon><ri-delete-bin-line /></template>
+                            删除页面
+                          </n-button>
+                        </n-space>
+                      </div>
+
+                      <div class="space-y-3">
+                        <n-card
+                          v-for="(b, i) in p.blocks"
+                          :key="i"
+                          size="small"
+                          class="page-block-card"
+                        >
+                          <template #header>
+                            <div class="flex min-w-0 items-center gap-3">
+                              <n-tag size="small" round :bordered="false">#{{ i + 1 }}</n-tag>
+                              <n-text strong>{{ blockTypeLabel(b.type) }}</n-text>
                             </div>
-                            <n-button quaternary circle size="small" @click="moveBlock(i, -1)">
-                              <template #icon><ri-arrow-up-line /></template>
-                            </n-button>
-                            <n-button quaternary circle size="small" @click="moveBlock(i, 1)">
-                              <template #icon><ri-arrow-down-line /></template>
-                            </n-button>
-                            <n-button
-                              quaternary
-                              circle
-                              size="small"
-                              type="error"
-                              @click="removeBlock(i)"
-                            >
-                              <template #icon><ri-delete-bin-line /></template>
-                            </n-button>
+                          </template>
+                          <template #header-extra>
+                            <div class="flex flex-wrap items-center justify-end gap-2">
+                              <div class="w-[140px]">
+                                <n-select
+                                  v-model:value="b.type"
+                                  :options="blockTypeOptions"
+                                  size="small"
+                                  @update:value="handleBlockTypeChange.bind(null, b as any)"
+                                />
+                              </div>
+                              <n-button quaternary circle size="small" @click="moveBlock(i, -1)">
+                                <template #icon><ri-arrow-up-line /></template>
+                              </n-button>
+                              <n-button quaternary circle size="small" @click="moveBlock(i, 1)">
+                                <template #icon><ri-arrow-down-line /></template>
+                              </n-button>
+                              <n-button
+                                quaternary
+                                circle
+                                size="small"
+                                type="error"
+                                @click="removeBlock(i)"
+                              >
+                                <template #icon><ri-delete-bin-line /></template>
+                              </n-button>
+                            </div>
+                          </template>
+
+                          <div
+                            v-if="b.type === 'hero'"
+                            class="grid grid-cols-1 md:grid-cols-3 gap-2"
+                          >
+                            <n-form-item label="标题">
+                              <n-input v-model:value="(b.data as any).title" />
+                            </n-form-item>
+                            <n-form-item label="副标题">
+                              <n-input v-model:value="(b.data as any).subtitle" />
+                            </n-form-item>
+                            <n-form-item label="Badge">
+                              <n-input v-model:value="(b.data as any).badge" />
+                            </n-form-item>
                           </div>
-                        </template>
 
-                        <div v-if="b.type === 'hero'" class="grid grid-cols-1 md:grid-cols-3 gap-2">
-                          <n-form-item label="标题">
-                            <n-input v-model:value="(b.data as any).title" />
-                          </n-form-item>
-                          <n-form-item label="副标题">
-                            <n-input v-model:value="(b.data as any).subtitle" />
-                          </n-form-item>
-                          <n-form-item label="Badge">
-                            <n-input v-model:value="(b.data as any).badge" />
-                          </n-form-item>
-                        </div>
+                          <div v-else-if="b.type === 'markdown'">
+                            <n-form-item label="Markdown">
+                              <n-input
+                                v-model:value="(b.data as any).markdown"
+                                type="textarea"
+                                :autosize="{ minRows: 6, maxRows: 14 }"
+                              />
+                            </n-form-item>
+                          </div>
 
-                        <div v-else-if="b.type === 'markdown'">
-                          <n-form-item label="Markdown">
-                            <n-input
-                              v-model:value="(b.data as any).markdown"
-                              type="textarea"
-                              :autosize="{ minRows: 6, maxRows: 14 }"
-                            />
-                          </n-form-item>
-                        </div>
+                          <div v-else-if="b.type === 'stats'">
+                            <n-form-item label="统计项">
+                              <n-select
+                                v-model:value="(b.data as any).items"
+                                multiple
+                                :options="statOptions"
+                                placeholder="选择要展示的统计卡片"
+                              />
+                            </n-form-item>
+                          </div>
 
-                        <div v-else-if="b.type === 'stats'">
-                          <n-form-item label="统计项">
-                            <n-select
-                              v-model:value="(b.data as any).items"
-                              multiple
-                              :options="statOptions"
-                              placeholder="选择要展示的统计卡片"
-                            />
-                          </n-form-item>
-                        </div>
+                          <div
+                            v-else-if="b.type === 'serverList'"
+                            class="grid grid-cols-1 md:grid-cols-4 gap-2"
+                          >
+                            <n-form-item label="视图">
+                              <n-select
+                                v-model:value="(b.data as any).view"
+                                :options="[
+                                  { label: '表格', value: 'table' },
+                                  { label: '卡片', value: 'card' },
+                                ]"
+                              />
+                            </n-form-item>
+                            <n-form-item label="分组">
+                              <n-select
+                                v-model:value="(b.data as any).groupBy"
+                                :options="[
+                                  { label: '不分组', value: 'none' },
+                                  { label: '按状态', value: 'status' },
+                                  { label: '按地域', value: 'location' },
+                                  { label: '按系统', value: 'os' },
+                                ]"
+                              />
+                            </n-form-item>
+                            <n-form-item label="数量限制（0=不限）">
+                              <n-input-number
+                                v-model:value="(b.data as any).limit"
+                                :min="0"
+                                :max="1000"
+                                class="w-full"
+                              />
+                            </n-form-item>
+                            <n-form-item label="显示工具栏">
+                              <n-switch v-model:value="(b.data as any).showToolbar" />
+                            </n-form-item>
+                          </div>
 
-                        <div
-                          v-else-if="b.type === 'serverList'"
-                          class="grid grid-cols-1 md:grid-cols-4 gap-2"
-                        >
-                          <n-form-item label="视图">
-                            <n-select
-                              v-model:value="(b.data as any).view"
-                              :options="[
-                                { label: '表格', value: 'table' },
-                                { label: '卡片', value: 'card' },
-                              ]"
-                            />
-                          </n-form-item>
-                          <n-form-item label="分组">
-                            <n-select
-                              v-model:value="(b.data as any).groupBy"
-                              :options="[
-                                { label: '不分组', value: 'none' },
-                                { label: '按状态', value: 'status' },
-                                { label: '按地域', value: 'location' },
-                                { label: '按系统', value: 'os' },
-                              ]"
-                            />
-                          </n-form-item>
-                          <n-form-item label="数量限制（0=不限）">
-                            <n-input-number
-                              v-model:value="(b.data as any).limit"
-                              :min="0"
-                              :max="1000"
-                              class="w-full"
-                            />
-                          </n-form-item>
-                          <n-form-item label="显示工具栏">
-                            <n-switch v-model:value="(b.data as any).showToolbar" />
-                          </n-form-item>
-                        </div>
+                          <div
+                            v-else-if="b.type === 'serviceStatus'"
+                            class="grid grid-cols-1 md:grid-cols-4 gap-2"
+                          >
+                            <n-form-item label="展示服务">
+                              <n-select
+                                v-model:value="(b.data as any).monitorIds"
+                                multiple
+                                :options="serviceMonitorOptions"
+                                placeholder="留空则展示全部公开服务"
+                              />
+                            </n-form-item>
+                            <n-form-item label="分组">
+                              <n-select
+                                v-model:value="(b.data as any).groupBy"
+                                :options="[
+                                  { label: '按服务分组', value: 'group' },
+                                  { label: '不分组', value: 'none' },
+                                ]"
+                              />
+                            </n-form-item>
+                            <n-form-item label="数量限制（0=不限）">
+                              <n-input-number
+                                v-model:value="(b.data as any).limit"
+                                :min="0"
+                                :max="500"
+                                class="w-full"
+                              />
+                            </n-form-item>
+                            <n-form-item label="显示可用率">
+                              <n-switch v-model:value="(b.data as any).showUptime" />
+                            </n-form-item>
+                          </div>
 
-                        <div
-                          v-else-if="b.type === 'serviceStatus'"
-                          class="grid grid-cols-1 md:grid-cols-4 gap-2"
-                        >
-                          <n-form-item label="展示服务">
-                            <n-select
-                              v-model:value="(b.data as any).monitorIds"
-                              multiple
-                              :options="serviceMonitorOptions"
-                              placeholder="留空则展示全部公开服务"
-                            />
-                          </n-form-item>
-                          <n-form-item label="分组">
-                            <n-select
-                              v-model:value="(b.data as any).groupBy"
-                              :options="[
-                                { label: '按服务分组', value: 'group' },
-                                { label: '不分组', value: 'none' },
-                              ]"
-                            />
-                          </n-form-item>
-                          <n-form-item label="数量限制（0=不限）">
-                            <n-input-number
-                              v-model:value="(b.data as any).limit"
-                              :min="0"
-                              :max="500"
-                              class="w-full"
-                            />
-                          </n-form-item>
-                          <n-form-item label="显示可用率">
-                            <n-switch v-model:value="(b.data as any).showUptime" />
-                          </n-form-item>
-                        </div>
+                          <div
+                            v-else-if="b.type === 'incidents'"
+                            class="grid grid-cols-1 md:grid-cols-2 gap-2"
+                          >
+                            <n-form-item label="数量限制">
+                              <n-input-number
+                                v-model:value="(b.data as any).limit"
+                                :min="1"
+                                :max="50"
+                                class="w-full"
+                              />
+                            </n-form-item>
+                            <n-form-item label="包含已恢复事件">
+                              <n-switch v-model:value="(b.data as any).showResolved" />
+                            </n-form-item>
+                            <n-form-item label="来源">
+                              <n-select
+                                v-model:value="(b.data as any).sourceTypes"
+                                multiple
+                                :options="[
+                                  { label: '服务器', value: 'server' },
+                                  { label: '服务监测', value: 'service_monitor' },
+                                  { label: '手动事件', value: 'maintenance' },
+                                ]"
+                                placeholder="全部来源"
+                              />
+                            </n-form-item>
+                            <n-form-item label="关联服务监测">
+                              <n-select
+                                v-model:value="(b.data as any).monitorIds"
+                                multiple
+                                :options="serviceMonitorOptions"
+                                placeholder="留空则不限服务监测事件"
+                              />
+                            </n-form-item>
+                            <n-form-item label="关联服务器" class="md:col-span-2">
+                              <n-select
+                                v-model:value="(b.data as any).serverIds"
+                                multiple
+                                filterable
+                                :options="serverOptions"
+                                placeholder="留空则不限服务器事件"
+                              />
+                            </n-form-item>
+                          </div>
 
-                        <div
-                          v-else-if="b.type === 'incidents'"
-                          class="grid grid-cols-1 md:grid-cols-2 gap-2"
-                        >
-                          <n-form-item label="数量限制">
-                            <n-input-number
-                              v-model:value="(b.data as any).limit"
-                              :min="1"
-                              :max="50"
-                              class="w-full"
-                            />
-                          </n-form-item>
-                          <n-form-item label="包含已恢复事件">
-                            <n-switch v-model:value="(b.data as any).showResolved" />
-                          </n-form-item>
-                          <n-form-item label="来源">
-                            <n-select
-                              v-model:value="(b.data as any).sourceTypes"
-                              multiple
-                              :options="[
-                                { label: '服务器', value: 'server' },
-                                { label: '服务监测', value: 'service_monitor' },
-                                { label: '手动事件', value: 'maintenance' },
-                              ]"
-                              placeholder="全部来源"
-                            />
-                          </n-form-item>
-                          <n-form-item label="关联服务监测">
-                            <n-select
-                              v-model:value="(b.data as any).monitorIds"
-                              multiple
-                              :options="serviceMonitorOptions"
-                              placeholder="留空则不限服务监测事件"
-                            />
-                          </n-form-item>
-                          <n-form-item label="关联服务器" class="md:col-span-2">
-                            <n-select
-                              v-model:value="(b.data as any).serverIds"
-                              multiple
-                              filterable
-                              :options="serverOptions"
-                              placeholder="留空则不限服务器事件"
-                            />
-                          </n-form-item>
-                        </div>
-
-                        <div v-else-if="b.type === 'links'">
-                          <n-form-item label="链接">
-                            <n-dynamic-input
-                              v-model:value="(b.data as any).links"
-                              :on-create="() => ({ label: '链接', href: 'https://' })"
-                            >
-                              <template #default="{ value }">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 w-full">
-                                  <n-input v-model:value="value.label" placeholder="显示名称" />
-                                  <n-input v-model:value="value.href" placeholder="https://..." />
-                                </div>
-                              </template>
-                            </n-dynamic-input>
-                          </n-form-item>
-                        </div>
-                      </n-card>
+                          <div v-else-if="b.type === 'links'">
+                            <n-form-item label="链接">
+                              <n-dynamic-input
+                                v-model:value="(b.data as any).links"
+                                :on-create="() => ({ label: '链接', href: 'https://' })"
+                              >
+                                <template #default="{ value }">
+                                  <div class="grid grid-cols-1 md:grid-cols-2 gap-2 w-full">
+                                    <n-input v-model:value="value.label" placeholder="显示名称" />
+                                    <n-input v-model:value="value.href" placeholder="https://..." />
+                                  </div>
+                                </template>
+                              </n-dynamic-input>
+                            </n-form-item>
+                          </div>
+                        </n-card>
+                      </div>
                     </div>
-                  </div>
-                </n-tab-pane>
-              </n-tabs>
-            </n-card>
+                  </n-tab-pane>
+                </n-tabs>
+              </n-card>
             </div>
 
             <n-card class="builder-panel preview-panel" content-style="padding: 16px;">

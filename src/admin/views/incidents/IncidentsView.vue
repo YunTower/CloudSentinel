@@ -259,14 +259,14 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div class="flex items-start justify-between gap-2">
+  <div class="w-full">
+    <div class="mb-6 flex items-start justify-between gap-2">
       <div>
-        <h1 class="text-3xl font-bold text-color mb-1">事件</h1>
-        <p class="text-muted-color">服务异常、响应慢与恢复事件时间线</p>
+        <n-h1 class="!mb-1">事件</n-h1>
+        <n-text depth="3">服务异常、响应慢与恢复事件时间线</n-text>
       </div>
-      <div class="flex gap-2">
-        <n-button secondary @click="openCreateDialog">
+      <n-space size="small">
+        <n-button type="primary" @click="openCreateDialog">
           <template #icon><ri-add-line /></template>
           创建事件
         </n-button>
@@ -274,7 +274,7 @@ onMounted(async () => {
           <template #icon><ri-refresh-line /></template>
           刷新
         </n-button>
-      </div>
+      </n-space>
     </div>
 
     <n-spin :show="loading">
@@ -367,7 +367,9 @@ onMounted(async () => {
             <div class="incident-meta">
               <div>
                 <div class="meta-label">来源</div>
-                <div class="meta-value">{{ sourceLabel(incident.source_type) }} #{{ incident.source_id }}</div>
+                <div class="meta-value">
+                  {{ sourceLabel(incident.source_type) }} #{{ incident.source_id }}
+                </div>
               </div>
               <div v-if="incident.source_type === 'maintenance'">
                 <div class="meta-label">展示页面</div>
@@ -424,9 +426,7 @@ onMounted(async () => {
       <template #footer>
         <div class="flex justify-end gap-2">
           <n-button @click="createDialog = false">取消</n-button>
-          <n-button type="primary" :loading="createSaving" @click="createIncident">
-            创建
-          </n-button>
+          <n-button type="primary" :loading="createSaving" @click="createIncident"> 创建 </n-button>
         </div>
       </template>
     </n-modal>
