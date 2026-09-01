@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useMessage } from 'naive-ui'
 import type { Server, ServerAlertRules } from '@/shared/types/manager/servers'
-import serversApi from '@/admin/apis/servers'
+import serversApi from '@/admin/apis/servers.ts'
 import { RiCheckLine } from '@remixicon/vue'
 
 interface Props {

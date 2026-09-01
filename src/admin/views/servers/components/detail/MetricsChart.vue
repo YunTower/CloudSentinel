@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import type { MetricsData } from '@/shared/types/manager/servers'
-import VChart, { type ILineChartSpec } from '@/shared/utils/vcharts'
+import VChart, { type ILineChartSpec } from '@/shared/utils/vcharts.ts'
 import {
   formatChartAxisTime,
   parseMetricsTimestamp,
   toChartTimeMs,
-} from '@/shared/utils/metricsTimestamp'
+} from '@/shared/utils/metricsTimestamp.ts'
 import { RiLineChartLine } from '@remixicon/vue'
 
 interface Props {

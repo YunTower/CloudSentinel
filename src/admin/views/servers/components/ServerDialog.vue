@@ -3,7 +3,7 @@ import { ref, computed, watch, h } from 'vue'
 import { useMessage, useDialog } from 'naive-ui'
 import ServerGroupSelector from './ServerGroupSelector.vue'
 import InstallInfo from './InstallInfo.vue'
-import serversApi from '@/admin/apis/servers'
+import serversApi from '@/admin/apis/servers.ts'
 import type {
   Server,
   ServerForm,
@@ -15,8 +15,8 @@ import type {
   ServerFormWithAlertRules,
   ServerNotificationChannels,
 } from '@/shared/types/manager/servers'
-import alertsApi from '@/admin/apis/settings/alerts'
-import { resolveTrafficCycle } from '@/shared/utils/billing'
+import alertsApi from '@/admin/apis/settings/alerts.ts'
+import { resolveTrafficCycle } from '@/shared/utils/billing.ts'
 import {
   RiAddLine,
   RiCalendarCloseLine,

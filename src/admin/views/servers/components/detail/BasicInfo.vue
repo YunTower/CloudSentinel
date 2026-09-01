@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { NCard, NDescriptions, NDescriptionsItem, NTag } from 'naive-ui'
 import type { Server } from '@/shared/types/manager/servers'
-import { getBillingCycle, getExpireCountdown } from '@/shared/utils/billing'
+import { getBillingCycle, getExpireCountdown } from '@/shared/utils/billing.ts'
 import { getStatusText, getStatusSeverity } from '@/shared/utils/version.ts'
 
 interface Props {

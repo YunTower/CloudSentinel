@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { h } from 'vue'
-import serversApi from '@/admin/apis/servers'
+import serversApi from '@/admin/apis/servers.ts'
 import type { ServerGroup } from '@/shared/types/manager/servers'
 
 interface Props {

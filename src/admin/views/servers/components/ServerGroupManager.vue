@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch, h } from 'vue'
 import { useMessage, useDialog, NButton, NTag } from 'naive-ui'
 import type { DataTableColumn } from 'naive-ui'
-import serversApi from '@/admin/apis/servers'
+import serversApi from '@/admin/apis/servers.ts'
 import type { ServerGroup, Server } from '@/shared/types/manager/servers'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/vue'
 

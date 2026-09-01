@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useMessage } from 'naive-ui'
 import type { FormInst, FormRules } from 'naive-ui'
-import serversApi from '@/admin/apis/servers'
+import serversApi from '@/admin/apis/servers.ts'
 import type { ServerGroup } from '@/shared/types/manager/servers'
 import { RiAddLine, RiCheckLine } from '@remixicon/vue'
 

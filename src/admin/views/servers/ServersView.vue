@@ -8,10 +8,10 @@ import ServerGroupDialog from './components/ServerGroupDialog.vue'
 import ServerGroupManager from './components/ServerGroupManager.vue'
 import InstallInfo from './components/InstallInfo.vue'
 import CopyAlertRulesDialog from './components/CopyAlertRulesDialog.vue'
-import serversApi from '@/admin/apis/servers'
+import serversApi from '@/admin/apis/servers.ts'
 import type { ServerGroup } from '@/shared/types/manager/servers'
-import updateApi from '@/admin/apis/update'
-import { useWebSocket } from '@/admin/composables/useWebSocket'
+import updateApi from '@/admin/apis/update.ts'
+import { useWebSocket } from '@/admin/composables/useWebSocket.ts'
 import type { VersionType } from '@/shared/utils/version.ts'
 import type {
   Server,

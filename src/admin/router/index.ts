@@ -36,7 +36,7 @@ const router = createRouter({
     {
       path: '/servers',
       name: 'manager',
-      component: () => import('@/admin/views/manager/servers/ServersView.vue'),
+      component: () => import('@/admin/views/servers/ServersView.vue'),
       meta: {
         title: '服务器',
         icon: RiServerLine,
@@ -66,7 +66,7 @@ const router = createRouter({
     {
       path: '/servers/:id',
       name: 'serverDetail',
-      component: () => import('@/admin/views/manager/servers/DetailView.vue'),
+      component: () => import('@/admin/views/servers/DetailView.vue'),
       meta: {
         title: '服务器详情',
         showToMenu: false,

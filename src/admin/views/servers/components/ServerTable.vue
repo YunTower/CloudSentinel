@@ -3,15 +3,15 @@ import { ref, computed, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { NTag, NButton, NEmpty, NSpace, type PaginationInfo, type DataTableColumn } from 'naive-ui'
 import { useMessage, useDialog } from 'naive-ui'
-import { useAuthStore } from '@/admin/stores/auth'
+import { useAuthStore } from '@/admin/stores/auth.ts'
 import type { Server } from '@/shared/types/manager/servers'
-import serversApi from '@/admin/apis/servers'
+import serversApi from '@/admin/apis/servers.ts'
 import {
   getBillingCycle,
   getBillingType,
   getExpireCountdown,
   getTrafficLimitSummary,
-} from '@/shared/utils/billing'
+} from '@/shared/utils/billing.ts'
 import {
   getStatusText,
   getStatusSeverity,
