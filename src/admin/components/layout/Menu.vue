@@ -1,4 +1,6 @@
 <script setup lang="ts">
+defineOptions({ name: 'AdminMenu' })
+
 import { type Component, computed, h, onMounted, ref } from 'vue'
 import { useRouter, RouterLink, useRoute } from 'vue-router'
 import { useLayout } from '@/admin/composables/useLayout'

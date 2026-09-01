@@ -5,6 +5,7 @@ import { useMessage } from 'naive-ui'
 import type { FormInst, FormRules } from 'naive-ui'
 import { RiLoginBoxLine } from '@remixicon/vue'
 import { useAuthStore } from '@/admin/stores/auth'
+import { isSafeInternalRedirect } from '@/admin/router/guards'
 
 interface Props {
   visible: boolean
@@ -85,9 +86,10 @@ const handleLogin = async () => {
       const redirectUri = router.currentRoute.value.query.redirect_uri as string
       const intendedPath = sessionStorage.getItem('intended_path')
 
-      if (redirectUri) {
+      // 与 LoginView 一致：仅接受站内路径，防开放重定向
+      if (isSafeInternalRedirect(redirectUri)) {
         await router.replace(redirectUri)
-      } else if (intendedPath) {
+      } else if (intendedPath && isSafeInternalRedirect(intendedPath)) {
         await router.replace(intendedPath)
         sessionStorage.removeItem('intended_path')
       } else {
