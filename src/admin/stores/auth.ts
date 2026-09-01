@@ -34,7 +34,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   const role = computed<UserRole>(() => (user.value?.role || 'guest') as UserRole)
 
-  // Token 管理
   const getToken = (): string | null => null
 
   const setToken = (token: string, rememberMe: boolean = false): void => {
@@ -42,9 +41,7 @@ export const useAuthStore = defineStore('auth', () => {
     void rememberMe
   }
 
-  const getRefreshToken = (): string | null => {
-    return null
-  }
+  const getRefreshToken = (): string | null => null
 
   const setRefreshToken = (token: string, rememberMe: boolean = false): void => {
     void token
@@ -60,10 +57,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isTokenValid = (): boolean => {
     return currentUserSession.value !== null
-  }
-
-  const isTokenStoredInLocalStorage = (): boolean => {
-    return false
   }
 
   // 用户管理
@@ -82,6 +75,7 @@ export const useAuthStore = defineStore('auth', () => {
     currentUserSession.value = userSession
     isLoggedIn.value = true
     initialized.value = true // 设置初始化状态为true，确保isAuthenticated能正确计算
+    websocketManager.resetTokenInvalid()
   }
 
   // 权限检查
@@ -190,10 +184,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // 检查登录状态
+  const sessionCheckFailed = ref(false)
   const checkLoginStatus = async (): Promise<void> => {
     try {
       const response = await authApi.checkLogin()
       const data = response as CheckLoginResponse
+      sessionCheckFailed.value = false
 
       if (data.status && data.data?.is_valid) {
         const userSession: UserSession = {
@@ -210,7 +206,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
     } catch (error) {
       console.error('Failed to check login status:', error)
-      // 网络错误不等同于 token 失效，保留现有会话状态
+      sessionCheckFailed.value = true
     }
   }
 
@@ -251,6 +247,13 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     initialized.value = false
     bootstrapPromise.value = null
+    // 清理面板设置缓存与意图路径，避免下一个会话看到旧面板标题/公告
+    publicSettings.value = null
+    loadingPublicSettingsPromise.value = null
+    try {
+      sessionStorage.removeItem('intended_path')
+    } catch {}
+    redirectUri.value = null
   }
 
   // 主动登出：通知服务端并清除本地会话
@@ -330,7 +333,9 @@ export const useAuthStore = defineStore('auth', () => {
 
         await checkLoginStatus()
 
-        initialized.value = true
+        if (!sessionCheckFailed.value) {
+          initialized.value = true
+        }
       } finally {
         // 无论成功或失败，都清除 promise，确保下次可重新初始化（如登出后重新登录）
         bootstrapPromise.value = null
@@ -354,6 +359,7 @@ export const useAuthStore = defineStore('auth', () => {
     setRedirect,
     bootstrap,
     logout,
+    clearLocalSession,
     hasRole,
 
     // Token 管理

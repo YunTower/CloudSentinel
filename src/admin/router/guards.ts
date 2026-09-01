@@ -1,9 +1,19 @@
 import type { Router } from 'vue-router'
 import { useAuthStore } from '@/admin/stores/auth'
 
+export function isSafeInternalRedirect(uri: string | null | undefined): boolean {
+  if (!uri) return false
+  if (!uri.startsWith('/') || uri.startsWith('//') || uri.startsWith('/\\')) return false
+  return true
+}
+
 export function setupRouteGuards(router: Router) {
   router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore()
+
+    if (!authStore.initialized) {
+      await authStore.bootstrap()
+    }
 
     // 如果目标路由是登录页面
     if (to.name === 'login') {
@@ -12,7 +22,7 @@ export function setupRouteGuards(router: Router) {
         // 已认证则跳转到上次意图路径或首页
         try {
           const intended = sessionStorage.getItem('intended_path')
-          if (intended && intended !== to.fullPath && intended !== '/login') {
+          if (intended && isSafeInternalRedirect(intended) && intended !== to.fullPath && intended !== '/login') {
             sessionStorage.removeItem('intended_path')
             next({ name: 'overview', query: { redirect_uri: intended } })
             return
@@ -38,18 +48,8 @@ export function setupRouteGuards(router: Router) {
       return
     }
 
-    if (!authStore.initialized) {
-      await authStore.bootstrap()
-    }
-
     // 如果没有roles配置或roles不是['*']，则需要登录验证
     if (!authStore.isAuthenticated) {
-      // 如果当前已经在登录页，直接允许访问，避免循环跳转
-      if (to.name === 'login') {
-        next()
-        return
-      }
-
       try {
         // 记录用户意图访问的受保护路径
         sessionStorage.setItem('intended_path', to.fullPath)
@@ -63,8 +63,18 @@ export function setupRouteGuards(router: Router) {
     if (requiredRoles && requiredRoles.length > 0 && !requiredRoles.includes('*')) {
       const userRole = authStore.role
       if (!requiredRoles.includes(userRole)) {
-        // 角色不匹配，重定向到首页
-        next({ name: 'overview' })
+        // 角色不匹配
+        const fallback = router.resolve({ name: 'overview' })
+        const fallbackRoles = (fallback.meta?.roles as string[] | undefined) ?? ['*']
+        if (fallbackRoles.includes('*') || fallbackRoles.includes(userRole)) {
+          if (to.name !== 'overview') {
+            next({ name: 'overview' })
+            return
+          }
+          next()
+          return
+        }
+        next({ name: 'login' })
         return
       }
     }
@@ -79,7 +89,8 @@ export function setupRouteGuards(router: Router) {
     // 如果当前在首页且有redirect_uri参数，且用户已认证，则跳转回去
     if (to.name === 'overview' && to.query.redirect_uri && authStore.isAuthenticated) {
       const redirectUri = to.query.redirect_uri as string
-      if (redirectUri && redirectUri !== to.fullPath) {
+      // 仅接受站内路径，防止开放重定向
+      if (redirectUri && redirectUri !== to.fullPath && isSafeInternalRedirect(redirectUri)) {
         // 使用replace避免在历史记录中留下多余的条目
         router.replace(redirectUri)
       }

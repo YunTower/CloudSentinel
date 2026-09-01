@@ -18,7 +18,9 @@ const router = createRouter({
       meta: {
         title: '总览',
         icon: RiHome5Line,
-        roles: ['admin'],
+        // guest（游客）可访问总览：OverviewView 含游客公告与字段策略；
+        // 缺少 guest 会造成守卫重定向到 overview 的无限循环
+        roles: ['admin', 'guest'],
       },
     },
     {
