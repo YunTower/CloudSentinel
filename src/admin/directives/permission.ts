@@ -1,4 +1,4 @@
-import type { App, DirectiveBinding } from 'vue'
+import type { DirectiveBinding } from 'vue'
 import { useAuthStore } from '@/admin/stores/auth'
 
 // 角色权限指令
