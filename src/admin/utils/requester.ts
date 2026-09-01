@@ -8,10 +8,21 @@ const csrfToken = () =>
 
 let crossOriginCSRFToken = ''
 
-// 当管理端与 API 使用不同子域名时，HttpOnly 认证 Cookie 对页面脚本不可见。
-// Token 仅由已认证的 /auth/csrf 接口返回，并只在当前内存中保存。
 export const setCSRFToken = (token: string) => {
   crossOriginCSRFToken = token
+}
+
+const handleUnauthorized = () => {
+  if (typeof window === 'undefined') return
+  const current = `${window.location.pathname}${window.location.hash}`
+  if (current.includes('/login')) return
+  void import('@/admin/stores/auth').then(({ useAuthStore }) => {
+    try {
+      useAuthStore().clearLocalSession()
+    } catch {
+    }
+    window.location.hash = '#/login'
+  })
 }
 
 export const requester = createAlova({
@@ -23,5 +34,16 @@ export const requester = createAlova({
     if (token) method.config.headers = { ...method.config.headers, 'X-CSRF-Token': token }
     method.config.credentials = 'include'
   },
-  responded: (response) => response.json(),
+  responded: {
+    onSuccess: async (response, method) => {
+      if (response.status === 401 && !(method?.url || '').includes('/auth/check')) {
+        handleUnauthorized()
+        throw new Error('登录已过期，请重新登录')
+      }
+      if (!response.ok && response.status !== 401) {
+        throw new Error(`请求失败 (HTTP ${response.status})`)
+      }
+      return await response.json()
+    },
+  },
 })
