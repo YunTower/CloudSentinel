@@ -3,11 +3,14 @@ import type {
   ServerForm,
   ServerGroup,
   ServerAlertRules,
-  ServerAlertRulesInput,
 } from '@/shared/types/manager/servers'
 
 export default {
-  createServer: (form: ServerForm) => requester.Post('/servers', form),
+	getPanelFingerprint: () =>
+		requester.Get<{ status: boolean; message?: string; data?: { panel_fingerprint?: string } }>(
+			'/servers/panel-fingerprint',
+		),
+	createServer: (form: ServerForm) => requester.Post('/servers', form),
   getServers: (groupID?: number) => {
     let url = '/servers'
     if (groupID !== undefined) {
