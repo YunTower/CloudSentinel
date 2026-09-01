@@ -9,17 +9,41 @@ class WebSocketManager {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null
   private reconnectDelay = 3000
+  private maxReconnectDelay = 60000
   private heartbeatIntervalTime = 30000
-  private maxReconnectAttempts = 3 // 降低重连次数
+  private pongTimeoutMs = 10000
   private reconnectAttempts = 0
   private isConnecting = false
   private isManualDisconnect = false
   private shouldReconnect = true // 控制是否应该重连
   private tokenInvalid = false // 标记 token 是否无效
+  private pongTimer: ReturnType<typeof setTimeout> | null = null
+  private visibilityHandler: (() => void) | null = null
   private callbacks: Map<string, WebSocketCallbacks> = new Map()
   private messageHandlers: Array<(message: WebSocketMessage) => void> = []
 
-  private constructor() {}
+  private constructor() {
+    if (typeof document !== 'undefined') {
+      this.visibilityHandler = () => {
+        if (document.visibilityState === 'visible') {
+          this.reconnectIfDisconnected()
+        }
+      }
+      document.addEventListener('visibilitychange', this.visibilityHandler)
+    }
+  }
+
+  private reconnectIfDisconnected(): void {
+    if (
+      this.shouldReconnect &&
+      !this.tokenInvalid &&
+      !this.isManualDisconnect &&
+      !this.isConnecting &&
+      (!this.ws || this.ws.readyState !== WebSocket.OPEN)
+    ) {
+      this.connect()
+    }
+  }
 
   static getInstance(): WebSocketManager {
     if (!WebSocketManager.instance) {
@@ -147,14 +171,6 @@ class WebSocketManager {
       return
     }
 
-    // 如果超过最大重连次数，停止重连
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error(`[WebSocketManager] 重连次数已达上限 (${this.maxReconnectAttempts})，停止重连`)
-      this.shouldReconnect = false
-      this.broadcastError(new Error('WebSocket重连次数已达上限'))
-      return
-    }
-
     try {
       this.isConnecting = true
 
@@ -203,6 +219,7 @@ class WebSocketManager {
             this.heartbeatInterval = setInterval(() => {
               if (websocket && websocket.readyState === WebSocket.OPEN) {
                 websocket.send(JSON.stringify({ type: 'ping' }))
+                this.schedulePongCheck(websocket)
               } else {
                 if (this.heartbeatInterval) {
                   clearInterval(this.heartbeatInterval)
@@ -211,6 +228,9 @@ class WebSocketManager {
               }
             }, this.heartbeatIntervalTime)
           }
+
+          // 收到任何消息都视为连接活性证据，取消 pong 超时判定
+          this.clearPongTimer()
 
           // 检查是否是错误消息（token 真正无效/过期）
           if (message.type === 'error' && message.status === 'error') {
@@ -258,7 +278,8 @@ class WebSocketManager {
         this.ws = null
         this.broadcastClose()
 
-        // 清理心跳
+        // 清理心跳与 pong 检测
+        this.clearPongTimer()
         if (this.heartbeatInterval) {
           clearInterval(this.heartbeatInterval)
           this.heartbeatInterval = null
@@ -286,30 +307,20 @@ class WebSocketManager {
         // 如果不是正常关闭（code 1000），尝试重连
         if (event.code !== 1000) {
           this.reconnectAttempts++
-          if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            // 指数退避：3秒、6秒、9秒
-            const delay = this.reconnectDelay * Math.min(this.reconnectAttempts, 3)
-            console.log(
-              `[WebSocketManager] WebSocket异常关闭，${delay / 1000}秒后尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`,
-            )
-            if (this.reconnectTimer) {
-              clearTimeout(this.reconnectTimer)
-            }
-            this.reconnectTimer = setTimeout(() => {
-              // 再次检查状态，避免重复连接
-              if (this.shouldReconnect && !this.tokenInvalid) {
-                this.connect()
-              }
-            }, delay)
-          } else {
-            console.error(
-              `[WebSocketManager] 重连次数已达上限 (${this.maxReconnectAttempts})，停止重连。请检查后端服务是否正常运行。`,
-            )
-            this.shouldReconnect = false
-            this.broadcastError(
-              new Error('WebSocket连接失败：已达最大重连次数，请检查网络连接或联系管理员'),
-            )
+          // 指数退避（封顶 60s），持续重试直到连接恢复或手动断开
+          const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), this.maxReconnectDelay)
+          console.log(
+            `[WebSocketManager] WebSocket异常关闭，${delay / 1000}秒后尝试重连 (第${this.reconnectAttempts}次)...`,
+          )
+          if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer)
           }
+          this.reconnectTimer = setTimeout(() => {
+            // 再次检查状态，避免重复连接
+            if (this.shouldReconnect && !this.tokenInvalid) {
+              this.connect()
+            }
+          }, delay)
         } else {
           this.reconnectAttempts = 0
         }
@@ -320,18 +331,39 @@ class WebSocketManager {
       this.broadcastError(error as Event)
       // 连接失败时，也尝试重连
       this.reconnectAttempts++
-      if (this.reconnectAttempts <= this.maxReconnectAttempts) {
-        const delay = this.reconnectDelay * Math.min(this.reconnectAttempts, 3)
-        console.log(
-          `[WebSocketManager] 连接失败，${delay / 1000}秒后尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`,
-        )
-        if (this.reconnectTimer) {
-          clearTimeout(this.reconnectTimer)
-        }
-        this.reconnectTimer = setTimeout(() => {
-          this.connect()
-        }, delay)
+      const delay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1), this.maxReconnectDelay)
+      console.log(
+        `[WebSocketManager] 连接失败，${delay / 1000}秒后尝试重连 (第${this.reconnectAttempts}次)...`,
+      )
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer)
       }
+      this.reconnectTimer = setTimeout(() => {
+        this.connect()
+      }, delay)
+    }
+  }
+
+  // pong 超时：发出 ping 后在窗口期内未收到任何消息即视为半开连接，
+  // 主动关闭以触发重连流程
+  private schedulePongCheck(websocket: WebSocket): void {
+    this.clearPongTimer()
+    this.pongTimer = setTimeout(() => {
+      if (websocket.readyState === WebSocket.OPEN) {
+        console.warn('[WebSocketManager] 心跳无响应（疑似半开连接），主动断开以重连')
+        this.clearPongTimer()
+        try {
+          websocket.close(4000, 'pong timeout')
+        } catch {
+        }
+      }
+    }, this.pongTimeoutMs)
+  }
+
+  private clearPongTimer(): void {
+    if (this.pongTimer) {
+      clearTimeout(this.pongTimer)
+      this.pongTimer = null
     }
   }
 
@@ -343,6 +375,7 @@ class WebSocketManager {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
     }
+    this.clearPongTimer()
 
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval)
