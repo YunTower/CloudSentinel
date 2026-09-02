@@ -45,7 +45,7 @@ const level = computed<OverallLevel>(() => {
 })
 
 const title = computed(() => {
-  if (level.value !== 'operational') return '我们目前遇到了一些问题'
+  if (level.value !== 'operational') return '我们的服务出现了一些问题'
   return '全部服务正常'
 })
 

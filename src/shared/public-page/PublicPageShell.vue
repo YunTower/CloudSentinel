@@ -20,14 +20,15 @@ const { isDarkMode, toggleDarkMode } = useTheme()
 const accent = computed(() => props.page.accentColor || '#18a058')
 const viewMode = computed<PublicPageViewMode>(() => props.view || 'status')
 
-const hasIncidents = computed(() => props.page.blocks.some((b) => b.type === 'incidents'))
+/** 事件时间线为页面级全局设置；未开启时导航不展示“事件”入口 */
+const showIncidentsNav = computed(() => props.page.showIncidents !== false)
 
 /** 同一绑定页下的状态 / 事件视图导航 */
 const navItems = computed(() => {
   const items: Array<{ path: string; label: string; view: PublicPageViewMode }> = [
     { path: props.page.path, label: props.page.title || '状态', view: 'status' },
   ]
-  if (hasIncidents.value) {
+  if (showIncidentsNav.value) {
     items.push({
       path: companionIncidentsPath(props.page.path),
       label: '事件',

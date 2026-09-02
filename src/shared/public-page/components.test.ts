@@ -37,7 +37,7 @@ describe('公开状态组件', () => {
         { id: 2, event_type: 'update', status: 'down', message: '已定位原因', occurred_at: '2026-08-12T09:30:00Z' },
       ] }] as never,
     }, global: { stubs } })
-    expect(wrapper.text()).toContain('我们目前遇到了一些问题')
+    expect(wrapper.text()).toContain('我们的服务出现了一些问题')
     expect(wrapper.text()).toContain('1 项服务故障')
     expect(wrapper.text()).toContain('官网'); expect(wrapper.text()).toContain('上海节点')
     expect(wrapper.text()).toContain('已定位原因'); expect(wrapper.text()).toContain('已持续 1 小时')

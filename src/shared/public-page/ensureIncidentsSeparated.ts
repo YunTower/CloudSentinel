@@ -1,88 +1,80 @@
-import type { PublicPagesConfigV1, PublicPageV1, PublicPageBlockV1 } from '@/shared/types/settings/public-pages'
-import { companionIncidentsPath, isIncidentsOnlyPage } from '@/shared/public-page/filterPublicIncidents'
+import type {
+  PublicPageBlockV1,
+  PublicPagesConfigV1,
+  PublicPageV1,
+} from '@/shared/types/settings/public-pages'
+import type { PublicDisplayFieldsV1 } from '@/shared/types/settings/public-display'
 
-const defaultIncidentData = () => ({
-  limit: 20,
-  showResolved: true,
-  sourceTypes: [] as string[],
-  monitorIds: [] as number[],
-  serverIds: [] as string[],
-})
+export const DEFAULT_INCIDENT_LIMIT = 20
+export const MAX_INCIDENT_LIMIT = 100
 
 const asObject = (v: unknown): Record<string, unknown> | null =>
   v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null
 
-const inheritMonitorIds = (page: PublicPageV1): number[] => {
-  const block = page.blocks.find((b) => b.type === 'serviceStatus')
-  const raw = asObject(block?.data)?.monitorIds
-  if (!Array.isArray(raw)) return []
-  return raw.map((x) => Number(x)).filter((x) => Number.isFinite(x) && x > 0)
+/** 服务器区块字段展示默认值 */
+export const defaultServerBlockFields = (): PublicDisplayFieldsV1 => ({
+  showLocation: true,
+  showOS: true,
+  showArchitecture: true,
+  showCores: true,
+  showNetworkIO: true,
+  showBilling: false,
+  showTraffic: false,
+})
+
+/** 为区块数据补充展示范围与字段展示默认值（旧数据缺字段，按安全默认值处理） */
+const normalizeBlockData = (block: PublicPageBlockV1): PublicPageBlockV1 => {
+  if (block.type !== 'serverList' && block.type !== 'serviceStatus') return block
+  const data = asObject(block.data)
+  if (!data) return block
+  const next = { ...data }
+  if (typeof next.mode !== 'string') next.mode = 'all'
+  if (block.type === 'serverList') {
+    const fields = asObject(next.fields)
+    next.fields = {
+      showLocation: fields?.showLocation !== false,
+      showOS: fields?.showOS !== false,
+      showArchitecture: fields?.showArchitecture !== false,
+      showCores: fields?.showCores !== false,
+      showNetworkIO: fields?.showNetworkIO !== false,
+      showBilling: fields?.showBilling === true,
+      showTraffic: fields?.showTraffic === true,
+    } satisfies PublicDisplayFieldsV1
+  }
+  return { ...block, data: next }
 }
 
-const hasStatusBlocks = (page: PublicPageV1) =>
-  page.blocks.some((b) => b.type === 'serviceStatus' || b.type === 'serverList')
+const normalizeIncidentLimit = (value: number | undefined): number => {
+  // 0 = 不限；未配置时沿用旧默认值 20
+  if (value === undefined || value === null || !Number.isFinite(Number(value))) {
+    return DEFAULT_INCIDENT_LIMIT
+  }
+  const n = Math.floor(Number(value))
+  if (n <= 0) return 0
+  if (n > MAX_INCIDENT_LIMIT) return MAX_INCIDENT_LIMIT
+  return n
+}
 
-/**
- * 将历史上拆出的独立事件页合并回对应状态页，保证「一页绑定状态+事件」。
- * 不再生成独立事件页面条目。
- */
 export const normalizeBoundPublicPages = (cfg: PublicPagesConfigV1): PublicPagesConfigV1 => {
-  const input = cfg.pages || []
-  const byPath = new Map(input.map((p) => [p.path, p]))
-  const mergedIds = new Set<string>()
-  const pages: PublicPageV1[] = []
-
-  for (const page of input) {
-    if (isIncidentsOnlyPage(page)) continue
-
-    const incidentsPath = companionIncidentsPath(page.path)
-    const companion = byPath.get(incidentsPath)
-    let blocks = [...(page.blocks || [])]
-    let incidentBlock = blocks.find((b) => b.type === 'incidents')
-
-    if (!incidentBlock && companion && isIncidentsOnlyPage(companion)) {
-      const data =
-        companion.blocks[0]?.data && typeof companion.blocks[0].data === 'object'
-          ? { ...defaultIncidentData(), ...(companion.blocks[0].data as Record<string, unknown>) }
-          : defaultIncidentData()
-      const inherited = inheritMonitorIds(page)
-      if ((!Array.isArray(data.monitorIds) || data.monitorIds.length === 0) && inherited.length > 0) {
-        data.monitorIds = inherited
-      }
-      blocks = [...blocks, { type: 'incidents', data }]
-      incidentBlock = blocks[blocks.length - 1]
-      mergedIds.add(companion.id)
-    }
-
-    // 有状态块但无事件块时，补默认事件块（绑定在同一页）
-    if (hasStatusBlocks({ ...page, blocks }) && !incidentBlock) {
-      const data = defaultIncidentData()
-      const inherited = inheritMonitorIds(page)
-      if (inherited.length > 0) data.monitorIds = inherited
-      blocks = [...blocks, { type: 'incidents', data }]
-    }
-
-    pages.push({ ...page, blocks })
-  }
-
-  // 孤儿独立事件页：无对应状态页时保留为普通页（极少见）
-  for (const page of input) {
-    if (!isIncidentsOnlyPage(page)) continue
-    if (mergedIds.has(page.id)) continue
-    const parentPath =
-      page.path === '/public/incidents'
-        ? '/public'
-        : page.path.endsWith('/incidents')
-          ? page.path.slice(0, -'/incidents'.length) || '/public'
-          : ''
-    if (parentPath && pages.some((p) => p.path === parentPath)) continue
-    pages.push(page)
-  }
+  const pages: PublicPageV1[] = (cfg.pages || [])
+    .filter((page) => {
+      const blocks = page.blocks || []
+      // 丢弃历史独立事件页
+      return !(blocks.length > 0 && blocks.every((b) => (b.type as string) === 'incidents'))
+    })
+    .map((page) => ({
+      ...page,
+      // 丢弃页面内的事件区块与旧筛选配置
+      blocks: (page.blocks || []).filter((b) => (b.type as string) !== 'incidents').map(normalizeBlockData),
+      // 数据刷新间隔为页面级设置：缺省 30，钳制 5–3600
+      refreshIntervalSeconds: normalizeRefreshInterval(page.refreshIntervalSeconds),
+      showIncidents: page.showIncidents !== false,
+      incidentLimit: normalizeIncidentLimit(page.incidentLimit),
+    }))
 
   return {
     ...cfg,
     version: cfg.version || 1,
-    refreshIntervalSeconds: normalizeRefreshInterval(cfg.refreshIntervalSeconds),
     pages,
   }
 }
@@ -106,7 +98,7 @@ export interface ResolvedPublicView {
   incidentsApiPath: string
 }
 
-/** 按路由解析绑定页与视图（状态 / 事件） */
+/** 按路由解析绑定页与视图（状态 / 事件）；事件视图要求页面开启事件时间线 */
 export const resolvePublicView = (
   routePath: string,
   pages: PublicPageV1[],
@@ -122,7 +114,7 @@ export const resolvePublicView = (
   if (path.endsWith('/incidents')) {
     const parentPath = path === '/public/incidents' ? '/public' : path.slice(0, -'/incidents'.length) || '/public'
     const parent = list.find((p) => p.path === parentPath)
-    if (parent && parent.blocks.some((b) => b.type === 'incidents')) {
+    if (parent && parent.showIncidents !== false) {
       return { page: parent, view: 'incidents', incidentsApiPath: parent.path }
     }
   }
@@ -133,7 +125,6 @@ export const resolvePublicView = (
 export const defaultPublicPagesConfig = (): PublicPagesConfigV1 =>
   normalizeBoundPublicPages({
     version: 1,
-    refreshIntervalSeconds: 30,
     pages: [
       {
         id: 'home',
@@ -141,6 +132,9 @@ export const defaultPublicPagesConfig = (): PublicPagesConfigV1 =>
         title: '状态',
         brandName: 'CloudSentinel',
         accentColor: '#18a058',
+        refreshIntervalSeconds: 30,
+        showIncidents: true,
+        incidentLimit: DEFAULT_INCIDENT_LIMIT,
         blocks: [
           { type: 'markdown', data: { markdown: '' } },
           {
@@ -151,11 +145,7 @@ export const defaultPublicPagesConfig = (): PublicPagesConfigV1 =>
             type: 'serverList',
             data: { view: 'table', groupBy: 'none', limit: 0, showToolbar: false },
           },
-          {
-            type: 'incidents',
-            data: defaultIncidentData(),
-          },
-        ] satisfies PublicPageBlockV1[],
+        ],
       },
     ],
   })

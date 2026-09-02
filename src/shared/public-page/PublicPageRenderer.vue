@@ -3,8 +3,10 @@ import { computed } from 'vue'
 import type { ServerItem } from '@/shared/types/server'
 import type {
   PublicPageV1,
+  PublicPagesConfigV1,
   PublicBlockServerListV1,
   PublicBlockServiceStatusV1,
+  PublicBlockVisibilityModeV1,
 } from '@/shared/types/settings/public-pages'
 import type { PublicDisplayFieldsV1 } from '@/shared/types/settings/public-display'
 import type { PublicIncident } from '@/shared/types/incidents'
@@ -22,7 +24,6 @@ interface Props {
   pages?: PublicPageV1[]
   view?: PublicPageViewMode
   servers: ServerItem[]
-  displayFields?: PublicDisplayFieldsV1
   incidents?: PublicIncident[]
   serviceMonitors?: PublicServiceMonitor[]
   lastUpdatedAt?: string | null
@@ -59,6 +60,47 @@ const linkBlocks = computed(() => {
   return links
 })
 
+const normalizeVisibilityMode = (raw: unknown): PublicBlockVisibilityModeV1 =>
+  raw === 'include' || raw === 'exclude' ? raw : 'all'
+
+const asStringList = (raw: unknown): string[] => {
+  if (!Array.isArray(raw)) return []
+  return raw.map((x) => String(x)).filter((x) => x.length > 0)
+}
+
+const asPositiveNumberList = (raw: unknown): number[] => {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((x) => Number(x))
+    .filter((x) => Number.isFinite(x) && Number.isInteger(x) && x > 0)
+}
+
+/** 服务器区块字段展示默认值：计费/流量属敏感数据，默认不展示 */
+const defaultBlockFields = (): PublicDisplayFieldsV1 => ({
+  showLocation: true,
+  showOS: true,
+  showArchitecture: true,
+  showCores: true,
+  showNetworkIO: true,
+  showBilling: false,
+  showTraffic: false,
+})
+
+const parseBlockFields = (raw: unknown): PublicDisplayFieldsV1 => {
+  const obj = asObject(raw)
+  const d = defaultBlockFields()
+  if (!obj) return d
+  return {
+    showLocation: obj.showLocation !== false,
+    showOS: obj.showOS !== false,
+    showArchitecture: obj.showArchitecture !== false,
+    showCores: obj.showCores !== false,
+    showNetworkIO: obj.showNetworkIO !== false,
+    showBilling: obj.showBilling === true,
+    showTraffic: obj.showTraffic === true,
+  }
+}
+
 const serverBlock = computed((): PublicBlockServerListV1 | null => {
   const b = props.page.blocks.find((x) => x.type === 'serverList')
   if (!b) return null
@@ -74,6 +116,10 @@ const serverBlock = computed((): PublicBlockServerListV1 | null => {
     groupBy,
     limit,
     showToolbar: obj.showToolbar !== false,
+    mode: normalizeVisibilityMode(obj.mode),
+    serverIds: asStringList(obj.serverIds),
+    groupIds: asPositiveNumberList(obj.groupIds),
+    fields: parseBlockFields(obj.fields),
   }
 })
 
@@ -81,11 +127,9 @@ const serviceBlock = computed((): PublicBlockServiceStatusV1 | null => {
   const b = props.page.blocks.find((x) => x.type === 'serviceStatus')
   if (!b) return null
   const obj = asObject(b.data) || {}
-  const monitorIdsRaw = Array.isArray(obj.monitorIds) ? (obj.monitorIds as unknown[]) : []
   return {
-    monitorIds: monitorIdsRaw
-      .map((x) => Number(x))
-      .filter((x) => Number.isFinite(x) && x > 0),
+    monitorIds: asPositiveNumberList(obj.monitorIds),
+    mode: normalizeVisibilityMode(obj.mode),
     groupBy: String(obj.groupBy ?? 'group') === 'none' ? 'none' : 'group',
     limit: typeof obj.limit === 'number' ? obj.limit : 0,
     showUptime: obj.showUptime !== false,
@@ -93,7 +137,6 @@ const serviceBlock = computed((): PublicBlockServiceStatusV1 | null => {
 })
 
 const isIncidentsView = computed(() => props.view === 'incidents')
-const hasIncidentsBlock = computed(() => props.page.blocks.some((b) => b.type === 'incidents'))
 
 const applyLimit = <T,>(items: T[], limit?: number) => {
   if (!limit || limit <= 0) return items
@@ -103,17 +146,31 @@ const applyLimit = <T,>(items: T[], limit?: number) => {
 const filteredMonitors = computed(() => {
   const cfg = serviceBlock.value
   if (!cfg) return props.serviceMonitors || []
-  const selected = new Set((cfg.monitorIds || []).filter((id) => id > 0))
-  const items = [...(props.serviceMonitors || [])].filter((m) =>
-    selected.size === 0 ? true : selected.has(m.id),
-  )
+  const selected = new Set(cfg.monitorIds || [])
+  const all = props.serviceMonitors || []
+  const items = all.filter((m) => {
+    if (cfg.mode === 'include') return selected.has(m.id)
+    if (cfg.mode === 'exclude') return !selected.has(m.id)
+    return true
+  })
   return applyLimit(items, cfg.limit)
 })
 
 const filteredServers = computed(() => {
   const cfg = serverBlock.value
   if (!cfg) return props.servers
-  return applyLimit(props.servers, cfg.limit)
+  let items = props.servers
+  if (cfg.mode !== 'all') {
+    const selectedServerIds = new Set(cfg.serverIds || [])
+    const selectedGroupIds = new Set(cfg.groupIds || [])
+    items = items.filter((s) => {
+      const byId = selectedServerIds.has(s.id)
+      const byGroup = typeof s.group_id === 'number' && selectedGroupIds.has(s.group_id)
+      const matched = byId || byGroup
+      return cfg.mode === 'include' ? matched : !matched
+    })
+  }
+  return applyLimit(items, cfg.limit)
 })
 
 const showServices = computed(() => !isIncidentsView.value && !!serviceBlock.value)
@@ -121,7 +178,8 @@ const showServers = computed(() => !isIncidentsView.value && !!serverBlock.value
 const showBanner = computed(() => showServices.value || showServers.value)
 const showMarkdown = computed(() => !isIncidentsView.value)
 const showLinks = computed(() => !isIncidentsView.value)
-const showIncidents = computed(() => isIncidentsView.value && hasIncidentsBlock.value)
+// 事件视图是否渲染由页面级 showIncidents 决定（上游已拦截未开启的访问）
+const showIncidents = computed(() => isIncidentsView.value)
 
 /** 后端已按页面配置过滤，前端直接展示 */
 const pageIncidents = computed(() => props.incidents || [])
@@ -167,7 +225,7 @@ const pageIncidents = computed(() => props.incidents || [])
       <StatusServerRows
         :servers="filteredServers"
         :group-by="serverBlock?.groupBy || 'none'"
-        :display-fields="displayFields"
+        :display-fields="serverBlock?.fields"
       />
     </section>
 
