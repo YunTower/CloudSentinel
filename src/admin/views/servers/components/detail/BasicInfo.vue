@@ -68,7 +68,7 @@ function expireCountdownLabel(expireTime: string): string {
       </n-descriptions-item>
 
       <!-- 付费信息 -->
-      <template v-if="server.billing?.show_billing_cycle">
+      <template v-if="server.billing">
         <n-descriptions-item v-if="server.billing?.billing_cycle" label="付费周期">
           {{ getBillingCycle(server.billing.billing_cycle) }}
         </n-descriptions-item>

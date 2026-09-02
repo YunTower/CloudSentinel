@@ -360,11 +360,9 @@ watch(serverId, async (id) => {
               <div
                 class="server-detail-masonry-item"
                 v-if="
-                  (server.network?.show_traffic_limit ||
-                    server.network?.show_traffic_reset_cycle) &&
-                  ((server.billing?.traffic_limit_bytes ?? 0) > 0 ||
-                    server.billing?.traffic_limit_type ||
-                    server.billing?.traffic_reset_cycle)
+                  (server.billing?.traffic_limit_bytes ?? 0) > 0 ||
+                  server.billing?.traffic_limit_type ||
+                  server.billing?.traffic_reset_cycle
                 "
               >
                 <n-card size="small" :bordered="false">

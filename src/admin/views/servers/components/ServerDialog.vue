@@ -13,7 +13,6 @@ import type {
   ServerAlertRules,
   ServerAlertRulesInput,
   ServerFormWithAlertRules,
-  ServerNotificationChannels,
 } from '@/shared/types/manager/servers'
 import alertsApi from '@/admin/apis/settings/alerts.ts'
 import { resolveTrafficCycle } from '@/shared/utils/billing.ts'
@@ -36,7 +35,6 @@ import {
   RiNotificationLine,
   RiPriceTag3Line,
   RiRefreshLine,
-  RiSendPlaneLine,
   RiServerLine,
   RiTimeLine,
   RiWifiLine,
@@ -67,10 +65,21 @@ const serverDetail = ref<ExtendedServerDetailData | null>(null)
 const loadingAlertRules = ref(false)
 const savingAlertRules = ref(false)
 const alertRules = ref<ServerAlertRules | null>(null)
-const notificationChannels = ref<ServerNotificationChannels>({})
 const globalNotificationChannels = ref<{ email: boolean; webhook: boolean }>({
   email: false,
   webhook: false,
+})
+
+// 全局是否已配置任意告警方式（邮件或 Webhook）；未配置时禁用服务器告警设置
+const hasGlobalAlertChannel = computed(
+  () => globalNotificationChannels.value.email || globalNotificationChannels.value.webhook,
+)
+
+// 基础资源告警默认值：创建服务器时默认全开
+const defaultAlertRules = (): ServerAlertRules => ({
+  cpu: { enabled: true, warning: 80, critical: 90 },
+  memory: { enabled: true, warning: 85, critical: 95 },
+  disk: { enabled: true, warning: 85, critical: 95 },
 })
 
 const isVisible = computed({
@@ -301,13 +310,6 @@ const loadServerDetail = async () => {
           disk: { enabled: false, warning: 85, critical: 95 },
         }
       }
-
-      // 从服务器详情中获取通知渠道配置
-      if (detail.notification_channels) {
-        notificationChannels.value = detail.notification_channels
-      } else {
-        notificationChannels.value = {}
-      }
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : '获取服务器详情失败'
@@ -340,8 +342,8 @@ const loadServerDetail = async () => {
   }
 }
 
-// 加载全局通知渠道配置
-const loadGlobalNotificationChannels = async () => {
+// 加载全局告警通知方式配置
+const loadGlobalAlertChannels = async () => {
   try {
     const res = await alertsApi.getAlertsSettings()
     if (res?.status && res?.data?.notifications) {
@@ -372,11 +374,18 @@ watch(
       loadingDetail.value = true
       agentKeyRevealed.value = false
       loadServerDetail()
-      loadGlobalNotificationChannels()
+      loadGlobalAlertChannels()
+    } else if (visible) {
+      // 创建模式：基础资源告警默认全开
+      serverDetail.value = null
+      loadingDetail.value = false
+      loadingAlertRules.value = false
+      activeTab.value = '0'
+      alertRules.value = defaultAlertRules()
+      loadGlobalAlertChannels()
     } else {
       serverDetail.value = null
       alertRules.value = null
-      notificationChannels.value = {}
       loadingDetail.value = false
       loadingAlertRules.value = false
       activeTab.value = '0'
@@ -391,7 +400,7 @@ watch(
     if (server && props.visible && oldServer && server.id !== oldServer.id) {
       agentKeyRevealed.value = false
       loadServerDetail()
-      loadGlobalNotificationChannels()
+      loadGlobalAlertChannels()
     } else if (server && !props.visible) {
       form.value = {
         name: server.name,
@@ -463,8 +472,8 @@ const handleSave = async () => {
     submitForm.clear_group = true
   }
 
-  // 如果是编辑模式且有告警规则，将告警规则一起提交
-  if (isEditing.value && props.editingServer && alertRules.value) {
+  // 如果有告警规则，将告警规则一起提交
+  if (alertRules.value) {
     const rulesInput: ServerAlertRulesInput = {
       cpu: alertRules.value.cpu,
       memory: alertRules.value.memory,
@@ -482,11 +491,6 @@ const handleSave = async () => {
     }
 
     submitForm.alert_rules = rulesInput
-  }
-
-  // 添加通知渠道配置
-  if (isEditing.value && props.editingServer) {
-    submitForm.notification_channels = notificationChannels.value
   }
 
   emit('save', submitForm)
@@ -718,8 +722,8 @@ const serviceColumns = [
           </div>
         </n-tab-pane>
 
-        <!-- 付费信息 Tab -->
-        <n-tab-pane name="1" tab="付费">
+        <!-- 费用信息 Tab -->
+        <n-tab-pane name="1" tab="费用">
           <div class="space-y-4 pt-4">
             <div class="grid grid-cols-2 gap-6">
               <div class="space-y-3">
@@ -783,7 +787,7 @@ const serviceColumns = [
                 </label>
                 <n-card>
                   <div class="flex gap-2">
-                    <span class="text-sm text-muted-color flex-1">在概览和详情中显示付费信息</span>
+                    <span class="text-sm text-muted-color flex-1">在公开页面展示付费信息</span>
                     <n-switch v-model:value="form.billing.show_billing_cycle" />
                   </div>
                 </n-card>
@@ -847,9 +851,7 @@ const serviceColumns = [
                 </label>
                 <n-card>
                   <div class="flex gap-2">
-                    <span class="text-sm text-muted-color flex-1"
-                      >在概览和详情中显示流量额度与周期信息</span
-                    >
+                    <span class="text-sm text-muted-color flex-1">在公开页面展示流量额度与周期信息</span>
                     <n-switch v-model:value="showTrafficInfo" />
                   </div>
                 </n-card>
@@ -872,8 +874,11 @@ const serviceColumns = [
         </n-tab-pane>
 
         <!-- 告警配置 Tab -->
-        <n-tab-pane v-if="isEditing" name="3" tab="告警">
+        <n-tab-pane name="3" tab="告警">
           <div class="space-y-4 pt-4">
+            <n-alert v-if="!hasGlobalAlertChannel" type="info" class="mb-2">
+              在 [设置]->[告警设置] 中配置并启用至少一个通知方式（邮件或 Webhook）后，才能配置服务器告警。
+            </n-alert>
             <div v-if="loadingAlertRules" class="flex flex-col items-center justify-center py-10">
               <n-spin size="large" />
               <p class="mt-3 text-sm text-muted-color">加载告警规则中...</p>
@@ -890,7 +895,10 @@ const serviceColumns = [
                   <n-card class="p-2">
                     <div class="flex items-center justify-between">
                       <label class="text-sm font-medium text-color">CPU 使用率</label>
-                      <n-switch v-model:value="alertRules.cpu.enabled" />
+                      <n-switch
+                        v-model:value="alertRules.cpu.enabled"
+                        :disabled="!hasGlobalAlertChannel"
+                      />
                     </div>
                     <div v-if="alertRules.cpu.enabled" class="space-y-2">
                       <div>
@@ -899,7 +907,7 @@ const serviceColumns = [
                           v-model:value="alertRules.cpu.warning"
                           :min="0"
                           :max="100"
-                          :disabled="!alertRules.cpu.enabled"
+                          :disabled="!hasGlobalAlertChannel || !alertRules.cpu.enabled"
                           class="w-full"
                         />
                       </div>
@@ -909,7 +917,7 @@ const serviceColumns = [
                           v-model:value="alertRules.cpu.critical"
                           :min="0"
                           :max="100"
-                          :disabled="!alertRules.cpu.enabled"
+                          :disabled="!hasGlobalAlertChannel || !alertRules.cpu.enabled"
                           class="w-full"
                         />
                       </div>
@@ -920,7 +928,10 @@ const serviceColumns = [
                   <n-card class="p-2">
                     <div class="flex items-center justify-between">
                       <label class="text-sm font-medium text-color">内存使用率</label>
-                      <n-switch v-model:value="alertRules.memory.enabled" />
+                      <n-switch
+                        v-model:value="alertRules.memory.enabled"
+                        :disabled="!hasGlobalAlertChannel"
+                      />
                     </div>
                     <div v-if="alertRules.memory.enabled" class="space-y-2">
                       <div>
@@ -929,7 +940,7 @@ const serviceColumns = [
                           v-model:value="alertRules.memory.warning"
                           :min="0"
                           :max="100"
-                          :disabled="!alertRules.memory.enabled"
+                          :disabled="!hasGlobalAlertChannel || !alertRules.memory.enabled"
                           class="w-full"
                         />
                       </div>
@@ -939,7 +950,7 @@ const serviceColumns = [
                           v-model:value="alertRules.memory.critical"
                           :min="0"
                           :max="100"
-                          :disabled="!alertRules.memory.enabled"
+                          :disabled="!hasGlobalAlertChannel || !alertRules.memory.enabled"
                           class="w-full"
                         />
                       </div>
@@ -950,7 +961,10 @@ const serviceColumns = [
                   <n-card class="p-2">
                     <div class="flex items-center justify-between">
                       <label class="text-sm font-medium text-color">磁盘使用率</label>
-                      <n-switch v-model:value="alertRules.disk.enabled" />
+                      <n-switch
+                        v-model:value="alertRules.disk.enabled"
+                        :disabled="!hasGlobalAlertChannel"
+                      />
                     </div>
                     <div v-if="alertRules.disk.enabled" class="space-y-2">
                       <div>
@@ -959,7 +973,7 @@ const serviceColumns = [
                           v-model:value="alertRules.disk.warning"
                           :min="0"
                           :max="100"
-                          :disabled="!alertRules.disk.enabled"
+                          :disabled="!hasGlobalAlertChannel || !alertRules.disk.enabled"
                           class="w-full"
                         />
                       </div>
@@ -969,7 +983,7 @@ const serviceColumns = [
                           v-model:value="alertRules.disk.critical"
                           :min="0"
                           :max="100"
-                          :disabled="!alertRules.disk.enabled"
+                          :disabled="!hasGlobalAlertChannel || !alertRules.disk.enabled"
                           class="w-full"
                         />
                       </div>
@@ -991,6 +1005,7 @@ const serviceColumns = [
                       <label class="text-sm font-medium text-color">带宽峰值</label>
                       <n-switch
                         :value="alertRules?.bandwidth?.enabled ?? false"
+                        :disabled="!hasGlobalAlertChannel"
                         @update:value="
                           (val: boolean) => {
                             if (!alertRules) return
@@ -1009,7 +1024,7 @@ const serviceColumns = [
                         <n-input-number
                           v-model:value="alertRules.bandwidth!.threshold"
                           :min="0"
-                          :disabled="!alertRules.bandwidth?.enabled"
+                          :disabled="!hasGlobalAlertChannel || !alertRules.bandwidth?.enabled"
                           class="w-full"
                         >
                           <template #suffix>Mbps</template>
@@ -1024,6 +1039,7 @@ const serviceColumns = [
                       <label class="text-sm font-medium text-color">流量耗尽</label>
                       <n-switch
                         :value="alertRules?.traffic?.enabled ?? false"
+                        :disabled="!hasGlobalAlertChannel"
                         @update:value="
                           (val: boolean) => {
                             if (!alertRules) return
@@ -1043,7 +1059,7 @@ const serviceColumns = [
                           v-model:value="alertRules.traffic!.threshold_percent"
                           :min="0"
                           :max="100"
-                          :disabled="!alertRules.traffic?.enabled"
+                          :disabled="!hasGlobalAlertChannel || !alertRules.traffic?.enabled"
                           class="w-full"
                         >
                           <template #suffix>%</template>
@@ -1067,6 +1083,7 @@ const serviceColumns = [
                       <label class="text-sm font-medium text-color">服务器到期提醒</label>
                       <n-switch
                         :value="alertRules?.expiration?.enabled ?? false"
+                        :disabled="!hasGlobalAlertChannel"
                         @update:value="
                           (val: boolean) => {
                             if (!alertRules) return
@@ -1085,7 +1102,7 @@ const serviceColumns = [
                         <n-input-number
                           v-model:value="alertRules.expiration!.alert_days"
                           :min="1"
-                          :disabled="!alertRules.expiration?.enabled"
+                          :disabled="!hasGlobalAlertChannel || !alertRules.expiration?.enabled"
                           class="w-full"
                         >
                           <template #suffix>天</template>
@@ -1097,54 +1114,6 @@ const serviceColumns = [
               </div>
             </div>
             <div v-else class="text-center py-8 text-muted-color">无法加载告警规则</div>
-
-            <!-- 通知渠道配置 -->
-            <div class="mt-6 space-y-4">
-              <h3 class="text-base font-semibold text-color flex items-center gap-2">
-                <ri-send-plane-line size="14px" />
-                通知渠道
-              </h3>
-              <div>
-                <p class="text-sm text-muted-color">选择此服务器告警时使用的通知方式。</p>
-                <p
-                  class="text-sm text-muted-color"
-                  v-if="!globalNotificationChannels.email && !globalNotificationChannels.webhook"
-                >
-                  只有在 [设置]->[告警设置] 中配置任意通知方式后，才能启用。
-                </p>
-              </div>
-              <div class="grid grid-cols-2 gap-4">
-                <!-- 邮件通知 -->
-                <n-card class="p-2">
-                  <div class="flex items-center justify-between">
-                    <label class="text-sm font-medium text-color">邮件通知</label>
-                    <n-switch
-                      v-model:value="notificationChannels.email"
-                      :disabled="!globalNotificationChannels.email"
-                    />
-                  </div>
-                  <p v-if="!globalNotificationChannels.email" class="text-xs text-muted-color">
-                    全局邮件通知未配置
-                  </p>
-                  <p v-else class="text-xs text-muted-color">邮件通知可用</p>
-                </n-card>
-
-                <!-- Webhook 通知 -->
-                <n-card class="p-2">
-                  <div class="flex items-center justify-between">
-                    <label class="text-sm font-medium text-color">Webhook 通知</label>
-                    <n-switch
-                      v-model:value="notificationChannels.webhook"
-                      :disabled="!globalNotificationChannels.webhook"
-                    />
-                  </div>
-                  <p v-if="!globalNotificationChannels.webhook" class="text-xs text-muted-color">
-                    全局 Webhook 通知未配置
-                  </p>
-                  <p v-else class="text-xs text-muted-color">Webhook通知可用</p>
-                </n-card>
-              </div>
-            </div>
           </div>
         </n-tab-pane>
 

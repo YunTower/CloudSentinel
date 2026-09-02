@@ -227,65 +227,62 @@ const columns = computed(() => {
   ]
 
   // 付费信息列
-  if (props.servers.some((s) => s.billing?.show_billing_cycle)) {
-    cols.push({
-      key: 'billing',
-      title: '付费信息',
-      minWidth: 150,
-      render: (row: Server) => {
-        if (!row.billing?.show_billing_cycle) return h('span', {}, '-')
-        const billingChildren = [
-          h(NTag, { size: 'small' }, { default: () => `￥${row.billing?.price}` }),
+  cols.push({
+    key: 'billing',
+    title: '付费信息',
+    minWidth: 150,
+    render: (row: Server) => {
+      if (!row.billing) return h('span', {}, '-')
+      const billingChildren: ReturnType<typeof h>[] = []
+      if (row.billing?.price != null) {
+        billingChildren.push(
+          h(NTag, { size: 'small' }, { default: () => `￥${row.billing!.price}` }),
+        )
+      }
+      if (row.billing?.billing_cycle) {
+        billingChildren.push(
           h(
             NTag,
             {
               size: 'small',
-              type: getBillingType(row.billing?.billing_cycle ?? ''),
+              type: getBillingType(row.billing.billing_cycle),
             },
-            { default: () => getBillingCycle(row.billing?.billing_cycle ?? '') },
+            { default: () => getBillingCycle(row.billing!.billing_cycle ?? '') },
           ),
-        ]
-        if (row.billing?.expire_time) {
-          const countdown = getExpireCountdown(row.billing.expire_time)
-          const expireText = countdown === '已过期' ? '已过期' : `${countdown}后到期`
-          billingChildren.push(
-            h(
-              NTag,
-              { size: 'small', type: countdown === '已过期' ? 'error' : 'info' },
-              { default: () => expireText },
-            ),
-          )
-        }
-        return h(NSpace, { size: 2 }, { default: () => billingChildren })
-      },
-    })
-  }
+        )
+      }
+      if (row.billing?.expire_time) {
+        const countdown = getExpireCountdown(row.billing.expire_time)
+        const expireText = countdown === '已过期' ? '已过期' : `${countdown}后到期`
+        billingChildren.push(
+          h(
+            NTag,
+            { size: 'small', type: countdown === '已过期' ? 'error' : 'info' },
+            { default: () => expireText },
+          ),
+        )
+      }
+      return h(NSpace, { size: 2 }, { default: () => billingChildren })
+    },
+  })
 
   // 流量信息列
-  if (
-    props.servers.some((s) => s.network?.show_traffic_limit || s.network?.show_traffic_reset_cycle)
-  ) {
-    cols.push({
-      key: 'traffic',
-      title: '流量信息',
-      minWidth: 150,
-      render: (row: Server) => {
-        if (!(row.network?.show_traffic_limit || row.network?.show_traffic_reset_cycle)) {
-          return h('span', {}, '-')
-        }
+  cols.push({
+    key: 'traffic',
+    title: '流量信息',
+    minWidth: 150,
+    render: (row: Server) => {
+      const summary = getTrafficLimitSummary(
+        row.billing?.traffic_limit_bytes,
+        row.billing?.traffic_reset_cycle,
+        row.billing?.traffic_custom_cycle_days,
+        row.billing?.traffic_limit_type,
+      )
 
-        const summary = getTrafficLimitSummary(
-          row.billing?.traffic_limit_bytes,
-          row.billing?.traffic_reset_cycle,
-          row.billing?.traffic_custom_cycle_days,
-          row.billing?.traffic_limit_type,
-        )
-
-        if (summary === '-') return h('span', {}, '-')
-        return h('div', { class: 'flex flex-col items-start gap-1' }, [h('div', {}, summary)])
-      },
-    })
-  }
+      if (summary === '-') return h('span', {}, '-')
+      return h('div', { class: 'flex flex-col items-start gap-1' }, [h('div', {}, summary)])
+    },
+  })
 
   cols.push({
     key: 'actions',

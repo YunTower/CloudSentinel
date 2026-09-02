@@ -205,6 +205,12 @@ const handleEditServer = (server: Server) => {
   showAddDialog.value = true
 }
 
+// 新增服务器：先重置表单与编辑状态，避免残留上一次编辑的数据
+const handleAddServer = () => {
+  resetForm()
+  showAddDialog.value = true
+}
+
 const handleDeleteServer = async (server: Server) => {
   deletingServerId.value = server.id
   try {
@@ -512,7 +518,7 @@ onMounted(async () => {
           </template>
           创建分组
         </n-button>
-        <n-button type="primary" @click="showAddDialog = true">
+        <n-button type="primary" @click="handleAddServer">
           <template #icon>
             <ri-add-line />
           </template>
