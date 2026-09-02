@@ -10,7 +10,6 @@ import type { PublicIncident } from '@/shared/types/incidents'
 import type { PublicServiceMonitor } from '@/shared/types/service-monitor'
 import { mapServerListItemToServerItem } from '@/shared/server-display/utils'
 import type { PublicPageV1 } from '@/shared/types/settings/public-pages'
-import type { PublicDisplayFieldsV1 } from '@/shared/types/settings/public-display'
 import PublicPageShell from '@/shared/public-page/PublicPageShell.vue'
 import PublicPageRenderer from '@/shared/public-page/PublicPageRenderer.vue'
 import PublicPageSkeleton from '@/shared/public-page/PublicPageSkeleton.vue'
@@ -35,7 +34,6 @@ const hashBlocked = ref(false)
 const pageNotFound = ref(false)
 
 const currentPage = ref<PublicPageV1 | null>(null)
-const refreshIntervalFromPage = ref<number | null>(null)
 
 const servers = ref<ServerItem[]>([])
 const incidents = ref<PublicIncident[]>([])
@@ -43,9 +41,8 @@ const serviceMonitors = ref<PublicServiceMonitor[]>([])
 const lastUpdatedAt = ref<string | null>(null)
 
 const refreshIntervalSec = computed(() => {
-  const fromPage = refreshIntervalFromPage.value
-  const fromSettings = publicSettings.settings.value?.public_pages?.refreshIntervalSeconds
-  const raw = fromPage ?? fromSettings ?? DEFAULT_REFRESH_INTERVAL_SEC
+  // 数据刷新间隔为页面级设置：缺省 30，范围 5–3600
+  const raw = currentPage.value?.refreshIntervalSeconds
   const n = Number.isFinite(raw) ? Math.floor(Number(raw)) : DEFAULT_REFRESH_INTERVAL_SEC
   return Math.min(
     MAX_REFRESH_INTERVAL_SEC,
@@ -65,6 +62,14 @@ const viewMode = computed<PublicPageViewMode>(() => {
   return 'status'
 })
 
+/** 事件时间线未开启时，事件页视为不存在（双保险：后端同样返回 404） */
+const incidentsDisabled = computed(
+  () =>
+    !!currentPage.value &&
+    viewMode.value === 'incidents' &&
+    currentPage.value.showIncidents === false,
+)
+
 /** 根据绑定页视图决定需要哪些接口 */
 const pageNeeds = computed(() => {
   const page = currentPage.value
@@ -79,9 +84,7 @@ const pageNeeds = computed(() => {
     servers: blocks.some((b) => b.type === 'serverList'),
     monitors: blocks.some((b) => b.type === 'serviceStatus'),
     // 状态 Banner 也需要进行中的事件；不依赖用户是否打开独立事件视图。
-    incidents: blocks.some(
-      (b) => b.type === 'incidents' || b.type === 'serviceStatus' || b.type === 'serverList',
-    ),
+    incidents: blocks.some((b) => b.type === 'serviceStatus' || b.type === 'serverList'),
   }
 })
 
@@ -117,7 +120,7 @@ const upsertMeta = (selector: string, attrs: Record<string, string>) => {
 }
 
 watchEffect(() => {
-  if (hashBlocked.value || pageNotFound.value || !currentPage.value) {
+  if (hashBlocked.value || pageNotFound.value || incidentsDisabled.value || !currentPage.value) {
     document.title = '页面不存在 - CloudSentinel'
     return
   }
@@ -144,14 +147,9 @@ watchEffect(() => {
   })
 })
 
-const displayFields = computed<PublicDisplayFieldsV1 | undefined>(() => {
-  const s = publicSettings.settings.value
-  const pd = s?.public_display
-  if (!pd?.enabled) return undefined
-  return pd.fields
-})
-
-/** 拦截管理端式 hash 路由（公开端不支持 /#/...） */
+/**
+ * 拦截管理端式 hash 路由（公开端不支持 /#/...）
+ */
 const stripAdminHash = () => {
   const hash = window.location.hash || ''
   if (!hash.startsWith('#/')) {
@@ -176,10 +174,6 @@ const loadBoundPage = async (path: string, generation: number): Promise<boolean>
     const page = settings.public_pages?.page
     if (page) {
       currentPage.value = page
-      refreshIntervalFromPage.value =
-        typeof settings.public_pages?.refreshIntervalSeconds === 'number'
-          ? settings.public_pages.refreshIntervalSeconds
-          : null
       return true
     }
     currentPage.value = null
@@ -249,7 +243,8 @@ const clearUnusedData = (needs: { servers: boolean; monitors: boolean; incidents
 }
 
 const loadPageData = async (opts?: { silent?: boolean }) => {
-  if (hashBlocked.value || pageNotFound.value || !currentPage.value) return
+  if (hashBlocked.value || pageNotFound.value || incidentsDisabled.value || !currentPage.value)
+    return
 
   // 代际保护：路由切换后旧请求的结果不得写入新页面的共享状态
   const generation = routeLoadGeneration
@@ -345,7 +340,13 @@ const resetCountdown = () => {
 
 const startAutoRefresh = () => {
   stopAutoRefresh()
-  if (hashBlocked.value || pageNotFound.value || !currentPage.value) return
+  if (
+    hashBlocked.value ||
+    pageNotFound.value ||
+    incidentsDisabled.value ||
+    !currentPage.value
+  )
+    return
   resetCountdown()
   // 记录当前代际：路由切换后旧定时器的静默刷新不得写入新页面状态
   const generation = routeLoadGeneration
@@ -396,7 +397,12 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-    v-if="hashBlocked || pageNotFound || (!pageLoading && !currentPage)"
+    v-if="
+      hashBlocked ||
+      pageNotFound ||
+      incidentsDisabled ||
+      (!pageLoading && !currentPage)
+    "
     class="mx-auto flex min-h-dvh w-full items-center justify-center px-4 py-10 sm:px-6"
   >
     <n-result
@@ -425,7 +431,6 @@ onBeforeUnmount(() => {
           :servers="servers"
           :incidents="incidents"
           :service-monitors="serviceMonitors"
-          :display-fields="displayFields"
           :last-updated-at="lastUpdatedAt"
         />
         <footer class="mt-10 space-y-1.5 text-center text-sm text-[var(--surface-400)]">
