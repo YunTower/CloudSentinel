@@ -310,7 +310,6 @@ export interface ExtendedServerDetailData extends ServerDetailData {
   agent_log_path?: string
   // 显示开关字段
   alert_rules?: ServerAlertRules
-  notification_channels?: ServerNotificationChannels
   service_status?: Record<string, ProcessStatus>
 }
 
@@ -359,14 +358,7 @@ export interface ServerAlertRulesInput {
   }
 }
 
-// 服务器通知渠道配置
-export interface ServerNotificationChannels {
-  email?: boolean
-  webhook?: boolean
-}
-
 // 服务器表单接口
 export interface ServerFormWithAlertRules extends ServerForm {
   alert_rules?: ServerAlertRulesInput
-  notification_channels?: ServerNotificationChannels
 }
