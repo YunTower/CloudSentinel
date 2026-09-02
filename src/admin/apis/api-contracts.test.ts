@@ -16,7 +16,6 @@ import monitorsApi from './service-monitors'
 import alertsApi from './settings/alerts'
 import panelApi from './settings/panel'
 import permissionsApi from './settings/permissions'
-import publicDisplayApi from './settings/public-display'
 import publicPagesApi from './settings/public-pages'
 import updateApi from './update'
 
@@ -78,7 +77,6 @@ describe('管理端 API 契约', () => {
     alertsApi.getAlertsSettings(); expectCall('Get','/settings/alerts'); alertsApi.saveAlertsSettings({} as never); expectCall('Patch','/settings/alerts',{})
     alertsApi.testAlertSettings({} as never); expectCall('Post','/settings/alerts/test',{}); alertsApi.previewAlertTemplates({} as never); expectCall('Post','/settings/alerts/templates/preview',{})
     permissionsApi.getPermissionsSettings(); expectCall('Get','/settings/permissions'); permissionsApi.savePermissionsSettings({} as never); expectCall('Patch','/settings/permissions',{})
-    publicDisplayApi.getPublicDisplaySettings(); expectCall('Get','/settings/public-display'); publicDisplayApi.savePublicDisplaySettings({} as never); expectCall('Patch','/settings/public-display',{})
     publicPagesApi.getPublicPagesSettings(); expectCall('Get','/settings/public-pages'); publicPagesApi.savePublicPagesSettings({} as never); expectCall('Patch','/settings/public-pages',{})
     updateApi.checkAgentVersion(); expectCall('Get','/update/agent/check')
   })
