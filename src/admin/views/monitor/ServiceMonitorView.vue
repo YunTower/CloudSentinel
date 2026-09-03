@@ -8,14 +8,12 @@ import serviceMonitorsApi, {
 } from '@/admin/apis/service-monitors'
 import serversApi from '@/admin/apis/servers'
 import type { GetServersResponse } from '@/shared/types/manager/servers'
-import websocketManager from '@/admin/services/websocket-manager'
-import { useAuthStore } from '@/admin/stores/auth'
+import { useWebSocket } from '@/admin/composables/useWebSocket'
 import { RiAddLine } from '@remixicon/vue'
 import ServiceMonitorCard from './components/ServiceMonitorCard.vue'
 import ServiceMonitorFormModal from './components/ServiceMonitorFormModal.vue'
 
 const message = useMessage()
-const authStore = useAuthStore()
 
 const monitors = ref<ServiceMonitor[]>([])
 const servers = ref<{ id: string; name: string }[]>([])
@@ -296,42 +294,33 @@ const openResults = async (m: ServiceMonitor) => {
   }
 }
 
-let unregister: (() => void) | null = null
+const websocket = useWebSocket({
+  onServiceMonitorUpdate: (d) => {
+    const m = monitors.value.find((x) => x.id === d.id)
+    if (!m) return
+    m.status = d.status
+    m.response_time = d.response_time
+    if (d.last_check_at !== undefined) m.last_check_at = d.last_check_at
+    if (d.last_metadata !== undefined) {
+      m.last_metadata = d.last_metadata as ServiceMonitor['last_metadata']
+    }
+    if (d.metadata_checked_at !== undefined) m.metadata_checked_at = d.metadata_checked_at
+    if (d.history_entry) {
+      if (!m.history) m.history = []
+      m.history.push(d.history_entry as ServiceMonitor['history'][number])
+      if (m.history.length > 60) m.history.shift()
+    }
+  },
+})
+
 onMounted(async () => {
   await Promise.all([load(), loadServers()])
-  if (authStore.isAuthenticated) {
-    websocketManager.connect()
-    unregister = websocketManager.registerMessageHandler((msg) => {
-      if (msg.type === 'service_monitor_update' && msg.data) {
-        const d = msg.data as {
-          id: number
-          status: string
-          response_time: number
-          last_check_at: string
-          last_metadata?: ServiceMonitor['last_metadata']
-          metadata_checked_at?: string
-          history_entry?: { status: string; response_time: number; checked_at: string }
-        }
-        const m = monitors.value.find((x) => x.id === d.id)
-        if (m) {
-          m.status = d.status
-          m.response_time = d.response_time
-          m.last_check_at = d.last_check_at
-          m.last_metadata = d.last_metadata
-          m.metadata_checked_at = d.metadata_checked_at
-          if (d.history_entry) {
-            if (!m.history) m.history = []
-            m.history.push(d.history_entry)
-            if (m.history.length > 60) m.history.shift()
-          }
-        }
-      }
-    })
-  }
+  websocket.connect()
+  websocket.subscribe(['service_monitor'])
 })
 
 onUnmounted(() => {
-  unregister?.()
+  websocket.unsubscribe(['service_monitor'])
 })
 </script>
 

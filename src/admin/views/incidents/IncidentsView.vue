@@ -7,7 +7,6 @@ import type { Incident, IncidentEvent } from '@/shared/types/incidents'
 import type { PublicPagesConfigV1, PublicPageV1 } from '@/shared/types/settings/public-pages'
 import type { ApiResponse } from '@/shared/types/settings/api'
 import { normalizeBoundPublicPages } from '@/shared/public-page/ensureIncidentsSeparated'
-import { isIncidentsOnlyPage } from '@/shared/public-page/filterPublicIncidents'
 import { RiAddLine, RiCheckLine, RiEdit2Line, RiRefreshLine } from '@remixicon/vue'
 
 type ManualImpact = 'outage' | 'degraded' | 'maintenance'
@@ -42,14 +41,11 @@ const impactOptions: SelectOption[] = [
   { label: '维护', value: 'maintenance' },
 ]
 
-/** 绑定页列表（排除历史独立事件页） */
 const pageOptions = computed(() =>
-  publicPages.value
-    .filter((p) => !isIncidentsOnlyPage(p))
-    .map((p) => ({
-      label: `${p.title || p.id}（${p.path}）`,
-      value: p.id,
-    })),
+  publicPages.value.map((p) => ({
+    label: `${p.title || p.id}（${p.path}）`,
+    value: p.id,
+  })),
 )
 
 const pageTitleById = computed(() => {
@@ -332,7 +328,7 @@ onMounted(async () => {
                 <span class="font-semibold text-color truncate">{{ incident.title }}</span>
               </div>
               <div
-                v-if="incident.source_type === 'maintenance' && incident.status === 'active'"
+                v-if="incident.status === 'active'"
                 class="mt-3 flex flex-wrap gap-2"
               >
                 <n-button size="small" secondary @click="openUpdateDialog(incident)">

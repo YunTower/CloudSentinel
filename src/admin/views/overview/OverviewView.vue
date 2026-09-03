@@ -8,15 +8,11 @@ import ServerTable from '@/shared/server-display/ServerTable.vue'
 import GroupHeader from '@/shared/server-display/GroupHeader.vue'
 import serversApi from '@/admin/apis/servers'
 import { useWebSocket } from '@/admin/composables/useWebSocket'
+import { SERVERS_TOPIC } from '@/admin/services/websocket-manager'
 import { useAuthStore } from '@/admin/stores/auth'
 import type { ServerItem } from '@/shared/types/server'
 import type { GetServersResponse, ServerGroup } from '@/shared/types/manager/servers'
 import { mapServerListItemToServerItem, getStatusText, formatOS } from '@/shared/server-display/utils'
-import type {
-  PublicDisplayFieldsV1,
-  PublicDisplayPublicPayloadV1,
-} from '@/shared/types/settings/public-display'
-import { renderMarkdownSafe } from '@/shared/utils/safeMarkdown'
 
 const message = useMessage()
 const router = useRouter()
@@ -48,86 +44,6 @@ const getStoredViewMode = (): 'card' | 'table' => {
 const viewMode = ref<'card' | 'table'>(getStoredViewMode())
 const groupBy = ref<'none' | number | 'status' | 'location' | 'os'>('none')
 
-const isGuest = computed(() => authStore.role === 'guest')
-
-const defaultPublicDisplayPayload = (): PublicDisplayPublicPayloadV1 => ({
-  version: 1,
-  enabled: true,
-  overview: {
-    defaultViewMode: 'card',
-    allowViewModeSwitch: true,
-    defaultGroupBy: 'none',
-    allowGroupBySwitch: true,
-  },
-  fields: {
-    showLocation: true,
-    showOS: true,
-    showArchitecture: true,
-    showCores: true,
-    showNetworkIO: true,
-    showBilling: true,
-    showTraffic: true,
-  },
-  announcement: {
-    enabled: false,
-    markdown: '',
-    placement: 'overview_top',
-  },
-  serverFilter: {
-    mode: 'all',
-  },
-})
-
-const publicDisplay = computed(() => {
-  const s = authStore.getPublicSettings()
-  return (s?.public_display || defaultPublicDisplayPayload()) as PublicDisplayPublicPayloadV1
-})
-
-const canSwitchViewMode = computed(() => {
-  if (!isGuest.value) return true
-  if (!publicDisplay.value.enabled) return true
-  return !!publicDisplay.value.overview.allowViewModeSwitch
-})
-
-const canSwitchGroupBy = computed(() => {
-  if (!isGuest.value) return true
-  if (!publicDisplay.value.enabled) return true
-  return !!publicDisplay.value.overview.allowGroupBySwitch
-})
-
-const displayFields = computed<PublicDisplayFieldsV1 | undefined>(() => {
-  if (!isGuest.value) return undefined
-  if (!publicDisplay.value.enabled) return undefined
-  return publicDisplay.value.fields
-})
-
-const announcementHtml = computed(() => {
-  if (!isGuest.value) return ''
-  if (!publicDisplay.value.enabled) return ''
-  if (!publicDisplay.value.announcement.enabled) return ''
-  if (publicDisplay.value.announcement.placement !== 'overview_top') return ''
-  return renderMarkdownSafe(publicDisplay.value.announcement.markdown || '')
-})
-
-const parseDefaultGroupBy = (raw: string): 'none' | number | 'status' | 'location' | 'os' => {
-  const normalized = String(raw || '').trim()
-  if (normalized.startsWith('group:')) {
-    const id = Number(normalized.slice('group:'.length))
-    if (!Number.isNaN(id) && id > 0) return id
-  }
-  if (
-    normalized === 'none' ||
-    normalized === 'status' ||
-    normalized === 'location' ||
-    normalized === 'os'
-  ) {
-    return normalized
-  }
-  return 'none'
-}
-
-const appliedPolicyDefaults = ref(false)
-
 // 分组选项
 const groupOptions = computed(() => {
   const options: Array<{ label: string; value: 'none' | number | 'status' | 'location' | 'os' }> = [
@@ -136,18 +52,6 @@ const groupOptions = computed(() => {
     { label: '按地域', value: 'location' },
     { label: '按系统', value: 'os' },
   ]
-
-  // 公开展示策略：字段未展示时，隐藏对应分组选项（仅 guest）
-  if (isGuest.value && publicDisplay.value.enabled) {
-    if (!publicDisplay.value.fields.showLocation) {
-      const idx = options.findIndex((o) => o.value === 'location')
-      if (idx >= 0) options.splice(idx, 1)
-    }
-    if (!publicDisplay.value.fields.showOS) {
-      const idx = options.findIndex((o) => o.value === 'os')
-      if (idx >= 0) options.splice(idx, 1)
-    }
-  }
 
   groups.value.forEach((group) => {
     options.push({ label: group.name, value: group.id })
@@ -198,7 +102,8 @@ const websocket = useWebSocket({
       const server = servers.value[serverIndex]
       servers.value[serverIndex] = {
         ...server,
-        uptime: data.uptime !== undefined ? data.uptime : server.uptime,
+        uptimeSeconds: data.uptime_seconds ?? server.uptimeSeconds,
+        uptimeSyncedAt: data.uptime_seconds !== undefined ? Date.now() : server.uptimeSyncedAt,
         cpuUsage: data.cpu_usage !== undefined ? data.cpu_usage : server.cpuUsage,
         memoryUsage: data.memory_usage !== undefined ? data.memory_usage : server.memoryUsage,
         diskUsage: data.disk_usage !== undefined ? data.disk_usage : server.diskUsage,
@@ -276,21 +181,6 @@ watch(
   { immediate: false },
 )
 
-watch(
-  [isGuest, publicDisplay],
-  ([guest, cfg]) => {
-    if (!guest) return
-    if (!cfg?.enabled) return
-    if (appliedPolicyDefaults.value) return
-    viewMode.value = cfg.overview.defaultViewMode
-    const gb = parseDefaultGroupBy(cfg.overview.defaultGroupBy)
-    groupBy.value =
-      gb === 'location' && cfg.fields && cfg.fields.showLocation === false ? 'none' : gb
-    appliedPolicyDefaults.value = true
-  },
-  { immediate: true, deep: true },
-)
-
 onMounted(async () => {
   if (!authStore.initialized) {
     initializing.value = true
@@ -307,9 +197,11 @@ onMounted(async () => {
 
   await Promise.all([loadServers(), loadGroups()])
   websocket.connect()
+  websocket.subscribe([SERVERS_TOPIC])
 })
 
 onUnmounted(() => {
+  websocket.unsubscribe([SERVERS_TOPIC])
   websocket.disconnect()
 })
 
@@ -410,11 +302,6 @@ const getGroupColor = (groupName: string): string | undefined => {
 
     <!-- 主要内容 -->
     <div v-else-if="!initializing" class="space-y-6">
-      <!-- 公告（仅游客） -->
-      <n-card v-if="announcementHtml" content-class="prose prose-sm dark:prose-invert max-w-none">
-        <div v-html="announcementHtml"></div>
-      </n-card>
-
       <!-- 工具栏 -->
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div class="flex items-center gap-2">
@@ -423,13 +310,12 @@ const getGroupColor = (groupName: string): string | undefined => {
         </div>
         <n-space size="small" class="group-type">
           <n-select
-            v-if="canSwitchGroupBy"
             v-model:value="groupBy"
             :options="groupOptions"
             size="small"
             placeholder="分组方式"
             style="width: 140px"          />
-          <n-radio-group v-if="canSwitchViewMode" v-model:value="viewMode" size="small">
+          <n-radio-group v-model:value="viewMode" size="small">
             <n-radio-button value="card">
               <ri-layout-grid-line size="14px" />
             </n-radio-button>
@@ -443,7 +329,7 @@ const getGroupColor = (groupName: string): string | undefined => {
       <!-- 表格视图 -->
       <div v-if="viewMode === 'table'">
         <template v-if="groupBy === 'none'">
-          <ServerTable :servers="servers" :display-fields="displayFields" />
+          <ServerTable :servers="servers" />
         </template>
         <template v-else>
           <div
@@ -456,7 +342,7 @@ const getGroupColor = (groupName: string): string | undefined => {
               :count="groupServers.length"
               :color="getGroupColor(groupName)"
             />
-            <ServerTable :servers="groupServers" :display-fields="displayFields" />
+            <ServerTable :servers="groupServers" />
           </div>
         </template>
       </div>
@@ -471,8 +357,7 @@ const getGroupColor = (groupName: string): string | undefined => {
               v-for="server in servers"
               :key="server.id"
               v-bind="server"
-              :display-fields="displayFields"
-            />
+                  />
           </div>
         </template>
         <template v-else>
@@ -493,8 +378,7 @@ const getGroupColor = (groupName: string): string | undefined => {
                 v-for="server in groupServers"
                 :key="server.id"
                 v-bind="server"
-                :display-fields="displayFields"
-              />
+                      />
             </div>
           </div>
         </template>
