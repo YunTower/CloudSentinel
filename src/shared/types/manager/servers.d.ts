@@ -73,6 +73,8 @@ export interface ServerListItemData {
   agent_key?: string
   agent_version?: string // Agent版本（仅管理员可见）
   uptime?: string
+  /** 运行秒数基准（下发时刻的值），供前端实时递增显示 */
+  uptime_seconds?: number
   created_at?: string
   updated_at?: string
   cores?: number
@@ -149,6 +151,10 @@ export interface Server {
   kernel?: string
   hostname?: string
   uptime?: string
+  /** 运行秒数基准（下发时刻的值），配合 uptimeSyncedAt 由前端每秒递增显示 */
+  uptimeSeconds?: number
+  /** 基准对应的本地时间戳(ms)，用于实时递增与 WS 校准 */
+  uptimeSyncedAt?: number
   cpu: number
   memory: number
   disk: number
@@ -291,6 +297,8 @@ export type GetServerMetricsResponse = ApiResponse<MetricsData[]>
 // 扩展服务器详情数据接口
 export interface ExtendedServerDetailData extends ServerDetailData {
   uptime?: string
+  /** 运行秒数基准（下发时刻的值），供前端实时递增显示 */
+  uptime_seconds?: number
   disks?: DiskInfo[]
   cpus?: CPUInfo[]
   memory?: MemoryInfo

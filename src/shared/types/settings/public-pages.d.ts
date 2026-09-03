@@ -60,10 +60,8 @@ export interface PublicBlockStatsV1 {
 export type PublicBlockVisibilityModeV1 = 'all' | 'include' | 'exclude'
 
 export interface PublicBlockServerListV1 {
-  view: 'card' | 'table'
   groupBy: 'none' | 'status' | 'location' | 'os'
   limit?: number
-  showToolbar?: boolean
   /** 服务器展示范围 */
   mode?: PublicBlockVisibilityModeV1
   /** include/exclude 模式下的服务器 ID 列表 */

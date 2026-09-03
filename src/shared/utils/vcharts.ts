@@ -1,11 +1,16 @@
 // vchart 2.x 移除了 esm/vchart-line 拆分入口，simple 包含折线图等基础图表
 import VChart from '@visactor/vchart/esm/vchart-simple'
+// vchart-simple 默认只注册 linear/band 坐标轴，time 轴需单独注册，否则使用 time 轴的图会报
+// "Cannot read properties of undefined (reading 'cmp')"（Factory.getComponentInKey 取不到组件）
+import { registerCartesianTimeAxis } from '@visactor/vchart/esm/component/axis/cartesian/time-axis'
 import type { ITheme, ILineChartSpec } from '@visactor/vchart'
 import vChartLight from '@/shared/data/vchart-light.json'
 import vChartDark from '@/shared/data/vchart-dark.json'
 
 VChart.ThemeManager.registerTheme('vChartLight', vChartLight as Partial<ITheme>)
 VChart.ThemeManager.registerTheme('vChartDark', vChartDark as Partial<ITheme>)
+
+VChart.useRegisters([registerCartesianTimeAxis])
 
 /** 与 useLayout 的 darkMode 一致：优先 DOM class，其次 localStorage */
 function getIsDark(): boolean {

@@ -56,8 +56,15 @@ export interface PublicIncident {
   events?: PublicIncidentEvent[]
 }
 
+export interface PublicIncidentsMetaV1 {
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface GetPublicIncidentsResponse {
   status: boolean
   message?: string
   data?: PublicIncident[]
+  meta?: PublicIncidentsMetaV1
 }
