@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import ServerTable from './components/ServerTable.vue'
@@ -12,6 +12,7 @@ import serversApi from '@/admin/apis/servers.ts'
 import type { ServerGroup } from '@/shared/types/manager/servers'
 import updateApi from '@/admin/apis/update.ts'
 import { useWebSocket } from '@/admin/composables/useWebSocket.ts'
+import { SERVERS_TOPIC } from '@/admin/services/websocket-manager'
 import type { VersionType } from '@/shared/utils/version.ts'
 import type {
   Server,
@@ -106,7 +107,10 @@ const websocket = useWebSocket({
           download: data.network_download ?? 0,
         }
       }
-      if (data.uptime !== undefined) server.uptime = data.uptime
+      if (data.uptime_seconds !== undefined) {
+        server.uptimeSeconds = data.uptime_seconds
+        server.uptimeSyncedAt = Date.now()
+      }
     }
   },
   onMetricsRealtime: () => {
@@ -341,6 +345,11 @@ const loadServers = async () => {
           kernel: '',
           hostname: '',
           uptime: server.uptime || '0天0时0分',
+          uptimeSeconds:
+            typeof server.uptime_seconds === 'number' && server.uptime_seconds > 0
+              ? server.uptime_seconds
+              : undefined,
+          uptimeSyncedAt: Date.now(),
           group_id: server.group_id,
           group: server.group,
           billing: server.billing || {},
@@ -488,6 +497,7 @@ onMounted(async () => {
   await loadServers()
   await loadAgentVersion()
   websocket.connect()
+  websocket.subscribe([SERVERS_TOPIC])
 
   const serverId = route.query.server
   if (serverId && typeof serverId === 'string') {
@@ -495,6 +505,10 @@ onMounted(async () => {
   }
 
   loading.value = false
+})
+
+onUnmounted(() => {
+  websocket.unsubscribe([SERVERS_TOPIC])
 })
 </script>
 

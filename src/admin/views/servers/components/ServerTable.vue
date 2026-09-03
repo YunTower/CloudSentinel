@@ -6,6 +6,8 @@ import { useMessage, useDialog } from 'naive-ui'
 import { useAuthStore } from '@/admin/stores/auth.ts'
 import type { Server } from '@/shared/types/manager/servers'
 import serversApi from '@/admin/apis/servers.ts'
+import { formatUptimeSeconds, liveUptimeSeconds } from '@/shared/server-display/uptime'
+import { useUptimeTicker } from '@/shared/composables/useUptimeTicker'
 import {
   getBillingCycle,
   getBillingType,
@@ -49,6 +51,13 @@ const message = useMessage()
 const dialog = useDialog()
 
 const router = useRouter()
+
+const now = useUptimeTicker()
+const uptimeText = (row: Server) => {
+  const seconds = liveUptimeSeconds(row.uptimeSeconds, row.uptimeSyncedAt, now.value)
+  if (seconds !== undefined) return formatUptimeSeconds(seconds)
+  return row.uptime || '-'
+}
 
 interface Props {
   servers: Server[]
@@ -221,7 +230,7 @@ const columns = computed(() => {
       minWidth: 120,
       render: (row: Server) =>
         h('div', { class: 'text-left' }, [
-          h('div', { class: 'text-sm font-medium text-color' }, row.uptime || '-'),
+          h('div', { class: 'text-sm font-medium text-color' }, uptimeText(row)),
         ]),
     },
   ]

@@ -1,14 +1,17 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { NCard, NDescriptions, NDescriptionsItem, NTag } from 'naive-ui'
 import type { Server } from '@/shared/types/manager/servers'
 import { getBillingCycle, getExpireCountdown } from '@/shared/utils/billing.ts'
 import { getStatusText, getStatusSeverity } from '@/shared/utils/version.ts'
+import { formatUptimeSeconds, liveUptimeSeconds } from '@/shared/server-display/uptime'
+import { useUptimeTicker } from '@/shared/composables/useUptimeTicker'
 
 interface Props {
   server: Server
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 
 const severityToTagType = (
   severity: string,
@@ -22,6 +25,14 @@ const severityToTagType = (
   }
   return map[severity] ?? 'default'
 }
+
+const now = useUptimeTicker()
+
+const uptimeText = computed(() => {
+  const seconds = liveUptimeSeconds(props.server.uptimeSeconds, props.server.uptimeSyncedAt, now.value)
+  if (seconds !== undefined) return formatUptimeSeconds(seconds)
+  return props.server.uptime || '-'
+})
 
 /** 到期剩余展示：已过期 或 X天/时/分后到期 */
 function expireCountdownLabel(expireTime: string): string {
@@ -58,7 +69,7 @@ function expireCountdownLabel(expireTime: string): string {
         {{ server.architecture || '-' }}
       </n-descriptions-item>
       <n-descriptions-item label="运行时间">
-        {{ server.uptime || '-' }}
+        {{ uptimeText }}
       </n-descriptions-item>
       <n-descriptions-item label="内核版本">
         {{ server.kernel || '-' }}

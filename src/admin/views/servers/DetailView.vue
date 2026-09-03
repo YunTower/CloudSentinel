@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { NSpin, NEmpty, NButton, useMessage } from 'naive-ui'
 import { RiArrowLeftLine, RiLineChartLine, RiWrenchLine } from '@remixicon/vue'
 import serversApi from '@/admin/apis/servers.ts'
-import type { Server, ServerForm, MetricsData } from '@/shared/types/manager/servers'
+import { useWebSocket } from '@/admin/composables/useWebSocket'
+import { serverTopic } from '@/admin/services/websocket-manager'
+import type {
+  Server,
+  ServerForm,
+  MetricsData,
+  ProcessStatus,
+} from '@/shared/types/manager/servers'
 import type { ExtendedServerDetailData } from '@/shared/types/manager/servers'
 import type { ServerDetailResponse } from '@/shared/types/manager/servers'
 import type { UpdateServerResponse } from '@/shared/types/manager/servers'
@@ -39,6 +46,11 @@ function detailToServer(detail: ExtendedServerDetailData): Server {
     kernel: detail.kernel ?? '',
     hostname: detail.hostname ?? '',
     uptime: detail.uptime ?? '',
+    uptimeSeconds:
+      typeof detail.uptime_seconds === 'number' && detail.uptime_seconds > 0
+        ? detail.uptime_seconds
+        : undefined,
+    uptimeSyncedAt: Date.now(),
     cpu,
     memory,
     disk,
@@ -88,6 +100,141 @@ const chartTimeRange = ref({
   memory: 1,
   disk: 1,
   network: 1,
+})
+
+/** 追加一个实时指标点，并裁剪掉当前时间范围窗口之外的历史点 */
+const appendMetricsPoint = (
+  type: 'cpu' | 'memory' | 'disk' | 'network',
+  point: Partial<MetricsData>,
+) => {
+  const nowSec = Math.floor(Date.now() / 1000)
+  const arr = [...(metricsData.value[type] ?? [])]
+  arr.push({
+    timestamp: nowSec,
+    cpu_usage: 0,
+    memory_usage: 0,
+    network_upload: 0,
+    network_download: 0,
+    ...point,
+  })
+  const cutoff = nowSec - chartTimeRange.value[type] * 3600
+  while (arr.length > 0 && arr[0].timestamp < cutoff) arr.shift()
+  metricsData.value[type] = arr
+}
+
+const websocket = useWebSocket({
+  onMetricsUpdate: (data) => {
+    const current = server.value
+    if (!current || data.server_id !== serverId.value) return
+    if (data.uptime_seconds !== undefined) {
+      current.uptimeSeconds = data.uptime_seconds
+      current.uptimeSyncedAt = Date.now()
+    }
+    if (activeTab.value === 'overview') {
+      if (data.cpu_usage !== undefined) current.cpu = data.cpu_usage
+      if (data.memory_usage !== undefined) current.memory = data.memory_usage
+    } else if (activeTab.value === 'resource') {
+      appendMetricsPoint('cpu', { cpu_usage: data.cpu_usage ?? 0 })
+      appendMetricsPoint('memory', { memory_usage: data.memory_usage ?? 0 })
+      appendMetricsPoint('network', {
+        network_upload: data.network_upload ?? 0,
+        network_download: data.network_download ?? 0,
+      })
+      current.networkIO = {
+        upload: data.network_upload ?? 0,
+        download: data.network_download ?? 0,
+      }
+    }
+  },
+  onSystemInfoUpdate: (data) => {
+    const current = server.value
+    if (!current || data.server_id !== serverId.value) return
+    if (activeTab.value !== 'overview' || !data.data) return
+    if (data.data.os) current.os = data.data.os
+    if (data.data.architecture) current.architecture = data.data.architecture
+    if (data.data.kernel) current.kernel = data.data.kernel
+    if (data.data.hostname) current.hostname = data.data.hostname
+  },
+  onMemoryInfoUpdate: (data) => {
+    const current = server.value
+    if (!current || data.server_id !== serverId.value) return
+    if (activeTab.value !== 'overview' || !data.memory) return
+    current.memoryInfo = {
+      memory_total: data.memory.memory_total ?? 0,
+      memory_used: data.memory.memory_used ?? 0,
+      memory_usage_percent: data.memory.memory_usage_percent ?? 0,
+    }
+  },
+  onDiskInfoUpdate: (data) => {
+    const current = server.value
+    if (!current || data.server_id !== serverId.value) return
+    if (activeTab.value !== 'resource' || !data.disks) return
+    current.disks = data.disks.map((disk) => ({
+      disk_name: disk.disk_name ?? '',
+      mount_point: disk.mount_point ?? '',
+      total_size: disk.total_size ?? 0,
+      used_size: disk.used_size ?? 0,
+      free_size: disk.free_size ?? 0,
+      usage_percent: disk.usage_percent ?? 0,
+    }))
+  },
+  onDiskIOUpdate: (data) => {
+    if (!server.value || data.server_id !== serverId.value) return
+    if (activeTab.value !== 'resource') return
+    appendMetricsPoint('disk', {
+      disk_read: data.disk_io?.read_speed ?? 0,
+      disk_write: data.disk_io?.write_speed ?? 0,
+    })
+  },
+  onNetworkInfoUpdate: (data) => {
+    const current = server.value
+    if (!current || data.server_id !== serverId.value) return
+    if (activeTab.value !== 'resource' || !data.network) return
+    if (data.network.upload_bytes !== undefined || data.network.download_bytes !== undefined) {
+      current.traffic = {
+        upload_bytes: data.network.upload_bytes ?? current.traffic?.upload_bytes ?? 0,
+        download_bytes: data.network.download_bytes ?? current.traffic?.download_bytes ?? 0,
+      }
+    }
+  },
+  onSwapInfoUpdate: (data) => {
+    const current = server.value
+    if (!current || data.server_id !== serverId.value) return
+    if (activeTab.value !== 'resource' || !data.swap) return
+    current.swapInfo = {
+      swap_total: data.swap.swap_total ?? 0,
+      swap_used: data.swap.swap_used ?? 0,
+      swap_free: data.swap.swap_free ?? 0,
+      swap_usage_percent: data.swap.swap_usage_percent ?? 0,
+    }
+  },
+  onGPUInfoUpdate: (data) => {
+    const current = server.value
+    if (!current || data.server_id !== serverId.value) return
+    if (activeTab.value !== 'resource' || !data.gpuInfo) return
+    current.gpuInfo = data.gpuInfo
+  },
+  onProcessInfoUpdate: (data) => {
+    const current = server.value
+    if (!current || data.server_id !== serverId.value) return
+    if (activeTab.value !== 'process' || !data.data) return
+    const status: Record<string, ProcessStatus> = {}
+    for (const [name, info] of Object.entries(data.data)) {
+      status[name] = {
+        name,
+        running: info.running,
+        pids: info.pids,
+        cpu: info.cpu,
+        memory: info.memory,
+      }
+    }
+    current.process_status = status
+  },
+  onServerStatusUpdate: (data) => {
+    const current = server.value
+    if (!current || data.server_id !== serverId.value) return
+    current.status = data.status
+  },
 })
 
 const loadMetrics = async (type: 'cpu' | 'memory' | 'disk' | 'network', hours: number = 24) => {
@@ -234,8 +381,30 @@ const handleCancelDialog = () => {
   showServerDialog.value = false
 }
 
+// 服务器专属主题订阅：页面只接收当前这台服务器的实时推送。
+// 切换服务器（serverId 变化）时先退订旧主题再订阅新主题。
+let subscribedServerId: string | null = null
+
+const updateServerSubscription = (id: string | null | undefined): void => {
+  const next = id ?? null
+  if (subscribedServerId === next) return
+  if (subscribedServerId) {
+    websocket.unsubscribe([serverTopic(subscribedServerId)])
+  }
+  subscribedServerId = next
+  if (next) {
+    websocket.subscribe([serverTopic(next)])
+  }
+}
+
 onMounted(() => {
   loadDetail()
+  websocket.connect()
+  updateServerSubscription(serverId.value)
+})
+
+onUnmounted(() => {
+  updateServerSubscription(null)
 })
 
 watch(
@@ -254,6 +423,7 @@ watch(
 )
 
 watch(serverId, async (id) => {
+  updateServerSubscription(id)
   if (!id) return
   await loadDetail()
   if (activeTab.value === 'resource') {
