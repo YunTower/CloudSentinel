@@ -5,6 +5,7 @@ import type { Server } from '@/shared/types/manager/servers'
 import { getBillingCycle, getExpireCountdown } from '@/shared/utils/billing.ts'
 import { getStatusText, getStatusSeverity } from '@/shared/utils/version.ts'
 import { formatUptimeSeconds, liveUptimeSeconds } from '@/shared/server-display/uptime'
+import { isServerDataStale } from '@/shared/server-display/utils'
 import { useUptimeTicker } from '@/shared/composables/useUptimeTicker'
 
 interface Props {
@@ -34,6 +35,10 @@ const uptimeText = computed(() => {
   return props.server.uptime || '-'
 })
 
+const dataStale = computed(
+  () => props.server.status === 'online' && isServerDataStale(props.server.lastReportTime),
+)
+
 /** 到期剩余展示：已过期 或 X天/时/分后到期 */
 function expireCountdownLabel(expireTime: string): string {
   const countdown = getExpireCountdown(expireTime)
@@ -51,13 +56,18 @@ function expireCountdownLabel(expireTime: string): string {
         <span class="font-mono text-sm">{{ server.ip || '-' }}</span>
       </n-descriptions-item>
       <n-descriptions-item label="状态">
-        <n-tag
-          :type="severityToTagType(getStatusSeverity(server.status))"
-          size="small"
-          :bordered="false"
-        >
-          {{ getStatusText(server.status) }}
-        </n-tag>
+        <n-space :size="6" align="center">
+          <n-tag
+            :type="severityToTagType(getStatusSeverity(server.status))"
+            size="small"
+            :bordered="false"
+          >
+            {{ getStatusText(server.status) }}
+          </n-tag>
+          <n-tag v-if="dataStale" size="small" type="warning" :bordered="false" round>
+            数据陈旧
+          </n-tag>
+        </n-space>
       </n-descriptions-item>
       <n-descriptions-item label="地域">
         {{ server.location || '-' }}

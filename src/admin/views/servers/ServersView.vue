@@ -111,6 +111,7 @@ const websocket = useWebSocket({
         server.uptimeSeconds = data.uptime_seconds
         server.uptimeSyncedAt = Date.now()
       }
+      server.lastReportTime = Date.now()
     }
   },
   onMetricsRealtime: () => {

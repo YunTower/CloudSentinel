@@ -7,6 +7,7 @@ import { useAuthStore } from '@/admin/stores/auth.ts'
 import type { Server } from '@/shared/types/manager/servers'
 import serversApi from '@/admin/apis/servers.ts'
 import { formatUptimeSeconds, liveUptimeSeconds } from '@/shared/server-display/uptime'
+import { isServerDataStale } from '@/shared/server-display/utils'
 import { useUptimeTicker } from '@/shared/composables/useUptimeTicker'
 import {
   getBillingCycle,
@@ -227,11 +228,18 @@ const columns = computed(() => {
       key: 'uptime',
       title: '运行时间',
       sorter: 'default',
-      minWidth: 120,
-      render: (row: Server) =>
-        h('div', { class: 'text-left' }, [
+      minWidth: 140,
+      render: (row: Server) => {
+        const cells: ReturnType<typeof h>[] = [
           h('div', { class: 'text-sm font-medium text-color' }, uptimeText(row)),
-        ]),
+        ]
+        if (row.status === 'online' && isServerDataStale(row.lastReportTime)) {
+          cells.push(
+            h(NTag, { size: 'small', type: 'warning', bordered: false, round: true }, { default: () => '数据陈旧' }),
+          )
+        }
+        return h('div', { class: 'flex items-center gap-2' }, cells)
+      },
     },
   ]
 

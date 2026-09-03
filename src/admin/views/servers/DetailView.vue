@@ -51,6 +51,7 @@ function detailToServer(detail: ExtendedServerDetailData): Server {
         ? detail.uptime_seconds
         : undefined,
     uptimeSyncedAt: Date.now(),
+    lastReportTime: detail.last_report_time ? Date.parse(detail.last_report_time) : undefined,
     cpu,
     memory,
     disk,
@@ -126,6 +127,9 @@ const websocket = useWebSocket({
   onMetricsUpdate: (data) => {
     const current = server.value
     if (!current || data.server_id !== serverId.value) return
+    // 收到实时推送即视为数据新鲜
+    current.lastReportTime = Date.now()
+    // 运行时间对所有 Tab 生效：WS 下发秒数基准，前端每秒递增，此处仅校准
     if (data.uptime_seconds !== undefined) {
       current.uptimeSeconds = data.uptime_seconds
       current.uptimeSyncedAt = Date.now()
