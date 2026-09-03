@@ -135,6 +135,11 @@ export function mapServerListItemToServerItem(server: ServerListItemData): Serve
     name: server.name,
     status,
     uptime: server.uptime || '',
+    uptimeSeconds:
+      typeof server.uptime_seconds === 'number' && server.uptime_seconds > 0
+        ? server.uptime_seconds
+        : undefined,
+    uptimeSyncedAt: Date.now(),
     cpuUsage,
     memoryUsage,
     swapUsage,

@@ -5,6 +5,8 @@ import type { PublicDisplayFieldsV1 } from '@/shared/types/settings/public-displ
 import { getProgressBarColor, getProgressTextColor } from '@/shared/utils/version.ts'
 import { getBillingCycle, getBillingType, getTrafficLimitSummary } from '@/shared/utils/billing'
 import { formatSpeed, formatOS, getStatusColor, getStatusText as getStatusTextUtil } from '@/shared/server-display/utils'
+import { formatUptimeSeconds, liveUptimeSeconds } from '@/shared/server-display/uptime'
+import { useUptimeTicker } from '@/shared/composables/useUptimeTicker'
 import { RiArrowDownLine, RiArrowUpLine } from '@remixicon/vue'
 
 const props = defineProps<ServerItem & { displayFields?: PublicDisplayFieldsV1 }>()
@@ -111,7 +113,14 @@ const formatRuntime = (uptime?: string) => {
   return value
 }
 
-const runtimeText = computed(() => formatRuntime(props.uptime))
+// 运行时间每秒本地递增，WS 推送仅校准基准（uptimeSeconds/uptimeSyncedAt）
+const now = useUptimeTicker()
+
+const runtimeText = computed(() => {
+  const seconds = liveUptimeSeconds(props.uptimeSeconds, props.uptimeSyncedAt, now.value)
+  if (seconds !== undefined) return formatUptimeSeconds(seconds)
+  return formatRuntime(props.uptime)
+})
 </script>
 <template>
   <n-card class="h-full w-full max-w-full sm:max-w-[400px]">
