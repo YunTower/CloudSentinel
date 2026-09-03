@@ -9,6 +9,8 @@ export interface ServerItem {
   uptimeSeconds?: number
   /** 基准对应的本地时间戳(ms)，用于实时递增与 WS 校准 */
   uptimeSyncedAt?: number
+  /** 最近上报时间(ms)；缺失或过旧表示数据可能已停滞（快照而非实时） */
+  lastReportTime?: number
   cpuUsage: number
   memoryUsage: number
   swapUsage?: number

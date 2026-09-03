@@ -4,7 +4,7 @@ import type { ServerItem } from '@/shared/types/server'
 import type { PublicDisplayFieldsV1 } from '@/shared/types/settings/public-display'
 import { getProgressBarColor, getProgressTextColor } from '@/shared/utils/version.ts'
 import { getBillingCycle, getBillingType, getTrafficLimitSummary } from '@/shared/utils/billing'
-import { formatSpeed, formatOS, getStatusColor, getStatusText as getStatusTextUtil } from '@/shared/server-display/utils'
+import { formatSpeed, formatOS, getStatusColor, getStatusText as getStatusTextUtil, isServerDataStale } from '@/shared/server-display/utils'
 import { formatUptimeSeconds, liveUptimeSeconds } from '@/shared/server-display/uptime'
 import { useUptimeTicker } from '@/shared/composables/useUptimeTicker'
 import { RiArrowDownLine, RiArrowUpLine } from '@remixicon/vue'
@@ -14,6 +14,9 @@ const props = defineProps<ServerItem & { displayFields?: PublicDisplayFieldsV1 }
 const statusClass = computed(() => getStatusColor(props.status))
 
 const statusText = computed(() => getStatusTextUtil(props.status))
+
+// 在线但长时间无上报 → 数据可能只是连接时的陈旧快照
+const dataStale = computed(() => props.status === 'online' && isServerDataStale(props.lastReportTime))
 
 const showOS = computed(() => props.displayFields?.showOS ?? true)
 const showArchitecture = computed(() => props.displayFields?.showArchitecture ?? true)
@@ -138,6 +141,15 @@ const runtimeText = computed(() => {
             <span class="text-sm font-semibold text-color-emphasis leading-none">{{
               statusText
             }}</span>
+            <n-tag
+              v-if="dataStale"
+              size="small"
+              type="warning"
+              :bordered="false"
+              round
+            >
+              数据陈旧
+            </n-tag>
           </div>
         </div>
         <n-space :size="4" v-if="billingTagText || expireTag || trafficTagText">

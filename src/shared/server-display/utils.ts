@@ -104,6 +104,26 @@ export function getStatusText(status: string): string {
 }
 
 /**
+ * 解析后端下发的 last_report_time（RFC3339）为时间戳(ms)；缺失/非法返回 undefined。
+ */
+export function parseServerLastReportTime(raw?: string | null): number | undefined {
+  if (!raw) return undefined
+  const ms = Date.parse(raw)
+  return Number.isFinite(ms) ? ms : undefined
+}
+
+/**
+ * 判断服务器数据是否已陈旧：缺少最近上报时间或超过阈值未上报。
+ * 用于识别“连接时快照伪装实时”的情况。
+ */
+export function isServerDataStale(lastReportTime?: number, maxAgeMs = 5 * 60 * 1000): boolean {
+  if (typeof lastReportTime !== 'number' || !Number.isFinite(lastReportTime)) {
+    return true
+  }
+  return Date.now() - lastReportTime > maxAgeMs
+}
+
+/**
  * 将后端服务器列表数据转换为前端 ServerItem 格式
  */
 export function mapServerListItemToServerItem(server: ServerListItemData): ServerItem {
@@ -140,6 +160,7 @@ export function mapServerListItemToServerItem(server: ServerListItemData): Serve
         ? server.uptime_seconds
         : undefined,
     uptimeSyncedAt: Date.now(),
+    lastReportTime: parseServerLastReportTime(server.last_report_time),
     cpuUsage,
     memoryUsage,
     swapUsage,

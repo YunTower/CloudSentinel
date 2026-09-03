@@ -75,6 +75,8 @@ export interface ServerListItemData {
   uptime?: string
   /** 运行秒数基准（下发时刻的值），供前端实时递增显示 */
   uptime_seconds?: number
+  /** 最近上报时间（RFC3339），用于判断数据是否陈旧 */
+  last_report_time?: string
   created_at?: string
   updated_at?: string
   cores?: number
@@ -155,6 +157,8 @@ export interface Server {
   uptimeSeconds?: number
   /** 基准对应的本地时间戳(ms)，用于实时递增与 WS 校准 */
   uptimeSyncedAt?: number
+  /** 最近上报时间(ms)；缺失或过旧表示数据可能已停滞 */
+  lastReportTime?: number
   cpu: number
   memory: number
   disk: number

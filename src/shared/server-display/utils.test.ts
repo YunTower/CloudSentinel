@@ -5,7 +5,9 @@ import {
   formatSpeed,
   getStatusColor,
   getStatusText,
+  isServerDataStale,
   mapServerListItemToServerItem,
+  parseServerLastReportTime,
   resolveOsIconKind,
 } from './utils'
 
@@ -31,6 +33,21 @@ describe('服务器公开展示工具', () => {
     expect(getStatusText('unknown')).toBe('未知')
     expect(getStatusColor('online')).toContain('green')
     expect(getStatusColor('unknown')).toBe('text-surface-400')
+  })
+
+  it('解析最近上报时间并判断数据是否陈旧', () => {
+    expect(parseServerLastReportTime()).toBeUndefined()
+    expect(parseServerLastReportTime('')).toBeUndefined()
+    expect(parseServerLastReportTime('bad-date')).toBeUndefined()
+    const fresh = parseServerLastReportTime(new Date().toISOString())
+    expect(typeof fresh).toBe('number')
+
+    // 缺失上报时间 → 视为陈旧
+    expect(isServerDataStale(undefined)).toBe(true)
+    // 近期有上报 → 新鲜
+    expect(isServerDataStale(Date.now(), 5 * 60 * 1000)).toBe(false)
+    // 超过阈值 → 陈旧
+    expect(isServerDataStale(Date.now() - 10 * 60 * 1000, 5 * 60 * 1000)).toBe(true)
   })
 
   it('把列表响应转换为展示模型并为无效字段设置安全默认值', () => {
