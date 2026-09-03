@@ -15,7 +15,7 @@ export interface WebSocketCallbacks {
     disk_usage?: number
     network_upload?: number
     network_download?: number
-    uptime?: string
+    uptime_seconds?: number
   }) => void
   onMetricsRealtime?: (data: {
     server_id: string
@@ -44,6 +44,41 @@ export interface WebSocketCallbacks {
       swap_used?: number
       swap_free?: number
       swap_usage_percent?: number
+    }
+  }) => void
+  onMemoryInfoUpdate?: (data: {
+    server_id: string
+    memory?: {
+      memory_total?: number
+      memory_used?: number
+      memory_usage_percent?: number
+    }
+  }) => void
+  onDiskInfoUpdate?: (data: {
+    server_id: string
+    disks?: Array<{
+      disk_name?: string
+      mount_point?: string
+      total_size?: number
+      used_size?: number
+      free_size?: number
+      usage_percent?: number
+    }>
+  }) => void
+  onDiskIOUpdate?: (data: {
+    server_id: string
+    disk_io?: {
+      read_speed?: number
+      write_speed?: number
+    }
+  }) => void
+  onNetworkInfoUpdate?: (data: {
+    server_id: string
+    network?: {
+      upload_speed?: number
+      download_speed?: number
+      upload_bytes?: number
+      download_bytes?: number
     }
   }) => void
   onServerStatusUpdate?: (data: {
@@ -76,6 +111,15 @@ export interface WebSocketCallbacks {
         gpu_util: number
       }>
     }
+  }) => void
+  onServiceMonitorUpdate?: (data: {
+    id: number
+    status: string
+    response_time: number
+    last_check_at?: string
+    last_metadata?: Record<string, unknown> | null
+    metadata_checked_at?: string
+    history_entry?: { status?: string; response_time?: number; checked_at?: string }
   }) => void
   onError?: (error: Event | Error) => void
   onOpen?: () => void
@@ -158,7 +202,7 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
           network_upload?: number
           network_download?: number
         }
-        uptime?: string
+        uptime_seconds?: number
       }
       if (data.server_id && data.metrics) {
         callbacks.onMetricsUpdate?.({
@@ -177,7 +221,8 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
             typeof data.metrics.network_download === 'number'
               ? data.metrics.network_download
               : undefined,
-          uptime: typeof data.uptime === 'string' ? data.uptime : undefined,
+          uptime_seconds:
+            typeof data.uptime_seconds === 'number' ? data.uptime_seconds : undefined,
         })
       }
     } else if (message.type === 'metrics_realtime' && message.data) {
@@ -250,6 +295,69 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
           swap: data.swap,
         })
       }
+    } else if (message.type === 'memory_info_update' && message.data) {
+      const data = message.data as {
+        server_id?: string
+        memory?: {
+          memory_total?: number
+          memory_used?: number
+          memory_usage_percent?: number
+        }
+      }
+      if (data.server_id && data.memory) {
+        callbacks.onMemoryInfoUpdate?.({
+          server_id: data.server_id,
+          memory: data.memory,
+        })
+      }
+    } else if (message.type === 'disk_info_update' && message.data) {
+      const data = message.data as {
+        server_id?: string
+        disks?: Array<{
+          disk_name?: string
+          mount_point?: string
+          total_size?: number
+          used_size?: number
+          free_size?: number
+          usage_percent?: number
+        }>
+      }
+      if (data.server_id && Array.isArray(data.disks)) {
+        callbacks.onDiskInfoUpdate?.({
+          server_id: data.server_id,
+          disks: data.disks,
+        })
+      }
+    } else if (message.type === 'disk_io_update' && message.data) {
+      const data = message.data as {
+        server_id?: string
+        disk_io?: {
+          read_speed?: number
+          write_speed?: number
+        }
+      }
+      if (data.server_id && data.disk_io) {
+        callbacks.onDiskIOUpdate?.({
+          server_id: data.server_id,
+          disk_io: data.disk_io,
+        })
+      }
+    } else if (message.type === 'network_info_update' && message.data) {
+      const data = message.data as {
+        server_id?: string
+        network?: {
+          upload_speed?: number
+          download_speed?: number
+          upload_bytes?: number
+          download_bytes?: number
+        }
+      }
+      if (data.server_id && data.network) {
+        callbacks.onNetworkInfoUpdate?.({
+          server_id: data.server_id,
+          network: data.network,
+        })
+      }
     } else if (message.type === 'server_status_update' && message.data) {
       const data = message.data as {
         server_id?: string
@@ -302,7 +410,38 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
           gpuInfo: data.gpuInfo,
         })
       }
+    } else if (message.type === 'service_monitor_update' && message.data) {
+      const data = message.data as {
+        id?: number
+        status?: string
+        response_time?: number
+        last_check_at?: string
+        last_metadata?: Record<string, unknown> | null
+        metadata_checked_at?: string
+        history_entry?: { status?: string; response_time?: number; checked_at?: string }
+      }
+      if (typeof data.id === 'number' && typeof data.status === 'string') {
+        callbacks.onServiceMonitorUpdate?.({
+          id: data.id,
+          status: data.status,
+          response_time: typeof data.response_time === 'number' ? data.response_time : 0,
+          last_check_at: data.last_check_at,
+          last_metadata: data.last_metadata,
+          metadata_checked_at: data.metadata_checked_at,
+          history_entry: data.history_entry,
+        })
+      }
     }
+  }
+
+  /** 订阅主题：页面进入时声明所需推送范围（服务端只推送已订阅主题） */
+  const subscribe = (topics: string[]): void => {
+    websocketManager.subscribeTopics(topics)
+  }
+
+  /** 取消订阅主题：页面离开时释放，避免无关推送到达 */
+  const unsubscribe = (topics: string[]): void => {
+    websocketManager.unsubscribeTopics(topics)
   }
 
   // 组件卸载时自动断开连接
@@ -313,6 +452,8 @@ export function useWebSocket(callbacks: WebSocketCallbacks = {}) {
   return {
     connect,
     disconnect,
+    subscribe,
+    unsubscribe,
     isConnected,
   }
 }

@@ -1,6 +1,9 @@
 import { ref } from 'vue'
 import type { WebSocketCallbacks, WebSocketMessage } from '@/admin/composables/useWebSocket'
 
+export const SERVERS_TOPIC = 'servers'
+export const serverTopic = (serverId: string): string => `server:${serverId}`
+
 // 全局WebSocket管理器
 class WebSocketManager {
   private static instance: WebSocketManager
@@ -21,6 +24,7 @@ class WebSocketManager {
   private visibilityHandler: (() => void) | null = null
   private callbacks: Map<string, WebSocketCallbacks> = new Map()
   private messageHandlers: Array<(message: WebSocketMessage) => void> = []
+  private desiredTopics: Set<string> = new Set()
 
   private constructor() {
     if (typeof document !== 'undefined') {
@@ -211,6 +215,9 @@ class WebSocketManager {
             this.tokenInvalid = false
             this.shouldReconnect = true
             this.broadcastOpen()
+
+            // 认证成功后恢复主题订阅（重连后同样生效）
+            this.sendTopicSubscription()
 
             if (this.heartbeatInterval) {
               clearInterval(this.heartbeatInterval)
@@ -409,6 +416,53 @@ class WebSocketManager {
       if (index > -1) {
         this.messageHandlers.splice(index, 1)
       }
+    }
+  }
+
+  /**
+   * 订阅主题：把页面需要的推送主题并入订阅集合并通知服务端。
+   * 服务端只会把已订阅主题的消息推给本连接。
+   */
+  subscribeTopics(topics: string[]): void {
+    let changed = false
+    for (const topic of topics) {
+      if (topic && !this.desiredTopics.has(topic)) {
+        this.desiredTopics.add(topic)
+        changed = true
+      }
+    }
+    if (changed) {
+      this.sendTopicSubscription()
+    }
+  }
+
+  /** 取消订阅主题：从订阅集合移除并通知服务端 */
+  unsubscribeTopics(topics: string[]): void {
+    let changed = false
+    for (const topic of topics) {
+      if (this.desiredTopics.delete(topic)) {
+        changed = true
+      }
+    }
+    if (changed) {
+      this.sendTopicSubscription()
+    }
+  }
+
+  /** 向服务端同步当前订阅集合（整体覆盖）；未连接时静默跳过，重连认证后会自动恢复 */
+  private sendTopicSubscription(): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || this.desiredTopics.size === 0) {
+      return
+    }
+    try {
+      this.ws.send(
+        JSON.stringify({
+          type: 'subscribe',
+          data: { topics: [...this.desiredTopics] },
+        }),
+      )
+    } catch (error) {
+      console.warn('[WebSocketManager] 发送主题订阅失败:', error)
     }
   }
 
