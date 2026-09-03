@@ -3,6 +3,8 @@ import { computed, ref, watch } from 'vue'
 import type { ServerItem } from '@/shared/types/server'
 import type { PublicDisplayFieldsV1 } from '@/shared/types/settings/public-display'
 import { formatOS, formatSpeed, getStatusText } from '@/shared/server-display/utils'
+import { formatUptimeSeconds, liveUptimeSeconds } from '@/shared/server-display/uptime'
+import { useUptimeTicker } from '@/shared/composables/useUptimeTicker'
 import OsTypeIcon from '@/shared/server-display/OsTypeIcon.vue'
 import { getProgressBarColor, getProgressTextColor } from '@/shared/utils/version'
 import { getBillingCycle, getBillingType, getTrafficLimitSummary } from '@/shared/utils/billing'
@@ -121,7 +123,12 @@ const locationText = (server: ServerItem) => {
   return server.location
 }
 
+// 运行时间每秒本地递增，WS/接口下发的秒数基准用于校准（uptimeSeconds/uptimeSyncedAt）
+const now = useUptimeTicker()
+
 const uptimeText = (server: ServerItem) => {
+  const seconds = liveUptimeSeconds(server.uptimeSeconds, server.uptimeSyncedAt, now.value)
+  if (seconds !== undefined) return `运行 ${formatUptimeSeconds(seconds)}`
   if (!server.uptime) return ''
   return `运行 ${server.uptime}`
 }

@@ -1,12 +1,30 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { PublicIncident, PublicIncidentEvent } from '@/shared/types/incidents'
 import { publicStatusTone } from '@/shared/public-page/statusTone'
 
 interface Props {
   incidents: PublicIncident[]
+  /** 事件总数（服务端分页时的总数；缺省取当前列表长度） */
+  total?: number
+  /** 当前页码（从 1 开始） */
+  page?: number
+  /** 每页条数 */
+  pageSize?: number
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  total: undefined,
+  page: 1,
+  pageSize: 10,
+})
+
+const emit = defineEmits<{ 'update:page': [page: number] }>()
+
+const totalCount = computed(() => props.total ?? props.incidents.length)
+const showPagination = computed(() => totalCount.value > props.pageSize)
+
+const onPageChange = (page: number) => emit('update:page', page)
 
 const formatTime = (value?: string | null) => {
   if (!value) return '-'
@@ -30,7 +48,8 @@ const impactLabel = (impact: string) => {
 
 const pillClass = (incident: PublicIncident) => {
   if (incident.status === 'resolved') return publicStatusTone.success.pill
-  if (incident.impact === 'maintenance') return publicStatusTone.neutral.pill
+  if (incident.impact === 'outage') return publicStatusTone.danger.pill
+  if (incident.impact === 'maintenance') return publicStatusTone.info.pill
   return publicStatusTone.warning.pill
 }
 
@@ -48,7 +67,8 @@ const eventType = (event: PublicIncidentEvent) => {
     return 'success' as const
   if (event.status === 'maintenance') return 'info' as const
   if (event.status === 'slow' || event.status === 'degraded') return 'warning' as const
-  if (event.status === 'down' || event.status === 'outage') return 'warning' as const
+  // 服务完全不通 / 中断事件：红色
+  if (event.status === 'down' || event.status === 'outage') return 'error' as const
   return 'default' as const
 }
 
@@ -96,5 +116,14 @@ const sortedEvents = (events?: PublicIncidentEvent[]) =>
         />
       </n-timeline>
     </article>
+
+    <div v-if="showPagination" class="flex justify-center pt-2">
+      <n-pagination
+        :page="props.page"
+        :page-size="props.pageSize"
+        :item-count="totalCount"
+        @update:page="onPageChange"
+      />
+    </div>
   </div>
 </template>

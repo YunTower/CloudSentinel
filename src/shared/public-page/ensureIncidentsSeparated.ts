@@ -143,7 +143,7 @@ export const defaultPublicPagesConfig = (): PublicPagesConfigV1 =>
           },
           {
             type: 'serverList',
-            data: { view: 'table', groupBy: 'none', limit: 0, showToolbar: false },
+            data: { groupBy: 'none', limit: 0 },
           },
         ],
       },

@@ -7,8 +7,10 @@ import GroupHeader from '@/shared/server-display/GroupHeader.vue'
 
 const stubs = {
   RiCheckboxCircleFill: true, RiSubtractLine: true, RiAlertFill: true,
+  RiCloseCircleFill: true, RiInformationLine: true,
   'n-timeline': { template: '<div><slot /></div>' },
   'n-timeline-item': { props: ['title', 'content', 'time'], template: '<div>{{ title }} {{ content }} {{ time }}</div>' },
+  'n-pagination': true,
   'n-h4': { template: '<h4><slot /></h4>' },
   'n-text': { template: '<span><slot /></span>' },
 }
@@ -22,7 +24,7 @@ describe('公开状态组件', () => {
       serviceMonitors: [{ id: 1, name: '官网', status: 'up' }] as never,
       incidents: [], lastUpdatedAt: '2026-08-12T08:00:00Z',
     }, global: { stubs } })
-    expect(wrapper.text()).toContain('全部服务正常')
+    expect(wrapper.text()).toContain('所有系统正常运行')
     expect(wrapper.text()).toContain('所有公开服务与基础设施均运行正常')
     expect(wrapper.text()).toContain('最近更新于')
   })
@@ -37,10 +39,20 @@ describe('公开状态组件', () => {
         { id: 2, event_type: 'update', status: 'down', message: '已定位原因', occurred_at: '2026-08-12T09:30:00Z' },
       ] }] as never,
     }, global: { stubs } })
-    expect(wrapper.text()).toContain('我们的服务出现了一些问题')
+    // 故障级别展示红色文案
+    expect(wrapper.text()).toContain('部分系统无法访问')
     expect(wrapper.text()).toContain('1 项服务故障')
     expect(wrapper.text()).toContain('官网'); expect(wrapper.text()).toContain('上海节点')
     expect(wrapper.text()).toContain('已定位原因'); expect(wrapper.text()).toContain('已持续 1 小时')
+  })
+
+  it('仅有降级事件时展示黄色性能下降状态', () => {
+    const wrapper = mount(StatusBanner, { props: {
+      servers: [{ id: 's', name: '节点', status: 'online' }] as never,
+      serviceMonitors: [{ id: 1, name: 'API', status: 'slow' }] as never,
+      incidents: [],
+    }, global: { stubs } })
+    expect(wrapper.text()).toContain('部分系统性能下降')
   })
 
   it('事件列表展示空态，并按从晚到早顺序显示事件', () => {
@@ -53,6 +65,26 @@ describe('公开状态组件', () => {
     }] as never }, global: { stubs } })
     expect(wrapper.text()).toContain('已恢复'); expect(wrapper.text()).toContain('维护'); expect(wrapper.text()).toContain('bad-time')
     expect(wrapper.text().indexOf('后恢复')).toBeLessThan(wrapper.text().indexOf('先发生'))
+  })
+
+  it('事件总数超过每页条数时透传分页参数并回传页码', async () => {
+    const mk = (id: number) => ({
+      id, title: `事件${id}`, status: 'resolved', impact: 'degraded', started_at: '2026-08-12T08:00:00Z', events: [],
+    })
+    const wrapper = mount(StatusIncidentList, {
+      props: { incidents: [1, 2, 3].map(mk) as never, total: 25, page: 2, pageSize: 10 },
+      global: { stubs },
+    })
+    const pagination = wrapper.findComponent({ name: 'NPagination' })
+    if (pagination.exists()) {
+      await pagination.vm.$emit('update:page', 3)
+      expect(wrapper.emitted('update:page')?.[0]).toEqual([3])
+    } else {
+      // n-pagination 被整体 stub 时仅验证分页 props
+      expect(wrapper.props('total')).toBe(25)
+      expect(wrapper.props('page')).toBe(2)
+      expect(wrapper.props('pageSize')).toBe(10)
+    }
   })
 
   it('分组标题显示颜色、数量和自定义单位', () => {

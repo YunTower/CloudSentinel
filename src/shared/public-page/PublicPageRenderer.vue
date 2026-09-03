@@ -3,7 +3,6 @@ import { computed } from 'vue'
 import type { ServerItem } from '@/shared/types/server'
 import type {
   PublicPageV1,
-  PublicPagesConfigV1,
   PublicBlockServerListV1,
   PublicBlockServiceStatusV1,
   PublicBlockVisibilityModeV1,
@@ -27,11 +26,22 @@ interface Props {
   incidents?: PublicIncident[]
   serviceMonitors?: PublicServiceMonitor[]
   lastUpdatedAt?: string | null
+  /** 事件列表分页：总数 / 当前页 / 每页条数（服务端分页） */
+  incidentsTotal?: number
+  incidentsPage?: number
+  incidentsPageSize?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
   view: 'status',
+  incidentsTotal: undefined,
+  incidentsPage: 1,
+  incidentsPageSize: 10,
 })
+
+const emit = defineEmits<{ 'incidents-page-change': [page: number] }>()
+
+const handleIncidentsPageChange = (page: number) => emit('incidents-page-change', page)
 
 
 const asObject = (v: unknown): Record<string, unknown> | null =>
@@ -112,10 +122,8 @@ const serverBlock = computed((): PublicBlockServerListV1 | null => {
       : 'none'
   const limit = typeof obj.limit === 'number' ? obj.limit : 0
   return {
-    view: obj.view === 'card' ? 'card' : 'table',
     groupBy,
     limit,
-    showToolbar: obj.showToolbar !== false,
     mode: normalizeVisibilityMode(obj.mode),
     serverIds: asStringList(obj.serverIds),
     groupIds: asPositiveNumberList(obj.groupIds),
@@ -230,7 +238,13 @@ const pageIncidents = computed(() => props.incidents || [])
     </section>
 
     <section v-if="showIncidents">
-      <StatusIncidentList :incidents="pageIncidents" />
+      <StatusIncidentList
+        :incidents="pageIncidents"
+        :total="props.incidentsTotal ?? pageIncidents.length"
+        :page="props.incidentsPage"
+        :page-size="props.incidentsPageSize"
+        @update:page="handleIncidentsPageChange"
+      />
     </section>
 
     <footer

@@ -59,10 +59,6 @@ describe('公开页配置归一化', () => {
       version: 0 as 1,
       pages: [statusPage()],
     })
-    const high = normalizeBoundPublicPages({
-      version: 1,
-      pages: [],
-    })
     expect(low.version).toBe(1)
     expect(low.pages[0].refreshIntervalSeconds).toBe(30)
     expect(low.pages[0].showIncidents).toBe(true)

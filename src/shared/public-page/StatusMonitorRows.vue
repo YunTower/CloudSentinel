@@ -39,7 +39,8 @@ const statusLabel = (status: string) => {
 const statusIconColor = (status: string) => {
   if (status === 'up') return '#18a058'
   if (status === 'slow') return '#f0a020'
-  if (status === 'down') return '#f0a020'
+  // 故障（完全不可用）用红色，与状态页主 Banner 的 outage 级一致
+  if (status === 'down') return '#ef4444'
   return '#a1a1aa'
 }
 
@@ -47,7 +48,7 @@ const historyColor = (entry: ServiceMonitorHistoryEntry | null | undefined) => {
   if (!entry || !entry.status) return 'bg-zinc-950/12 dark:bg-white/12'
   if (entry.status === 'up') return 'bg-emerald-500'
   if (entry.status === 'slow') return 'bg-amber-400'
-  if (entry.status === 'down') return 'bg-amber-500'
+  if (entry.status === 'down') return 'bg-red-500'
   return 'bg-zinc-950/12 dark:bg-white/12'
 }
 
@@ -74,7 +75,7 @@ const uptimeText = (monitor: PublicServiceMonitor) => {
 }
 
 const uptimeColor = (monitor: PublicServiceMonitor) => {
-  if (monitor.status === 'down') return 'text-amber-700 dark:text-amber-300'
+  if (monitor.status === 'down') return 'text-red-600 dark:text-red-400'
   if (monitor.status === 'slow') return 'text-amber-600 dark:text-amber-400'
   return 'text-emerald-600 dark:text-emerald-400'
 }
@@ -156,9 +157,10 @@ const selectHistory = (monitorId: number, entry: ServiceMonitorHistoryEntry) => 
 
 const groupOperational = (items: PublicServiceMonitor[]) => {
   if (items.some((m) => m.status === 'down')) {
+    // 有服务完全不可用时分组标记为红色故障
     return {
       label: '异常',
-      ...publicStatusTone.warning,
+      ...publicStatusTone.danger,
     }
   }
   if (items.some((m) => m.status === 'slow')) {
