@@ -40,6 +40,14 @@ const incidents = ref<PublicIncident[]>([])
 const serviceMonitors = ref<PublicServiceMonitor[]>([])
 const lastUpdatedAt = ref<string | null>(null)
 
+/** 事件页分页：每页固定 10 条，页面级 incidentLimit 为总上限（由后端截断） */
+const INCIDENTS_PAGE_SIZE = 10
+/** 状态视图（Banner）单次拉取的事件数：足够覆盖活跃事件 */
+const INCIDENTS_BANNER_PAGE_SIZE = 50
+
+const incidentsPage = ref(1)
+const incidentsTotal = ref(0)
+
 const refreshIntervalSec = computed(() => {
   // 数据刷新间隔为页面级设置：缺省 30，范围 5–3600
   const raw = currentPage.value?.refreshIntervalSeconds
@@ -174,6 +182,9 @@ const loadBoundPage = async (path: string, generation: number): Promise<boolean>
     const page = settings.public_pages?.page
     if (page) {
       currentPage.value = page
+      // 路由切换后回到事件列表第一页
+      incidentsPage.value = 1
+      incidentsTotal.value = 0
       return true
     }
     currentPage.value = null
@@ -211,15 +222,30 @@ const loadIncidents = async (generation: number) => {
   const page = currentPage.value
   if (!page) {
     incidents.value = []
+    incidentsTotal.value = 0
     return
   }
-  const response = await publicApi.getIncidents({ path: page.path })
+  // 事件视图按分页拉取；状态视图（Banner）拉取较大的一页以覆盖活跃事件
+  const incidentsView = viewMode.value === 'incidents'
+  const response = await publicApi.getIncidents({
+    path: page.path,
+    page: incidentsView ? incidentsPage.value : 1,
+    pageSize: incidentsView ? INCIDENTS_PAGE_SIZE : INCIDENTS_BANNER_PAGE_SIZE,
+  })
   if (isRouteStale(generation)) return
   if (response.status && response.data) {
     incidents.value = response.data
+    incidentsTotal.value = response.meta?.total ?? response.data.length
     return
   }
   throw new Error(response.message || '获取事件列表失败')
+}
+
+/** 事件页翻页：更新页码并重新拉取事件列表 */
+const handleIncidentsPageChange = (page: number) => {
+  if (page === incidentsPage.value) return
+  incidentsPage.value = page
+  void loadPageData()
 }
 
 const loadServiceMonitors = async (generation: number) => {
@@ -239,7 +265,10 @@ const clearUnusedData = (needs: { servers: boolean; monitors: boolean; incidents
     serviceMonitors.value = []
     lastUpdatedAt.value = null
   }
-  if (!needs.incidents) incidents.value = []
+  if (!needs.incidents) {
+    incidents.value = []
+    incidentsTotal.value = 0
+  }
 }
 
 const loadPageData = async (opts?: { silent?: boolean }) => {
@@ -432,6 +461,10 @@ onBeforeUnmount(() => {
           :incidents="incidents"
           :service-monitors="serviceMonitors"
           :last-updated-at="lastUpdatedAt"
+          :incidents-total="incidentsTotal"
+          :incidents-page="incidentsPage"
+          :incidents-page-size="INCIDENTS_PAGE_SIZE"
+          @incidents-page-change="handleIncidentsPageChange"
         />
         <footer class="mt-10 space-y-1.5 text-center text-sm text-[var(--surface-400)]">
           <p class="tabular-nums" aria-live="polite">{{ refreshCountdownText }}</p>
