@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { PublicIncident, PublicIncidentEvent } from '@/shared/types/incidents'
-import { publicStatusTone } from '@/shared/public-page/statusTone'
+import { publicStatusTone } from '@/shared/public-page/lib/statusTone'
 
 interface Props {
   incidents: PublicIncident[]

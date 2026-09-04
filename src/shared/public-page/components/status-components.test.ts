@@ -3,7 +3,6 @@ import { mount } from '@vue/test-utils'
 
 import StatusBanner from './StatusBanner.vue'
 import StatusIncidentList from './StatusIncidentList.vue'
-import GroupHeader from '@/shared/server-display/GroupHeader.vue'
 
 const stubs = {
   RiCheckboxCircleFill: true, RiSubtractLine: true, RiAlertFill: true,
@@ -85,11 +84,5 @@ describe('公开状态组件', () => {
       expect(wrapper.props('page')).toBe(2)
       expect(wrapper.props('pageSize')).toBe(10)
     }
-  })
-
-  it('分组标题显示颜色、数量和自定义单位', () => {
-    const wrapper = mount(GroupHeader, { props: { groupName: '华东', count: 3, color: '#18a058', unit: '个' }, global: { stubs } })
-    expect(wrapper.text()).toContain('华东'); expect(wrapper.text()).toContain('3 个')
-    expect(wrapper.find('[style]').attributes('style')).toContain('#18a058')
   })
 })

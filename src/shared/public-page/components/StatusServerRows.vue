@@ -5,11 +5,11 @@ import type { PublicDisplayFieldsV1 } from '@/shared/types/settings/public-displ
 import { formatOS, formatSpeed, getStatusText } from '@/shared/server-display/utils'
 import { formatUptimeSeconds, liveUptimeSeconds } from '@/shared/server-display/uptime'
 import { useUptimeTicker } from '@/shared/composables/useUptimeTicker'
-import OsTypeIcon from '@/shared/server-display/OsTypeIcon.vue'
+import OsTypeIcon from '@/shared/public-page/components/OsTypeIcon.vue'
 import { getProgressBarColor, getProgressTextColor } from '@/shared/utils/version'
 import { getBillingCycle, getBillingType, getTrafficLimitSummary } from '@/shared/utils/billing'
 import { RiArrowDownSLine, RiArrowUpLine, RiArrowDownLine } from '@remixicon/vue'
-import { publicStatusTone } from '@/shared/public-page/statusTone'
+import { publicStatusTone } from '@/shared/public-page/lib/statusTone'
 
 interface Props {
   servers: ServerItem[]

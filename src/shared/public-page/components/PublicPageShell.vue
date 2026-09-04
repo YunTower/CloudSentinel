@@ -4,8 +4,8 @@ import { useRoute, RouterLink } from 'vue-router'
 import { RiMoonLine, RiSunLine } from '@remixicon/vue'
 import type { PublicPageV1, PublicPagesConfigV1 } from '@/shared/types/settings/public-pages'
 import { useTheme } from '@/shared/composables/useTheme'
-import { companionIncidentsPath } from '@/shared/public-page/filterPublicIncidents'
-import type { PublicPageViewMode } from '@/shared/public-page/ensureIncidentsSeparated'
+import { companionIncidentsPath } from '@/shared/public-page/lib/filterPublicIncidents'
+import type { PublicPageViewMode } from '@/shared/public-page/lib/ensureIncidentsSeparated'
 
 const props = defineProps<{
   page: PublicPageV1

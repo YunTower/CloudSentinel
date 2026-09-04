@@ -10,7 +10,7 @@ import {
   RiAlertFill,
   RiArrowDownSLine,
 } from '@remixicon/vue'
-import { publicStatusTone } from '@/shared/public-page/statusTone'
+import { publicStatusTone } from '@/shared/public-page/lib/statusTone'
 
 interface Props {
   monitors: PublicServiceMonitor[]

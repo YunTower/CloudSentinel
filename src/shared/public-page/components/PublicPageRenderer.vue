@@ -12,11 +12,11 @@ import type { PublicIncident } from '@/shared/types/incidents'
 import type { PublicServiceMonitor } from '@/shared/types/service-monitor'
 import { renderMarkdownSafe } from '@/shared/utils/safeMarkdown'
 import { isSafeLinkHref } from '@/shared/utils/safeLink'
-import StatusBanner from '@/shared/public-page/StatusBanner.vue'
-import StatusMonitorRows from '@/shared/public-page/StatusMonitorRows.vue'
-import StatusServerRows from '@/shared/public-page/StatusServerRows.vue'
-import StatusIncidentList from '@/shared/public-page/StatusIncidentList.vue'
-import type { PublicPageViewMode } from '@/shared/public-page/ensureIncidentsSeparated'
+import StatusBanner from '@/shared/public-page/components/StatusBanner.vue'
+import StatusMonitorRows from '@/shared/public-page/components/StatusMonitorRows.vue'
+import StatusServerRows from '@/shared/public-page/components/StatusServerRows.vue'
+import StatusIncidentList from '@/shared/public-page/components/StatusIncidentList.vue'
+import type { PublicPageViewMode } from '@/shared/public-page/lib/ensureIncidentsSeparated'
 
 interface Props {
   page: PublicPageV1
