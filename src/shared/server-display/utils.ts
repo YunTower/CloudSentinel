@@ -113,14 +113,11 @@ export function parseServerLastReportTime(raw?: string | null): number | undefin
 }
 
 /**
- * 判断服务器数据是否已陈旧：缺少最近上报时间或超过阈值未上报。
- * 用于识别“连接时快照伪装实时”的情况。
+ * 判断服务器数据是否陈旧：缺失上报时间视为陈旧；否则超过 stalenessMs 未上报视为陈旧。
  */
-export function isServerDataStale(lastReportTime?: number, maxAgeMs = 5 * 60 * 1000): boolean {
-  if (typeof lastReportTime !== 'number' || !Number.isFinite(lastReportTime)) {
-    return true
-  }
-  return Date.now() - lastReportTime > maxAgeMs
+export function isServerDataStale(lastReportAtMs?: number, stalenessMs = 5 * 60 * 1000): boolean {
+  if (lastReportAtMs === undefined || lastReportAtMs === null) return true
+  return Date.now() - lastReportAtMs > stalenessMs
 }
 
 /**
